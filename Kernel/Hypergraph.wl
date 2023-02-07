@@ -1,6 +1,8 @@
 Package["WolframInstitute`Hypergraph`"]
 
 
+PackageExport["AdjacencyTensor"]
+PackageExport["AdjacencyHypergraph"]
 PackageExport["HypergraphIncidenceMatrix"]
 PackageExport["IncidenceHypergraph"]
 PackageExport["HyperMatrix"]
@@ -8,8 +10,35 @@ PackageExport["HyperMatrixGraph"]
 
 
 
+AdjacencyTensor[hg_] := Block[{n = Length[hg], vs, index, d, arities, indices, r},
+	If[n == 0, Return[{}]];
+	vs = Union @@ hg;
+	index = First /@ PositionIndex[Union @@ hg];
+	d = Length[vs] + 1;
+	arities = Length /@ hg;
+	r = Max[arities];
+	indices = PadRight[TakeList[Lookup[index, Catenate[hg]], arities], {n, r}, d];
+	SparseArray[Normal @ Counts[indices], Table[d, r]]
+]
+
+
+AdjacencyHypergraph[vs_List, t_ ? ArrayQ] := Block[{dims = Dimensions[t], st, d},
+	d = First[dims, 0];
+	If[d == 0, Return[{}]];
+	(
+		st = SparseArray[t];
+		Catenate @ MapThread[Table[vs[[#1]], #2] & , {DeleteCases[t["ExplicitPositions"], d, {2}], t["ExplicitValues"]}]
+	) /; Equal @@ dims && d == Length[vs] + 1
+]
+
+AdjacencyHypergraph[t_] := AdjacencyHypergraph[Range[Length[t] - 1], t]
+
+
 HypergraphIncidenceMatrix[hg : {{___}...}] := With[{vs = Union @@ hg},
-	SparseArray @ Transpose[Total[2 ^ (# - 1)] & /@ Lookup[PositionIndex[#], vs, {}] & /@ hg]
+	If[	Length[vs] > 0,
+		SparseArray @ Transpose[Total[2 ^ (# - 1)] & /@ Lookup[PositionIndex[#], vs, {}] & /@ hg],
+		{{}}
+	]
 ]
 
 
