@@ -11,12 +11,9 @@ PacletObject[
       {
         "Kernel",
         "Root" -> "Kernel",
-        "Context" -> {"WolframInstitute`Hypergraph`"},
+        "Context" -> {"WolframInstitute`HypergraphLoader`", {"WolframInstitute`Hypergraph`", "HypergraphLoader.wl"}},
         "Symbols" -> {
-            "WolframInstitute`Hypergraph`HypergraphIncidenceMatrix",
-            "WolframInstitute`Hypergraph`IncidenceHypergraph",
-            "WolframInstitute`Hypergraph`HyperMatrix",
-            "WolframInstitute`Hypergraph`HyperMatrixGraph"
+
         }
       },
       {
