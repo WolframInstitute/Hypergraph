@@ -21,7 +21,7 @@ AdjacencyTensor[hg : {___List}] := Block[{n = Length[hg], vs, index, d, arities,
 	SparseArray[Normal @ Counts[indices], Table[d, r]]
 ]
 
-AdjacencyTensor[hg_Hypergraph] := AdjacencyTensor[hg["ListForm"]]
+AdjacencyTensor[hg_Hypergraph] := AdjacencyTensor[hg["EdgeList"]]
 
 
 AdjacencyHypergraph[vs_List, t_ ? ArrayQ] := Block[{dims = Dimensions[t], st, d},
@@ -62,7 +62,7 @@ HyperMatrix[hg : {___List}] := Block[{vs = Union @@ hg, n, index},
 	]
 ]
 
-HyperMatrix[hg_Hypergraph] := HyperMatrix[hg["ListForm"]]
+HyperMatrix[hg_Hypergraph] := HyperMatrix[hg["EdgeList"]]
 
 
 HyperMatrixGraph[vs_List, hm_List] := With[{n = Length[vs], dims = Dimensions /@ hm},

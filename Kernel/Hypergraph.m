@@ -44,14 +44,16 @@ Hyperedges /: MakeBoxes[hg : Hyperedges[args___], form_] := With[{
 Hypergraph[edgeSpec_] := Hypergraph[If[MatchQ[edgeSpec, {___List}], Hyperedges @@ edgeSpec, Hyperedges[edgeSpec]], Association[]]
 
 
-hg_Hypergraph[prop_String, args___] := HypergraphProp[hg, prop, args]
+hg_Hypergraph[prop_String, args___] := Once[HypergraphProp[hg, prop, args]]
 
 
 HypergraphProp[Hypergraph[edges_, _], "Edges"] := edges
 
 HypergraphProp[Hypergraph[_, symm_], "Symmetry"] := symm
 
-HypergraphProp[hg_, "ListForm"] := List @@ hg["Edges"]
+HypergraphProp[hg_, "EdgeList"] := List @@ hg["Edges"]
+
+HypergraphProp[hg_, "VertexList"] := Union @@ hg["EdgeList"]
 
 
 NonCommutativeMultiply[hs___Hypergraph] ^:= Hypergraph[
