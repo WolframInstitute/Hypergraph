@@ -67,9 +67,4 @@ Plus[hs___Hypergraph] ^:= Hypergraph[
 ]
 
 
-Hypergraph /: MakeBoxes[hg : Hypergraph[edges_Hyperedges, symm_Association], form_] := With[{
-	edgeBoxes = ToBoxes[Tooltip[edges, sym], form]
-},
-	InterpretationBox[edgeBoxes, hg]
-]
 
