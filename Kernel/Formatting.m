@@ -3,8 +3,8 @@ Package["WolframInstitute`Hypergraph`"]
 
 
 
-Hypergraph /: MakeBoxes[hg : Hypergraph[edges_Hyperedges, symm_Association], form : TraditionalForm] := With[{
-	edgeBoxes = ToBoxes[Tooltip[edges, symm], form]
+Hypergraph /: MakeBoxes[hg_Hypergraph, form : TraditionalForm] := With[{
+	edgeBoxes = ToBoxes[Tooltip[hg["Edges"], symm], form]
 },
 	InterpretationBox[edgeBoxes, hg]
 ]
