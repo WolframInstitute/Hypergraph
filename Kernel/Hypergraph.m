@@ -23,6 +23,8 @@ Hyperedges[1] := Hyperedges[{}]
 
 (he : Hyperedges[edges___])["EdgeList"] /; HyperedgesQ[Unevaluated[he]] := Replace[{edges}, (edge_ -> _) :> edge, {1}]
 
+(he : Hyperedges[edges___])["VertexList"] /; HyperedgesQ[Unevaluated[he]] := DeleteDuplicates @ Catenate @ he["EdgeList"]
+
 NonCommutativeMultiply[hs___Hyperedges ? HyperedgesQ] ^:= Hyperedges @@ Join @@@ Tuples[HyperEdges @@@ Through[{hs}["EdgeList"]]]
 
 Plus[hs___Hyperedges ? HyperedgesQ] ^:= Join[hs]
@@ -53,27 +55,47 @@ Hyperedges /: MakeBoxes[hg : Hyperedges[args___] /; HyperedgesQ[Unevaluated[hg]]
 (* Hypergraph *)
 
 
-HypergraphQ[hg : Hypergraph[_Hyperedges ? HyperedgesQ, _Association ? AssociationQ]] := System`Private`HoldValidQ[hg]
+HypergraphQ[hg_Hypergraph] := System`Private`HoldValidQ[hg]
 
 HypergraphQ[___] := False
 
 
 
-Hypergraph[edgeSpec : {___List}, symm : _ ? AssociationQ : <||>] := Hypergraph[Hyperedges @@ edgeSpec, symm]
+(* Constructors *)
 
-hg : Hypergraph[edgeSpec_] := Enclose @ Hypergraph[ConfirmBy[Hyperedges[edgeSpec], HyperedgesQ]]
+Hypergraph[edgeSpec : {___List}, symm_Association : <||>, opts : OptionsPattern[]] := Hypergraph[Hyperedges @@ edgeSpec, symm, opts]
 
-hg : Hypergraph[he_Hyperedges ? HyperedgesQ, symm : _ ? AssociationQ : <||>] /; System`Private`HoldNotValidQ[hg] :=
-	System`Private`HoldSetValid[Hypergraph[he, symm]]
+Hypergraph[vs_List, edgeSpec : {___List}, symm_Association : <||>, opts : OptionsPattern[]] := Hypergraph[vs, Hyperedges @@ edgeSpec, symm, opts]
+
+hg : Hypergraph[edgeSpec_, symm_Association : <||>, opts : OptionsPattern[]] := Enclose @ With[{edges = ConfirmBy[Hyperedges[edgeSpec], HyperedgesQ]},
+	Hypergraph[edges["VertexList"], symm, edges, opts]
+]
+
+Hypergraph[he_Hyperedges ? HyperedgesQ, symm_Association : <||>, opts : OptionsPattern[]] := Hypergraph[he["VertexList"], he, symm, opts]
 
 
+hg : Hypergraph[vs_List, he_Hyperedges ? HyperedgesQ, symm_Association : <||>, opts : OptionsPattern[]] /;
+	! ContainsAll[vs, he["VertexList"]] := Hypergraph[Join[vs, DeleteElements[he["VertexList"], vs]], he, symm, opts]
+
+hg : Hypergraph[vs_List, he_Hyperedges ? HyperedgesQ, symm : _ ? AssociationQ : <||>, opts : OptionsPattern[]] /;
+	ContainsAll[vs, he["VertexList"]] && System`Private`HoldNotValidQ[hg] := System`Private`HoldSetValid[Hypergraph[vs, he, symm, ##]] & @@ Flatten[{opts}]
+
+
+
+(* Properties *)
 
 hg_Hypergraph[prop_String, args___] := HypergraphProp[hg, prop, args]
 
 
-HypergraphProp[Hypergraph[edges_, _], "Edges"] := edges
+Options[Hypergraph] = Options[Graph]
 
-HypergraphProp[Hypergraph[_, symm_], "Symmetry"] := <|symm, _ -> "Unordered"|>
+HypergraphProp[Hypergraph[_, _, _, opts___], "Options"] := Flatten[{opts}]
+
+HypergraphProp[Hypergraph[vertices_, __], "VertexList"] := vertices
+
+HypergraphProp[Hypergraph[_, edges_, __], "Edges"] := edges
+
+HypergraphProp[Hypergraph[_, _, symm_, ___], "Symmetry"] := <|symm, _ -> "Unordered"|>
 
 HypergraphProp[hg_, "EdgeList"] := List @@ hg["Edges"]
 
@@ -95,6 +117,9 @@ HypergraphProp[hg_, "EdgeSymmetry"] := With[{symmFunc = KeyValueMap[{k, v} |->
 ]
 
 
+
+(* Values *)
+
 NonCommutativeMultiply[hs___Hypergraph] ^:= Hypergraph[
 	Through[Unevaluated @ NonCommutativeMultiply[hs]["Edges"]],
 	Merge[Through[Unevaluated @ {hs}["Symmetry"]], Identity]
@@ -104,6 +129,4 @@ Plus[hs___Hypergraph] ^:= Hypergraph[
 	Through[Unevaluated @ Plus[hs]["Edges"]],
 	Through[Unevaluated @ Join[hs]["Symmetry"]]
 ]
-
-
 

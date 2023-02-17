@@ -1,6 +1,7 @@
 Package["WolframInstitute`Hypergraph`"]
 
 PackageExport["SimpleHypergraphPlot"]
+PackageExport["SimpleHypergraphPlot3D"]
 
 
 
@@ -13,15 +14,20 @@ Options[SimpleHypergraphPlot] = Join[{
 
 SimpleHypergraphPlot[h : {___List}, args___] := SimpleHypergraphPlot[Hypergraph[h], args]
 
-SimpleHypergraphPlot[h_Hypergraph, dim : 2 | 3 : 2, opts : OptionsPattern[]] := Block[{
+SimpleHypergraphPlot[h_Hypergraph, dim : 2 | 3 : 2, plotOpts : OptionsPattern[]] := Block[{
     graph,
     vertexEmbedding, edgeEmbedding,
-    colorFunction = OptionValue[ColorFunction],
     vs = h["VertexList"], es = h["EdgeList"],
     longEdges, ws,
-    vertexLabels = OptionValue[VertexLabels],
-    size
+    colorFunction, vertexLabels, edgeArrowsQ, edgeType,
+    size,
+    opts = FilterRules[{h["Options"], plotOpts}, Options[SimpleHypergraphPlot]]
 },
+    colorFunction = OptionValue[SimpleHypergraphPlot, opts, ColorFunction];
+    vertexLabels = OptionValue[SimpleHypergraphPlot, opts, VertexLabels];
+    edgeArrowsQ = TrueQ[OptionValue[SimpleHypergraphPlot, opts, "EdgeArrows"]];
+    edgeType = OptionValue[SimpleHypergraphPlot, opts, "EdgeType"];
+
     longEdges = Cases[es, {_, _, __}];
     ws = Join[vs, \[FormalE] /@ Range[Length[longEdges]]];
 	graph = Switch[dim, 2, Graph, 3, Graph3D][
@@ -30,7 +36,7 @@ SimpleHypergraphPlot[h_Hypergraph, dim : 2 | 3 : 2, opts : OptionsPattern[]] := 
             Annotation[DirectedEdge[##], EdgeWeight -> 1] & @@@ Cases[es, {_, _}],
             Catenate[
                 MapIndexed[{edge, i} |->
-                    With[{clickEdges = Tuples[edge, 2], weight = Length[edge]},
+                    With[{clickEdges = Join[#, Reverse /@ #] & @ Subsets[edge, {2}], weight = Length[edge]},
                         Join[
                             Annotation[DirectedEdge[##, edge], EdgeWeight -> 1] & @@@ clickEdges,
                             Annotation[DirectedEdge[#, \[FormalE] @@ i], EdgeWeight -> weight] & /@ edge
@@ -57,7 +63,7 @@ SimpleHypergraphPlot[h_Hypergraph, dim : 2 | 3 : 2, opts : OptionsPattern[]] := 
                 colorFunction[i],
                 Switch[Length[emb],
                     1, Block[{r = size 0.03, dr = size 0.01}, Table[Switch[dim, 2, Circle[First[emb], r += dr], 3, Sphere[First[emb], r += dr], _, Nothing], mult]],
-                    2, If[TrueQ[OptionValue["EdgeArrows"]], Arrow, Line] /@ Lookup[edgeEmbedding, DirectedEdge @@ #1[[1]]],
+                    2, If[edgeArrowsQ, Arrow, Line] /@ Lookup[edgeEmbedding, DirectedEdge @@ #1[[1]]],
                     _, {
                         Table[
                             {
@@ -65,9 +71,9 @@ SimpleHypergraphPlot[h_Hypergraph, dim : 2 | 3 : 2, opts : OptionsPattern[]] := 
                                     2, FilledCurve[Line /@ #[[All, j]]],
                                     3, Polygon @ Catenate @ #[[All, j]]
                                 ],
-                                If[TrueQ[OptionValue["EdgeArrows"]], Arrow, Line] /@ #[[All, j]]
+                                If[edgeArrowsQ, Arrow, Line] /@ #[[All, j]]
                             } & @ Lookup[edgeEmbedding, DirectedEdge[##, edge] & @@@
-                                Partition[#1[[1]], 2, 1, If[OptionValue["EdgeType"] === "Cyclic", 1, None]]
+                                Partition[#1[[1]], 2, 1, If[edgeType === "Cyclic", 1, None]]
                             ],
                             {j, mult}
                         ]
@@ -86,8 +92,11 @@ SimpleHypergraphPlot[h_Hypergraph, dim : 2 | 3 : 2, opts : OptionsPattern[]] := 
         ]
 	},
         FilterRules[{opts}, Options[Switch[dim, 2, Graphics, 3, Graphics3D]]],
-        ImageSize -> 400,
+        ImageSize -> Medium,
 		Boxed -> False
 	]
 ]
+
+
+SimpleHypergraphPlot3D[h_, opts___] := SimpleHypergraphPlot[h, 3, opts]
 
