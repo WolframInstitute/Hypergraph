@@ -5,6 +5,7 @@ PackageExport["HypergraphQ"]
 
 PackageExport["Hyperedges"]
 PackageExport["Hypergraph"]
+PackageExport["Hypergraph3D"]
 
 
 
@@ -55,7 +56,7 @@ Hyperedges /: MakeBoxes[hg : Hyperedges[args___] /; HyperedgesQ[Unevaluated[hg]]
 (* Hypergraph *)
 
 
-HypergraphQ[hg_Hypergraph] := System`Private`HoldValidQ[hg]
+HypergraphQ[hg_Hypergraph] := System`Private`HoldValidQ[hg] || MatchQ[hg, Hypergraph[_List, _ ? HyperedgesQ, _Association, OptionsPattern[]]]
 
 HypergraphQ[___] := False
 
@@ -78,7 +79,9 @@ hg : Hypergraph[vs_List, he_Hyperedges ? HyperedgesQ, symm_Association : <||>, o
 	! ContainsAll[vs, he["VertexList"]] := Hypergraph[Join[vs, DeleteElements[he["VertexList"], vs]], he, symm, opts]
 
 hg : Hypergraph[vs_List, he_Hyperedges ? HyperedgesQ, symm : _ ? AssociationQ : <||>, opts : OptionsPattern[]] /;
-	ContainsAll[vs, he["VertexList"]] && System`Private`HoldNotValidQ[hg] := System`Private`HoldSetValid[Hypergraph[vs, he, symm, ##]] & @@ Flatten[{opts}]
+	ContainsAll[vs, he["VertexList"]] && System`Private`HoldNotValidQ[hg] := System`Private`SetNoEntry[
+		System`Private`HoldSetValid[Hypergraph[vs, he, symm, ##]] & @@ Flatten[{opts}]
+	]
 
 
 
@@ -88,6 +91,14 @@ hg_Hypergraph[prop_String, args___] := HypergraphProp[hg, prop, args]
 
 
 Options[Hypergraph] = Join[{"LayoutDimension" -> 2}, Options[Graph]]
+
+Options[Hypergraph3D] = Options[Hypergraph]
+
+Hypergraph3D[args___, opts : OptionsPattern[]] := Hypergraph[args, FilterRules[{"LayoutDimension" -> 3, opts}, Options[Hypergraph]]]
+
+Hypergraph3D[hg_Hypergraph, opts : OptionsPattern[]] := Hypergraph3D[hg["VertexList"], hg["EdgeList"], opts, "LayoutDimension" -> 3, hg["Options"]]
+
+Hypergraph[hg_Hypergraph, opts : OptionsPattern[]] := Hypergraph[hg["VertexList"], hg["EdgeList"], opts, "LayoutDimension" -> 2, hg["Options"]]
 
 HypergraphProp[Hypergraph[_, _, _, opts___], "Options"] := Flatten[{opts}]
 

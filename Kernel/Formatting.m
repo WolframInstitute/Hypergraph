@@ -39,7 +39,7 @@ FromGraphicsBox[HoldPattern[(GraphicsBox | Graphics3DBox)[NamespaceBox["Hypergra
 
 Unprotect[GraphicsBox, Graphics3DBox]
 Scan[head |->
-    With[{lhs = HoldPattern[MakeExpression[g_head ? PossibleHypergraphBoxQ, fmt_ ]]},
+    With[{lhs = HoldPattern[MakeExpression[g_head ? PossibleHypergraphBoxQ, fmt_]]},
         If[	!KeyExistsQ[FormatValues[head], lhs],
             PrependTo[
                 FormatValues[head],

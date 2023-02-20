@@ -20,11 +20,15 @@ SimpleHypergraphPlot[h_Hypergraph, plotOpts : OptionsPattern[]] := Enclose @ Blo
     vs = h["VertexList"], es = h["EdgeList"],
     longEdges, ws,
     colorFunction, vertexLabels, edgeArrowsQ, edgeType,
+    vertexStyle, vertexLabelStyle, edgeStyle,
     size, dim,
     opts = FilterRules[{h["Options"], plotOpts}, Options[SimpleHypergraphPlot]]
 },
     colorFunction = OptionValue[SimpleHypergraphPlot, opts, ColorFunction];
     vertexLabels = OptionValue[SimpleHypergraphPlot, opts, VertexLabels];
+    vertexStyle = Replace[OptionValue[SimpleHypergraphPlot, opts, VertexStyle], {Automatic -> _ -> Black, s : Except[_Rule] :> _ -> s}];
+    vertexLabelStyle = Replace[OptionValue[SimpleHypergraphPlot, opts, VertexLabelStyle], {Automatic -> _ -> Black, s : Except[_Rule] :> _ -> s}];
+    edgeStyle = Replace[OptionValue[SimpleHypergraphPlot, opts, EdgeStyle], Automatic -> {}];
     edgeArrowsQ = TrueQ[OptionValue[SimpleHypergraphPlot, opts, "EdgeArrows"]];
     edgeType = OptionValue[SimpleHypergraphPlot, opts, "EdgeType"];
     dim = ConfirmMatch[OptionValue[SimpleHypergraphPlot, opts, "LayoutDimension"], 2 | 3];
@@ -48,8 +52,8 @@ SimpleHypergraphPlot[h_Hypergraph, plotOpts : OptionsPattern[]] := Enclose @ Blo
             ]
         ],
         VertexShapeFunction -> ((Sow[#2 -> #1, "v"]; Point[#1]) &),
-        EdgeShapeFunction -> ((Sow[#2 -> #1, "e"]; GraphComputation`GraphElementData["Line"][##]) &),
-        FilterRules[{opts}, Options[Graph]],
+        EdgeShapeFunction -> ((Sow[#2 -> #1, "e"]; GraphComputation`GraphElementData["Line"][#1, None]) &),
+        FilterRules[FilterRules[{opts}, Except[EdgeStyle -> _]], Options[Graph]],
         GraphLayout -> {"SpringEmbedding", "EdgeWeighted" -> True}
     ];
     {vertexEmbedding, edgeEmbedding} = First[#, {}] & /@ Reap[GraphPlot[graph], {"v", "e"}][[2]];
@@ -61,12 +65,11 @@ SimpleHypergraphPlot[h_Hypergraph, plotOpts : OptionsPattern[]] := Enclose @ Blo
 		Arrowheads[{{Medium, .5}}],
 		AbsoluteThickness[Medium],
 		MapIndexed[With[{edge = #1[[1]], emb = Replace[#1[[1]], vertexEmbedding, {1}], mult = #1[[2]], i = #2[[1]]}, {
-                colorFunction[i],
-                EdgeForm[colorFunction[i]],
+                Replace[edge, Append[Flatten[{edgeStyle}], _ -> Directive[colorFunction[i], EdgeForm[colorFunction[i]]]]],
                 Switch[Length[emb],
                     0, Nothing,
                     1, Block[{r = size 0.03, dr = size 0.01}, Table[Switch[dim, 2, Circle[First[emb], r += dr], 3, Sphere[First[emb], r += dr], _, Nothing], mult]],
-                    2, If[edgeArrowsQ, Arrow, Identity] @* GraphComputation`GraphElementData["Line"][#, None] & /@ Lookup[edgeEmbedding, DirectedEdge @@ #1[[1]]],
+                    2, If[edgeArrowsQ, Map[Arrow], Identity] @ GraphComputation`GraphElementData["Line"][#, None] & /@ Lookup[edgeEmbedding, DirectedEdge @@ #1[[1]]],
                     _, {
                         Table[
                             With[{curves = Catenate[GraphComputation`GraphElementData["Line"][#, None] & /@ #[[All, j]]]}, {
@@ -98,12 +101,11 @@ SimpleHypergraphPlot[h_Hypergraph, plotOpts : OptionsPattern[]] := Enclose @ Blo
             }] &,
             Tally[es]
         ],
-        Black,
         Opacity[1],
-		Point[Values[vertexEmbedding]],
+		KeyValueMap[{Replace[#1, vertexStyle], Point[#2]} &, vertexEmbedding],
         Switch[vertexLabels,
-            Automatic, KeyValueMap[Text[##, {2, 2}] &, vertexEmbedding],
-            Placed[Automatic, _Offset], KeyValueMap[Text[##, vertexLabels[[2, 1]]] &, vertexEmbedding],
+            Automatic, KeyValueMap[{Replace[#1, vertexLabelStyle], Text[##, {2, 2}]} &, vertexEmbedding],
+            Placed[Automatic, _Offset], KeyValueMap[{Replace[#1, vertexLabelStyle], Text[##, vertexLabels[[2, 1]]]} &, vertexEmbedding],
             _, Nothing
         ]
 	},
