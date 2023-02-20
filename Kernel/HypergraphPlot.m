@@ -46,9 +46,9 @@ SimpleHypergraphPlot[h_Hypergraph, dim : 2 | 3 : 2, plotOpts : OptionsPattern[]]
                 ]
             ]
         ],
+        VertexShapeFunction -> ((Sow[#2 -> #1, "v"]; Point[#1]) &),
+        EdgeShapeFunction -> ((Sow[#2 -> #1, "e"]; GraphComputation`GraphElementData["Line"][##]) &),
         FilterRules[{opts}, Options[Graph]],
-        VertexShapeFunction -> (Sow[#2 -> #1, "v"] &),
-        EdgeShapeFunction -> (Sow[#2 -> #1, "e"] &),
         GraphLayout -> {"SpringEmbedding", "EdgeWeighted" -> True}
     ];
     {vertexEmbedding, edgeEmbedding} = First[#, {}] & /@ Reap[GraphPlot[graph], {"v", "e"}][[2]];
@@ -61,18 +61,32 @@ SimpleHypergraphPlot[h_Hypergraph, dim : 2 | 3 : 2, plotOpts : OptionsPattern[]]
 		AbsoluteThickness[Medium],
 		MapIndexed[With[{edge = #1[[1]], emb = Replace[#1[[1]], vertexEmbedding, {1}], mult = #1[[2]], i = #2[[1]]}, {
                 colorFunction[i],
+                EdgeForm[colorFunction[i]],
                 Switch[Length[emb],
                     1, Block[{r = size 0.03, dr = size 0.01}, Table[Switch[dim, 2, Circle[First[emb], r += dr], 3, Sphere[First[emb], r += dr], _, Nothing], mult]],
-                    2, If[edgeArrowsQ, Arrow, Line] /@ Lookup[edgeEmbedding, DirectedEdge @@ #1[[1]]],
+                    2, If[edgeArrowsQ, Arrow, Identity] @* GraphComputation`GraphElementData["Line"][#, None] & /@ Lookup[edgeEmbedding, DirectedEdge @@ #1[[1]]],
                     _, {
                         Table[
-                            {
+                            With[{curves = Catenate[GraphComputation`GraphElementData["Line"][#, None] & /@ #[[All, j]]]}, {
                                 Switch[dim,
-                                    2, FilledCurve[Line /@ #[[All, j]]],
-                                    3, Polygon @ Catenate @ #[[All, j]]
+                                    2, FilledCurve[curves],
+                                    3, Block[{pts, region},
+                                        pts = MeshCoordinates @ DiscretizeGraphics @ curves;
+                                        region = DiscretizeRegion[#, MaxCellMeasure -> {"Area" -> Area[#] / (Length[pts] + 1)}] & @
+                                            Polygon[Prepend[First[pts]] /@ Partition[pts[[2 ;; -2]], 2, 1]];
+                                        {EdgeForm[], areaGradientDescent[region, .1, 20]}
+                                    ]
+                                    (* 3, Polygon @ Catenate @ #[[All, j]] *)
                                 ],
-                                If[edgeArrowsQ, Arrow, Line] /@ #[[All, j]]
-                            } & @ Lookup[edgeEmbedding, DirectedEdge[##, edge] & @@@
+                                If[ edgeArrowsQ,
+                                    With[{lengths = RegionMeasure @* DiscretizeGraphics /@ curves},
+                                        {   Arrowheads[{Medium, #} & /@ ((Prepend[Accumulate[Most[lengths]], 0] + lengths / 2) / Total[lengths])],
+                                            Arrow @ JoinedCurve[curves]
+                                        }
+                                    ],
+                                    Nothing
+                                ]
+                            }] & @ Lookup[edgeEmbedding, DirectedEdge[##, edge] & @@@
                                 Partition[#1[[1]], 2, 1, If[edgeType === "Cyclic", 1, None]]
                             ],
                             {j, mult}
