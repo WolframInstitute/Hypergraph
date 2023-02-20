@@ -87,7 +87,7 @@ hg : Hypergraph[vs_List, he_Hyperedges ? HyperedgesQ, symm : _ ? AssociationQ : 
 hg_Hypergraph[prop_String, args___] := HypergraphProp[hg, prop, args]
 
 
-Options[Hypergraph] = Options[Graph]
+Options[Hypergraph] = Join[{"LayoutDimension" -> 2}, Options[Graph]]
 
 HypergraphProp[Hypergraph[_, _, _, opts___], "Options"] := Flatten[{opts}]
 
@@ -122,11 +122,13 @@ HypergraphProp[hg_, "EdgeSymmetry"] := With[{symmFunc = KeyValueMap[{k, v} |->
 
 NonCommutativeMultiply[hs___Hypergraph] ^:= Hypergraph[
 	Through[Unevaluated @ NonCommutativeMultiply[hs]["Edges"]],
-	Merge[Through[Unevaluated @ {hs}["Symmetry"]], Identity]
+	Merge[Through[{hs}["Symmetry"]], Identity],
+	Normal @ Merge[Through[{hs}["Options"]], First]
 ]
 
 Plus[hs___Hypergraph] ^:= Hypergraph[
 	Through[Unevaluated @ Plus[hs]["Edges"]],
-	Through[Unevaluated @ Join[hs]["Symmetry"]]
+	Through[Unevaluated @ Join[hs]["Symmetry"]],
+	Normal @ Merge[Through[{hs}["Options"]], First]
 ]
 

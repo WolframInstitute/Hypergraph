@@ -10,23 +10,24 @@ Options[SimpleHypergraphPlot] = Join[{
     "EdgeArrows" -> False,
     "EdgeType" -> "Cyclic",
     VertexLabels -> None
-}, Options[Graph], Options[Graphics], Options[Graphics3D]];
+}, Options[Hypergraph], Options[Graphics], Options[Graphics3D]];
 
 SimpleHypergraphPlot[h : {___List}, args___] := SimpleHypergraphPlot[Hypergraph[h], args]
 
-SimpleHypergraphPlot[h_Hypergraph, dim : 2 | 3 : 2, plotOpts : OptionsPattern[]] := Block[{
+SimpleHypergraphPlot[h_Hypergraph, plotOpts : OptionsPattern[]] := Enclose @ Block[{
     graph,
     vertexEmbedding, edgeEmbedding,
     vs = h["VertexList"], es = h["EdgeList"],
     longEdges, ws,
     colorFunction, vertexLabels, edgeArrowsQ, edgeType,
-    size,
+    size, dim,
     opts = FilterRules[{h["Options"], plotOpts}, Options[SimpleHypergraphPlot]]
 },
     colorFunction = OptionValue[SimpleHypergraphPlot, opts, ColorFunction];
     vertexLabels = OptionValue[SimpleHypergraphPlot, opts, VertexLabels];
     edgeArrowsQ = TrueQ[OptionValue[SimpleHypergraphPlot, opts, "EdgeArrows"]];
     edgeType = OptionValue[SimpleHypergraphPlot, opts, "EdgeType"];
+    dim = ConfirmMatch[OptionValue[SimpleHypergraphPlot, opts, "LayoutDimension"], 2 | 3];
 
     longEdges = Cases[es, {_, _, __}];
     ws = Join[vs, \[FormalE] /@ Range[Length[longEdges]]];
@@ -63,6 +64,7 @@ SimpleHypergraphPlot[h_Hypergraph, dim : 2 | 3 : 2, plotOpts : OptionsPattern[]]
                 colorFunction[i],
                 EdgeForm[colorFunction[i]],
                 Switch[Length[emb],
+                    0, Nothing,
                     1, Block[{r = size 0.03, dr = size 0.01}, Table[Switch[dim, 2, Circle[First[emb], r += dr], 3, Sphere[First[emb], r += dr], _, Nothing], mult]],
                     2, If[edgeArrowsQ, Arrow, Identity] @* GraphComputation`GraphElementData["Line"][#, None] & /@ Lookup[edgeEmbedding, DirectedEdge @@ #1[[1]]],
                     _, {
@@ -112,5 +114,5 @@ SimpleHypergraphPlot[h_Hypergraph, dim : 2 | 3 : 2, plotOpts : OptionsPattern[]]
 ]
 
 
-SimpleHypergraphPlot3D[h_, opts___] := SimpleHypergraphPlot[h, 3, opts]
+SimpleHypergraphPlot3D[h_, opts___] := SimpleHypergraphPlot[h, "LayoutDimension" -> 3, opts]
 

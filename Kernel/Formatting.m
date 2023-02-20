@@ -22,29 +22,32 @@ Hypergraph /: MakeBoxes[hg_Hypergraph /; HypergraphQ[Unevaluated[hg]], form : Tr
 (* mimicking Graph and Tree behaviour *)
 
 SetAttributes[hypergraphBox, HoldAllComplete];
-hypergraphBox[GraphicsBox[box_, opts___], hg_] := GraphicsBox[
+hypergraphBox[(head : GraphicsBox | Graphics3DBox)[box_, opts___], hg_] := head[
 	NamespaceBox["Hypergraph", DynamicModuleBox[{Typeset`hg = HoldComplete[hg]}, box]],
 	opts
 ]
 
-hypergraphBox[_, hg_] := ToBoxes[hg, TraditionalForm]
+hypergraphBox[box_, hg_] := ToBoxes[hg, TraditionalForm]
 
 
-PossibleHypergraphBoxQ[HoldPattern[GraphicsBox[NamespaceBox["Hypergraph", _, ___], ___]]] := True
+PossibleHypergraphBoxQ[HoldPattern[(GraphicsBox | Graphics3DBox)[NamespaceBox["Hypergraph", _, ___], ___]]] := True
 
 PossibleHypergraphBoxQ[___] := False
 
 
-FromGraphicsBox[HoldPattern[GraphicsBox[NamespaceBox["Hypergraph", DynamicModuleBox[vars_, ___], ___], ___]], _] := Module[vars, Typeset`hg]
+FromGraphicsBox[HoldPattern[(GraphicsBox | Graphics3DBox)[NamespaceBox["Hypergraph", DynamicModuleBox[vars_, ___], ___], ___]], _] := Module[vars, Typeset`hg]
 
-Unprotect[GraphicsBox]
-With[{lhs = HoldPattern[MakeExpression[g_GraphicsBox ? PossibleHypergraphBoxQ, fmt_ ]]},
-	If[	!KeyExistsQ[FormatValues[GraphicsBox], lhs],
-		PrependTo[
-			FormatValues[GraphicsBox],
-			lhs :> FromGraphicsBox[g, fmt]
-		]
-	]
+Unprotect[GraphicsBox, Graphics3DBox]
+Scan[head |->
+    With[{lhs = HoldPattern[MakeExpression[g_head ? PossibleHypergraphBoxQ, fmt_ ]]},
+        If[	!KeyExistsQ[FormatValues[head], lhs],
+            PrependTo[
+                FormatValues[head],
+                lhs :> FromGraphicsBox[g, fmt]
+            ]
+        ]
+    ],
+    {GraphicsBox, Graphics3DBox}
 ]
-Protect[GraphicsBox]
+Protect[GraphicsBox, Graphics3DBox]
 
