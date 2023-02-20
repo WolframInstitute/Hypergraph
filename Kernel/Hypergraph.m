@@ -97,9 +97,9 @@ HypergraphProp[Hypergraph[_, edges_, __], "Edges"] := edges
 
 HypergraphProp[Hypergraph[_, _, symm_, ___], "Symmetry"] := <|symm, _ -> "Unordered"|>
 
-HypergraphProp[hg_, "EdgeList"] := List @@ hg["Edges"]
+HypergraphProp[hg_, "EdgeList"] := hg["Edges"]["EdgeList"]
 
-HypergraphProp[hg_, "VertexList"] := Union @@ hg["EdgeList"]
+HypergraphProp[hg_, "VertexList"] := hg["Edges"]["VertexList"]
 
 HypergraphProp[hg_, "EdgeSymmetry"] := With[{symmFunc = KeyValueMap[{k, v} |->
 		Replace[k, All -> _] -> Replace[v, {

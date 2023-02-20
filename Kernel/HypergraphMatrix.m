@@ -43,6 +43,8 @@ HypergraphIncidenceMatrix[hg : {___List}] := With[{vs = Union @@ hg},
 	]
 ]
 
+HypergraphIncidenceMatrix[hg_Hypergraph] := HypergraphIncidenceMatrix[hg["EdgeList"]]
+
 
 IncidenceHypergraph[vs_List, mat_ ? MatrixQ] :=
 	With[{rules = Catenate @ MapThread[Thread @* Rule, {Position[Reverse[#], 1, {1}, Heads -> False] & /@ IntegerDigits[#, 2], vs}]},
