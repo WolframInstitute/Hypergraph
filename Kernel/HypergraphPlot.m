@@ -28,7 +28,7 @@ SimpleHypergraphPlot[h_Hypergraph, plotOpts : OptionsPattern[]] := Enclose @ Blo
     vertexLabels = OptionValue[SimpleHypergraphPlot, opts, VertexLabels];
     vertexStyle = Replace[OptionValue[SimpleHypergraphPlot, opts, VertexStyle], {Automatic -> _ -> Black, s : Except[_Rule] :> _ -> s}];
     vertexLabelStyle = Replace[OptionValue[SimpleHypergraphPlot, opts, VertexLabelStyle], {Automatic -> _ -> Black, s : Except[_Rule] :> _ -> s}];
-    edgeStyle = Replace[OptionValue[SimpleHypergraphPlot, opts, EdgeStyle], Automatic -> {}];
+    edgeStyle = Replace[OptionValue[SimpleHypergraphPlot, opts, EdgeStyle], {Automatic -> {}, s : Except[_Rule] :> _ -> s}];
     edgeArrowsQ = TrueQ[OptionValue[SimpleHypergraphPlot, opts, "EdgeArrows"]];
     edgeType = OptionValue[SimpleHypergraphPlot, opts, "EdgeType"];
     dim = ConfirmMatch[OptionValue[SimpleHypergraphPlot, opts, "LayoutDimension"], 2 | 3];
@@ -57,8 +57,8 @@ SimpleHypergraphPlot[h_Hypergraph, plotOpts : OptionsPattern[]] := Enclose @ Blo
         GraphLayout -> {"SpringEmbedding", "EdgeWeighted" -> True}
     ];
     {vertexEmbedding, edgeEmbedding} = First[#, {}] & /@ Reap[GraphPlot[graph], {"v", "e"}][[2]];
-	vertexEmbedding = Association[vertexEmbedding][[Key /@ vs]];
-    edgeEmbedding = Merge[edgeEmbedding, Identity];
+	vertexEmbedding = Chop /@ Association[vertexEmbedding][[Key /@ vs]];
+    edgeEmbedding = Chop /@ Merge[edgeEmbedding, Identity];
     size = Max[1, #2 - #1 & @@@ CoordinateBounds[Values[vertexEmbedding]]];
 	Switch[dim, 2, Graphics, 3, Graphics3D][{
 		Opacity[.5],
@@ -68,7 +68,7 @@ SimpleHypergraphPlot[h_Hypergraph, plotOpts : OptionsPattern[]] := Enclose @ Blo
                 Replace[edge, Append[Flatten[{edgeStyle}], _ -> Directive[colorFunction[i], EdgeForm[colorFunction[i]]]]],
                 Switch[Length[emb],
                     0, Nothing,
-                    1, Block[{r = size 0.03, dr = size 0.01}, Table[Switch[dim, 2, Circle[First[emb], r += dr], 3, Sphere[First[emb], r += dr], _, Nothing], mult]],
+                    1, Block[{r = size 0.03, dr = size 0.01}, Table[Switch[dim, 2, Disk[First[emb], r += dr], 3, Sphere[First[emb], r += dr], _, Nothing], mult]],
                     2, If[edgeArrowsQ, Map[Arrow], Identity] @ GraphComputation`GraphElementData["Line"][#, None] & /@ Lookup[edgeEmbedding, DirectedEdge @@ #1[[1]]],
                     _, {
                         Table[
