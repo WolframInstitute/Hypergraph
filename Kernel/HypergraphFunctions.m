@@ -18,8 +18,7 @@ VertexCount[hg_Hypergraph ? HypergraphQ] ^:= Length @ VertexList[hg]
 HypergraphIncidence[hg_ ? HypergraphQ] := Merge[(u |-> AssociationMap[u &, u]) /@ EdgeList[hg], Identity][[Key /@ VertexList[hg]]]
 
 
-VertexDegree[hg_Hypergraph ? HypergraphQ] ^:=
-    KeyValueMap[{v, es} |-> Total @ Thread[Map[Count[#, v] &, es] (Length /@ es - 1)], HypergraphIncidence[hg]]
+VertexDegree[hg_Hypergraph ? HypergraphQ] ^:= Values[Length /@ HypergraphIncidence[hg]]
 
 
 CanonicalHypergraph[hg_ ? HypergraphQ] := Block[{vs = hg["VertexList"], edges = hg["EdgeList"], newVertices, newEdges, iso, perm},
