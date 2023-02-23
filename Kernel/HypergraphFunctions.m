@@ -30,7 +30,7 @@ CanonicalHypergraph[hg_ ? HypergraphQ] := Block[{vs = hg["VertexList"], edges = 
 
 
 IsomorphicHypergraphQ[hg1_ ? HypergraphQ, hg2_ ? HypergraphQ] :=
-    Through[CanonicalHypergraph[hg1]{"VertexList", "EdgeList"}] === Through[CanonicalHypergraph[hg2]{ "VertexList", "EdgeList"}]
+    Through[{VertexList, EdgeList} @ CanonicalHypergraph[hg1]] === Through[{VertexList, EdgeList} @ CanonicalHypergraph[hg2]]
 
 
 VertexReplace[hg_Hypergraph, rules_] ^:= Hypergraph[
