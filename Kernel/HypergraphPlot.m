@@ -26,9 +26,9 @@ SimpleHypergraphPlot[h_Hypergraph, plotOpts : OptionsPattern[]] := Enclose @ Blo
 },
     colorFunction = OptionValue[SimpleHypergraphPlot, opts, ColorFunction];
     vertexLabels = OptionValue[SimpleHypergraphPlot, opts, VertexLabels];
-    vertexStyle = Replace[OptionValue[SimpleHypergraphPlot, opts, VertexStyle], {Automatic -> _ -> Black, s : Except[_Rule] :> _ -> s}];
-    vertexLabelStyle = Replace[OptionValue[SimpleHypergraphPlot, opts, VertexLabelStyle], {Automatic -> _ -> Black, s : Except[_Rule] :> _ -> s}];
-    edgeStyle = Replace[OptionValue[SimpleHypergraphPlot, opts, EdgeStyle], {Automatic -> {}, s : Except[_Rule] :> _ -> s}];
+    vertexStyle = Replace[Flatten[{OptionValue[SimpleHypergraphPlot, opts, VertexStyle]}], {Automatic -> _ -> Black, s : Except[_Rule] :> _ -> s}, {1}];
+    vertexLabelStyle = Replace[Flatten[{OptionValue[SimpleHypergraphPlot, opts, VertexLabelStyle]}], {Automatic -> _ -> Black, s : Except[_Rule] :> _ -> s}, {1}];
+    edgeStyle = Replace[Flatten[{OptionValue[SimpleHypergraphPlot, opts, EdgeStyle]}], {Automatic -> Nothing, s : Except[_Rule] :> _ -> s}, {1}];
     edgeArrowsQ = TrueQ[OptionValue[SimpleHypergraphPlot, opts, "EdgeArrows"]];
     edgeType = OptionValue[SimpleHypergraphPlot, opts, "EdgeType"];
     dim = ConfirmMatch[OptionValue[SimpleHypergraphPlot, opts, "LayoutDimension"], 2 | 3];
@@ -65,7 +65,7 @@ SimpleHypergraphPlot[h_Hypergraph, plotOpts : OptionsPattern[]] := Enclose @ Blo
 		Arrowheads[{{Medium, .5}}],
 		AbsoluteThickness[Medium],
 		MapIndexed[With[{edge = #1[[1]], emb = Replace[#1[[1]], vertexEmbedding, {1}], mult = #1[[2]], i = #2[[1]]}, {
-                Replace[edge, Append[Flatten[{edgeStyle}], _ -> Directive[colorFunction[i], EdgeForm[colorFunction[i]]]]],
+                Replace[edge, Append[edgeStyle, _ -> Directive[colorFunction[i], EdgeForm[colorFunction[i]]]]],
                 Switch[Length[emb],
                     0, Nothing,
                     1, Block[{r = size 0.03, dr = size 0.01}, Table[Switch[dim, 2, Disk[First[emb], r += dr], 3, Sphere[First[emb], r += dr], _, Nothing], mult]],
