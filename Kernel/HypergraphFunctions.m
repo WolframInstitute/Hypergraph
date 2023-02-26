@@ -8,9 +8,13 @@ PackageExport["IsomorphicHypergraphQ"]
 
 EdgeList[hg_Hypergraph ? HypergraphQ] ^:= hg["EdgeList"]
 
+EdgeList[hg_Hypergraph ? HypergraphQ, patt_] ^:= Cases[hg["EdgeList"], patt]
+
 EdgeCount[hg_Hypergraph ? HypergraphQ] ^:= Length @ EdgeList[hg]
 
 VertexList[hg_Hypergraph ? HypergraphQ] ^:= hg["VertexList"]
+
+VertexList[hg_Hypergraph ? HypergraphQ, patt_] ^:= Cases[hg["VertexList"], patt]
 
 VertexCount[hg_Hypergraph ? HypergraphQ] ^:= Length @ VertexList[hg]
 
@@ -19,6 +23,8 @@ HypergraphIncidence[hg_ ? HypergraphQ] := Merge[(u |-> AssociationMap[u &, u]) /
 
 
 VertexDegree[hg_Hypergraph ? HypergraphQ] ^:= Values[Length /@ HypergraphIncidence[hg]]
+
+VertexDegree[hg_Hypergraph ? HypergraphQ, vertex_] ^:= If[ListQ[vertex], Map[Length], Length] @ Lookup[HypergraphIncidence[hg], vertex]
 
 
 CanonicalHypergraph[hg_ ? HypergraphQ] := Block[{vs = hg["VertexList"], edges = hg["EdgeList"], newVertices, newEdges, iso, perm},

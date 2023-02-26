@@ -97,6 +97,12 @@ $HyperMatrixIcon = Deploy @ GraphicsRow[
 		ImageSize -> Tiny
 	]
 
+HyperMatrix /: MakeBoxes[hm_HyperMatrix ? HyperMatrixQ, form : TraditionalForm] := With[{
+	boxes = RowBox[ToBoxes[Normal[#], TraditionalForm] & /@ hm["Arrays"]]
+},
+	InterpretationBox[boxes,hm]
+]
+
 HyperMatrix /: MakeBoxes[hm_HyperMatrix ? HyperMatrixQ, form_] := BoxForm`ArrangeSummaryBox[
 	"HyperMatrix",
 	hm,

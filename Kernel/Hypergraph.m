@@ -56,7 +56,8 @@ Hyperedges /: MakeBoxes[hg : Hyperedges[args___] /; HyperedgesQ[Unevaluated[hg]]
 (* Hypergraph *)
 
 
-HypergraphQ[hg_Hypergraph] := System`Private`HoldValidQ[hg] || MatchQ[hg, Hypergraph[_List, _ ? HyperedgesQ, _Association, OptionsPattern[]]]
+HypergraphQ[hg_Hypergraph] := System`Private`HoldValidQ[hg] ||
+	MatchQ[hg, Hypergraph[_List, _ ? HyperedgesQ, _Association, OptionsPattern[]]]
 
 HypergraphQ[___] := False
 
@@ -68,8 +69,10 @@ Hypergraph[edgeSpec : {___List}, symm_Association : <||>, opts : OptionsPattern[
 
 Hypergraph[vs_List, edgeSpec : {___List}, symm_Association : <||>, opts : OptionsPattern[]] := Hypergraph[vs, Hyperedges @@ edgeSpec, symm, opts]
 
+Hypergraph[] := Hypergraph[0]
+
 hg : Hypergraph[edgeSpec_, symm_Association : <||>, opts : OptionsPattern[]] := Enclose @ With[{edges = ConfirmBy[Hyperedges[edgeSpec], HyperedgesQ]},
-	Hypergraph[edges["VertexList"], symm, edges, opts]
+	Hypergraph[edges["VertexList"], edges, symm, opts]
 ]
 
 Hypergraph[he_Hyperedges ? HyperedgesQ, symm_Association : <||>, opts : OptionsPattern[]] := Hypergraph[he["VertexList"], he, symm, opts]
@@ -96,7 +99,11 @@ Options[Hypergraph3D] = Options[Hypergraph]
 
 Hypergraph3D[args___, opts : OptionsPattern[]] := Hypergraph[args, FilterRules[{"LayoutDimension" -> 3, opts}, Options[Hypergraph]]]
 
-Hypergraph3D[hg_Hypergraph, opts : OptionsPattern[]] := Hypergraph3D[hg["VertexList"], hg["EdgeList"], opts, "LayoutDimension" -> 3, hg["Options"]]
+Hypergraph3D[hg_Hypergraph, opts : OptionsPattern[]] := Hypergraph3D[hg["VertexList"], hg["EdgeList"], opts,
+	"LayoutDimension" -> 3,
+	VertexCoordinates -> Replace[OptionValue[Hypergraph, hg["Options"], VertexCoordinates], rules : {___Rule} :> Replace[rules, {(v_ -> c_) :> v -> Append[c, 0], c_ :> Append[c, 0]}, {1}]],
+	FilterRules[hg["Options"], Except["LayoutDimension" | VertexCoordinates]]
+]
 
 Hypergraph[hg_Hypergraph, opts : OptionsPattern[]] := Hypergraph[hg["VertexList"], hg["EdgeList"], opts, "LayoutDimension" -> 2, hg["Options"]]
 

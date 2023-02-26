@@ -21,6 +21,7 @@ SimpleHypergraphPlot[h_Hypergraph, plotOpts : OptionsPattern[]] := Enclose @ Blo
     longEdges, ws,
     colorFunction, vertexLabels, edgeArrowsQ, edgeType,
     vertexStyle, vertexLabelStyle, edgeStyle,
+    vertexCoordinates,
     size, dim,
     opts = FilterRules[{h["Options"], plotOpts}, Options[SimpleHypergraphPlot]]
 },
@@ -32,7 +33,10 @@ SimpleHypergraphPlot[h_Hypergraph, plotOpts : OptionsPattern[]] := Enclose @ Blo
     edgeArrowsQ = TrueQ[OptionValue[SimpleHypergraphPlot, opts, "EdgeArrows"]];
     edgeType = OptionValue[SimpleHypergraphPlot, opts, "EdgeType"];
     dim = ConfirmMatch[OptionValue[SimpleHypergraphPlot, opts, "LayoutDimension"], 2 | 3];
-
+    vertexCoordinates = OptionValue[SimpleHypergraphPlot, opts, VertexCoordinates];
+    If[ MatchQ[vertexCoordinates, {___Rule}],
+        AppendTo[vertexCoordinates, \[FormalE][_] -> Automatic]
+    ];
     longEdges = Cases[es, {_, _, __}];
     ws = Join[vs, \[FormalE] /@ Range[Length[longEdges]]];
 	graph = Switch[dim, 2, Graph, 3, Graph3D][
@@ -53,6 +57,7 @@ SimpleHypergraphPlot[h_Hypergraph, plotOpts : OptionsPattern[]] := Enclose @ Blo
         ],
         VertexShapeFunction -> ((Sow[#2 -> #1, "v"]; Point[#1]) &),
         EdgeShapeFunction -> ((Sow[#2 -> #1, "e"]; GraphComputation`GraphElementData["Line"][#1, None]) &),
+        VertexCoordinates -> vertexCoordinates,
         FilterRules[FilterRules[{opts}, Except[EdgeStyle -> _]], Options[Graph]],
         GraphLayout -> {"SpringEmbedding", "EdgeWeighted" -> True}
     ];
