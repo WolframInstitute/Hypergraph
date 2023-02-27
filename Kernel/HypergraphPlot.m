@@ -2,6 +2,7 @@ Package["WolframInstitute`Hypergraph`"]
 
 PackageExport["SimpleHypergraphPlot"]
 PackageExport["SimpleHypergraphPlot3D"]
+PackageExport["HypergraphEmbedding"]
 
 
 
@@ -74,10 +75,11 @@ SimpleHypergraphPlot[h_Hypergraph, plotOpts : OptionsPattern[]] := Enclose @ Blo
                 Switch[Length[emb],
                     0, Nothing,
                     1, Block[{r = size 0.03, dr = size 0.01}, Table[Switch[dim, 2, Disk[First[emb], r += dr], 3, Sphere[First[emb], r += dr], _, Nothing], mult]],
-                    2, If[edgeArrowsQ, Map[Arrow], Identity] @ GraphComputation`GraphElementData["Line"][#, None] & /@ Lookup[edgeEmbedding, DirectedEdge @@ #1[[1]]],
+                    2, If[edgeArrowsQ, Map[Arrow], Identity][GraphComputation`GraphElementData["Line"][#, None] /. BezierCurve -> BSplineCurve] & /@ Lookup[edgeEmbedding, DirectedEdge @@ #1[[1]]],
                     _, {
                         Table[
-                            With[{curves = Catenate[GraphComputation`GraphElementData["Line"][#, None] & /@ #[[All, j]]]}, {
+                            With[{curves = Catenate[GraphComputation`GraphElementData["Line"][#, None] /. BezierCurve -> BSplineCurve & /@ #[[All, j]]]}, {
+                                EdgeForm[Transparent],
                                 Switch[dim,
                                     2, FilledCurve[curves],
                                     3, Block[{pts, region},
@@ -122,4 +124,7 @@ SimpleHypergraphPlot[h_Hypergraph, plotOpts : OptionsPattern[]] := Enclose @ Blo
 
 
 SimpleHypergraphPlot3D[h_, opts___] := SimpleHypergraphPlot[h, "LayoutDimension" -> 3, opts]
+
+
+HypergraphEmbedding[hg_Hypergraph ? HypergraphQ] := Cases[SimpleHypergraphPlot[hg], Point[p_] :> p, Infinity]
 
