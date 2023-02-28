@@ -9,6 +9,7 @@ HypergraphDraw[initHg : _Hypergraph ? HypergraphQ : Hypergraph[]] := DynamicModu
 	vertices, edges,
     vertexStyles, edgeStyles,
 	edgeStart = False, edgeUp = False, edgeNext = False, edgeFinish = False, vertexMove = False, edgeMove = False,
+    recolor = False,
 	edge = {}, tmpEdge = {}, edgeId = Missing[], oldVertices = <||>,
 	getVertex, down, move, up, undo, reset, update,
 	color = Black,
@@ -32,7 +33,9 @@ HypergraphDraw[initHg : _Hypergraph ? HypergraphQ : Hypergraph[]] := DynamicModu
             vertexId = First[Nearest[Values[vertices] -> Keys[vertices], MousePosition["Graphics"]], Missing[]];
             If[ ! MissingQ[vertexId],
                 oldVertices = vertices;
-                vertexStyles[[vertexId]] = color;
+                If[ recolor,
+                    vertexStyles[[vertexId]] = color
+                ];
                 update[]
             ],
 
@@ -41,7 +44,9 @@ HypergraphDraw[initHg : _Hypergraph ? HypergraphQ : Hypergraph[]] := DynamicModu
             edgeId = First[Nearest[Mean[Lookup[vertices, #]] & /@ edges -> "Index", MousePosition["Graphics"]], Missing[]];
             If[ ! MissingQ[edgeId],
                 oldVertices = vertices;
-                edgeStyles[[edgeId]] = color;
+                If[ recolor,
+                    edgeStyles[[edgeId]] = color
+                ];
                 update[]
             ],
 
@@ -116,7 +121,7 @@ HypergraphDraw[initHg : _Hypergraph ? HypergraphQ : Hypergraph[]] := DynamicModu
 						],
 						#[[1]]
 					] &,
-					DeleteAdjacentDuplicates[tmpEdge, MissingQ[#1[[1]]] && MissingQ[#2[[1]]] &]
+                    tmpEdge
 				]
 			];
 			AppendTo[edgeStyles, color];
@@ -153,7 +158,7 @@ HypergraphDraw[initHg : _Hypergraph ? HypergraphQ : Hypergraph[]] := DynamicModu
         actions = {};
 
         If[ Not[VertexCount[initHg] == Length[vertices] == Length[vertexStyles] && EdgeCount[initHg] == Length[edges] == Length[edgeStyles]],
-            vertices = AssociationThread[VertexList[initHg], # - Threaded[Mean[#] - {.5, .5}] & @ Rescale[HypergraphEmbedding[initHg]]];
+            vertices = AssociationThread[VertexList[initHg], RescalingTransform[CoordinateBounds[#], {{.1, .9}, {.1, .9}}][#] & @ HypergraphEmbedding[initHg]];
             vertexStyles = PadRight[vertexStyles, Length[vertices], color];
             edgeStyles = PadRight[edgeStyles, Length[edges], color];
         ];
@@ -187,7 +192,7 @@ HypergraphDraw[initHg : _Hypergraph ? HypergraphQ : Hypergraph[]] := DynamicModu
 	},
         {SpanFromAbove, Framed[Button["Reset", reset[], ImageSize -> Scaled[.15]], FrameStyle -> Transparent]},
 		{SpanFromAbove, Dynamic @ Framed[ClickToCopy[Row[{"Click to copy Hypergraph: ", TraditionalForm[hg]}], hg], FrameStyle -> Transparent]},
-		{SpanFromAbove, ColorSlider[Dynamic @ color]},
+		{SpanFromAbove, Row[{ColorSlider[Dynamic @ color], Spacer[10], Column[{"Recolor", Checkbox[Dynamic @ recolor]}, Alignment -> Center]}]},
         {SpanFromAbove, Pane["Click to create a vertex\nDrag&Move to make an edge\nPress \[AltKey] or \[OptionKey] to change vertex\nPress \[ShiftKey] to change edge"]}
 	},
 	    Alignment->Top
