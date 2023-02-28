@@ -10,11 +10,12 @@ PackageExport["HyperMatrixQ"]
 PackageExport["HyperMatrix"]
 PackageExport["HyperMatrixGraph"]
 
+PackageExport["HypergraphTransitionMatrix"]
 
 
-AdjacencyTensor[hg : {___List}] := Block[{n = Length[hg], vs, index, d, arities, indices, r},
+
+AdjacencyTensor[vs_List, hg : {___List}] := Block[{n = Length[hg], index, d, arities, indices, r},
 	If[n == 0, Return[{}]];
-	vs = Union @@ hg;
 	index = First /@ PositionIndex[Union @@ hg];
 	d = Length[vs] + 1;
 	arities = Length /@ hg;
@@ -23,7 +24,9 @@ AdjacencyTensor[hg : {___List}] := Block[{n = Length[hg], vs, index, d, arities,
 	SparseArray[Normal @ Counts[indices], Table[d, r]]
 ]
 
-AdjacencyTensor[hg_Hypergraph] := AdjacencyTensor[hg["EdgeList"]]
+AdjacencyTensor[hg : {___List}] := AdjacencyTensor[Union @@ hg, hg]
+
+AdjacencyTensor[hg_Hypergraph] := AdjacencyTensor[VertexList[hg], EdgeList[hg]]
 
 
 AdjacencyHypergraph[vs_List, t_ ? ArrayQ] := Block[{dims = Dimensions[t], st, d},
@@ -38,14 +41,15 @@ AdjacencyHypergraph[vs_List, t_ ? ArrayQ] := Block[{dims = Dimensions[t], st, d}
 AdjacencyHypergraph[t_] := AdjacencyHypergraph[Range[Length[t] - 1], t]
 
 
-HypergraphIncidenceMatrix[hg : {___List}] := With[{vs = Union @@ hg},
+HypergraphIncidenceMatrix[vs_List, hg : {___List}] :=
 	If[	Length[vs] > 0,
 		SparseArray @ Transpose[Total[2 ^ (# - 1)] & /@ Lookup[PositionIndex[#], vs, {}] & /@ hg],
 		{{}}
 	]
-]
 
-HypergraphIncidenceMatrix[hg_Hypergraph] := HypergraphIncidenceMatrix[hg["EdgeList"]]
+HypergraphIncidenceMatrix[hg : {___List}] := HypergraphIncidenceMatrix[Union @@ hg, hg]
+
+HypergraphIncidenceMatrix[hg_Hypergraph] := HypergraphIncidenceMatrix[VertexList[hg], EdgeList[hg]]
 
 
 IncidenceHypergraph[vs_List, mat_ ? MatrixQ] :=
@@ -64,7 +68,7 @@ HyperMatrixQ[_HyperMatrix ? System`Private`HoldValidQ] := True
 HyperMatrixQ[___] := False
 
 
-HyperMatrix[hg : {___List}] := Block[{vs = Union @@ hg, n, index},
+HyperMatrix[vs_List, hg : {___List}] := Block[{n, index},
 	n = Length[vs];
 	index = First /@ PositionIndex[vs];
 	HyperMatrix @@ KeyValueMap[
@@ -73,7 +77,9 @@ HyperMatrix[hg : {___List}] := Block[{vs = Union @@ hg, n, index},
 	]
 ]
 
-HyperMatrix[hg_Hypergraph] := HyperMatrix[hg["EdgeList"]]
+HyperMatrix[hg : {___List}] := HyperMatrix[Union @@ hg, hg]
+
+HyperMatrix[hg_Hypergraph] := HyperMatrix[VertexList[hg], EdgeList[hg]]
 
 hm : HyperMatrix[arr___SparseArray] /; System`Private`HoldNotValidQ[hm] && Equal @@ Catenate[Dimensions /@ {arr}] := System`Private`HoldSetValid[hm]
 
@@ -131,4 +137,14 @@ HyperMatrixGraph[hm_List] := With[{dims = Catenate[Dimensions /@ hm]},
 ]
 
 HyperMatrixGraph[hm_HyperMatrix ? HyperMatrixQ] := HyperMatrixGraph[List @@ hm]
+
+
+
+HypergraphTransitionMatrix[hg_Hypergraph] := Block[{e, c, a, t},
+	e = Sign @ HypergraphIncidenceMatrix[hg];
+	c = Transpose[e] . e;
+	a = e . Transpose[e];
+	t = e . DiagonalMatrix[Diagonal[c]] . Transpose[e] - a;
+	t / Total[t, {2}]
+]
 
