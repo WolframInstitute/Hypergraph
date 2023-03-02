@@ -16,8 +16,9 @@ HypergraphDraw[initHg : _Hypergraph ? HypergraphQ : Hypergraph[]] := DynamicModu
     mousePosition,
 	color,
 	actions = {},
-    mousePos,
-    grid
+    mousePos, startMousePos,
+    plot, grid,
+    edgeRegions
 },
 	getVertex[] := If[Length[vertices] > 0,
 		First[
@@ -28,54 +29,46 @@ HypergraphDraw[initHg : _Hypergraph ? HypergraphQ : Hypergraph[]] := DynamicModu
 	];
     mousePosition[] := Replace[MousePosition["Graphics"], {None -> mousePos, pos_ :> (mousePos = pos)}];
 	down[i_] := (
+        startMousePos = mousePosition[];
+        edgeId = First[MapIndexed[If[RegionMember[#, startMousePos], #2[[1]], Nothing] &, edgeRegions], Missing[]];
+        vertexId = First[Nearest[Values[vertices] -> Keys[vertices], startMousePos, {1, .02}], Missing[]];
 		Which[
 
             i == 1 && edgeUp,
 			edge = tmpEdge;
 			edgeFinish = True,
 
-            i == 1 && CurrentValue["ShiftKey"],
-            edgeId = First[Nearest[Mean[Lookup[vertices, #]] & /@ edges -> "Index", mousePosition[], {1, .1}], Missing[]];
-            If[ ! MissingQ[edgeId],
-                edgeMove = True;
-                oldVertices = vertices;
-                If[ recolor,
-                    AppendTo[actions, "EdgeRecolor"[edgeId, edgeStyles[[edgeId]]]];
-                    edgeStyles[[edgeId]] = color
-                ];
-                update[]
-            ],
+            i == 1 && CurrentValue["AltKey"] && ! MissingQ[vertexId],
+            vertexMove = True;
+            oldVertices = vertices;
+            If[ recolor,
+                AppendTo[actions, "VertexRecolor"[vertexId, vertexStyles[vertexId]]];
+                vertexStyles[vertexId] = color
+            ];
+            update[],
 
-            i == 1 && CurrentValue["AltKey"],
-            vertexId = First[Nearest[Values[vertices] -> Keys[vertices], mousePosition[], {1, .02}], Missing[]];
-            If[ ! MissingQ[vertexId],
-                vertexMove = True;
-                oldVertices = vertices;
-                If[ recolor,
-                    AppendTo[actions, "VertexRecolor"[vertexId, vertexStyles[vertexId]]];
-                    vertexStyles[vertexId] = color
-                ];
-                update[]
-            ],
+            i == 1 && ! MissingQ[edgeId] && MissingQ[vertexId],
+            edgeMove = True;
+            oldVertices = vertices;
+            If[ recolor,
+                AppendTo[actions, "EdgeRecolor"[edgeId, edgeStyles[[edgeId]]]];
+                edgeStyles[[edgeId]] = color
+            ];
+            update[],
 
-            i == 2 && CurrentValue["ShiftKey"],
-            edgeId = First[Nearest[Mean[Lookup[vertices, #]] & /@ edges -> "Index", mousePosition[], {1, .1}], Missing[]];
-            If[ ! MissingQ[edgeId],
-                AppendTo[actions, "EdgeDelete"[edges[[edgeId]], edgeStyles[[edgeId]]]];
-                edges = Delete[edges, edgeId];
-                edgeStyles = Delete[edgeStyles, edgeId];
-                update[]
-            ],
 
-            i == 2 && CurrentValue["AltKey"],
-            vertexId = First[Nearest[Values[vertices] -> Keys[vertices], mousePosition[], {1, .02}], Missing[]];
-            If[ ! MissingQ[vertexId],
-                AppendTo[actions, "VertexDelete"[vertexId -> vertices[vertexId], vertexStyles[vertexId], edges]];
-                vertices = Delete[vertices, Key[vertexId]];
-                vertexStyles = Delete[vertexStyles, Key[vertexId]];
-                edges = Map[DeleteCases[#, vertexId] &, edges];
-                update[]
-            ],
+            i == 2 && ! MissingQ[edgeId],
+            AppendTo[actions, "EdgeDelete"[edges[[edgeId]], edgeStyles[[edgeId]]]];
+            edges = Delete[edges, edgeId];
+            edgeStyles = Delete[edgeStyles, edgeId];
+            update[],
+
+            i == 2 && ! MissingQ[vertexId],
+            AppendTo[actions, "VertexDelete"[vertexId -> vertices[vertexId], vertexStyles[vertexId], edges]];
+            vertices = Delete[vertices, Key[vertexId]];
+            vertexStyles = Delete[vertexStyles, Key[vertexId]];
+            edges = Map[DeleteCases[#, vertexId] &, edges];
+            update[],
 
             i == 1 && ! multiSelect,
 			edgeStart = True;
@@ -100,7 +93,7 @@ HypergraphDraw[initHg : _Hypergraph ? HypergraphQ : Hypergraph[]] := DynamicModu
             ]
         ];
         If[ edgeMove,
-            With[{diff = mousePosition[] - Mean[Lookup[oldVertices, edges[[edgeId]]]]},
+            With[{diff = mousePosition[] - startMousePos},
                 vertices = MapAt[# + diff &, oldVertices, {Key[#]} & /@ edges[[edgeId]]];
                 update[]
             ]
@@ -188,7 +181,10 @@ HypergraphDraw[initHg : _Hypergraph ? HypergraphQ : Hypergraph[]] := DynamicModu
 			VertexLabels -> Automatic,
 			VertexStyle -> Normal[vertexStyles],
 			EdgeStyle -> Thread[edges -> edgeStyles]
-		]
+		];
+        plot = SimpleHypergraphPlot[hg];
+        edgeRegions = Cases[ResourceFunction["ExtractGraphicsPrimitives"][plot], _Disk | _Line | _BSplineCurve | _FilledCurve];
+        edgeRegions = If[MatchQ[#, _Line | _BSplineCurve], RegionDilation[#, 0.02] &, Identity] @ DiscretizeGraphics[#] & /@ edgeRegions;
 	);
     reset[] := (
 	    vertices = Association @ Lookup[initHg["Options"], VertexCoordinates, <||>];
@@ -223,7 +219,7 @@ HypergraphDraw[initHg : _Hypergraph ? HypergraphQ : Hypergraph[]] := DynamicModu
 	grid = Grid[{{
 		EventHandler[
 			Dynamic @ Show[{
-				SimpleHypergraphPlot[hg],
+				plot,
 				Graphics[{
 					If[ edgeUp, {color, Line[Append[Values[tmpEdge], MousePosition["Graphics"]]]}, Nothing],
                     If[ edgeUp || multiSelect && Length[tmpEdge] > 0,
@@ -264,12 +260,11 @@ Press 'e' to create an edge
 ",
 "
 🖱️(left-click) to create a vertex
-Drag&Move to make an edge
-Press \[AltKey]/\[CommandKey] to change a vertex
+🖱️(left-click) on a vertex and 🖱️(move) to make an edge
 "] <> "
-Press \[ShiftKey] to change an edge
-\[AltKey]/\[CommandKey]+🖱️(right-click) removes a vertex
-\[ShiftKey]+🖱️(right-click) removes an edge\n\n", ImageSize -> Scaled[.3], Alignment -> Center]}
+Press \[AltKey]/\[CommandKey] and 🖱️(left-click) to change a vertex
+🖱️(left-click) inside an edge to change it
+🖱️(right-click) to remove a vertex or an edge\n\n", ImageSize -> Scaled[.3], Alignment -> Center]}
 	},
 	    Alignment -> Top
 	];

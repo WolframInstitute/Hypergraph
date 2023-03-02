@@ -46,10 +46,13 @@ SimpleHypergraphPlot[h_Hypergraph, plotOpts : OptionsPattern[]] := Enclose @ Blo
             Annotation[DirectedEdge[##], EdgeWeight -> 1] & @@@ Cases[es, {_, _}],
             Catenate[
                 MapIndexed[{edge, i} |->
-                    With[{clickEdges = Join[#, Reverse /@ #] & @ Subsets[edge, {2}], weight = Length[edge]},
+                    With[{clickEdges = Catenate[{#, If[Equal @@ #, Nothing, Reverse[#]]} & /@ #] & @ Subsets[edge, {2}], weight = Length[edge]},
                         Join[
                             Annotation[DirectedEdge[##, edge], EdgeWeight -> 1] & @@@ clickEdges,
-                            Annotation[DirectedEdge[#, \[FormalE] @@ i], EdgeWeight -> weight] & /@ edge
+                            If[ DuplicateFreeQ @ edge,
+                                Annotation[DirectedEdge[#, \[FormalE] @@ i], EdgeWeight -> weight] & /@ edge,
+                                {}
+                            ]
                         ]
                     ],
                     longEdges
