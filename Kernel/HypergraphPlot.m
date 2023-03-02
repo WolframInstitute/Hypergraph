@@ -76,9 +76,13 @@ SimpleHypergraphPlot[h_Hypergraph, plotOpts : OptionsPattern[]] := Enclose @ Blo
                     0, Nothing,
                     1, Block[{r = size 0.03, dr = size 0.01}, Table[Switch[dim, 2, Disk[First[emb], r += dr], 3, Sphere[First[emb], r += dr], _, Nothing], mult]],
                     2, If[edgeArrowsQ, Map[Arrow], Identity][GraphComputation`GraphElementData["Line"][#, None] /. BezierCurve -> BSplineCurve] & /@ Lookup[edgeEmbedding, DirectedEdge @@ #1[[1]]],
-                    _, {
+                    _, Block[{counts = <||>, points},
                         Table[
-                            With[{curves = Catenate[GraphComputation`GraphElementData["Line"][#, None] /. BezierCurve -> BSplineCurve & /@ #[[All, j]]]}, {
+                            points = With[{c = Lookup[counts, #, 0] + 1},
+                                AppendTo[counts, # -> c];
+                                Lookup[edgeEmbedding, #][[c]]
+                            ] & /@ (DirectedEdge[##, edge] & @@@ Partition[#1[[1]], 2, 1, If[edgeType === "Cyclic", 1, None]]);
+                            With[{curves = Catenate[GraphComputation`GraphElementData["Line"][#, None] /. BezierCurve -> BSplineCurve & /@ points]}, {
                                 EdgeForm[Transparent],
                                 Switch[dim,
                                     2, FilledCurve[curves],
@@ -98,12 +102,10 @@ SimpleHypergraphPlot[h_Hypergraph, plotOpts : OptionsPattern[]] := Enclose @ Blo
                                     ],
                                     Nothing
                                 ]
-                            }] & @ Lookup[edgeEmbedding, DirectedEdge[##, edge] & @@@
-                                Partition[#1[[1]], 2, 1, If[edgeType === "Cyclic", 1, None]]
-                            ],
+                            }],
                             {j, mult}
                         ]
-                    }
+                    ]
                 ]
             }] &,
             Tally[es]

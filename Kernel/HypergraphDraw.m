@@ -9,12 +9,15 @@ HypergraphDraw[initHg : _Hypergraph ? HypergraphQ : Hypergraph[]] := DynamicModu
 	vertices, edges,
     vertexStyles, edgeStyles,
 	edgeStart = False, edgeUp = False, edgeNext = False, edgeFinish = False, vertexMove = False, edgeMove = False,
+    multiSelect = False,
     recolor = False,
-	edge = {}, tmpEdge = {}, edgeId = Missing[], oldVertices = <||>,
-	getVertex, down, move, up, undo, reset, update,
+	edge = {}, tmpEdge = {}, vertexId, edgeId = Missing[], oldVertices = <||>,
+	getVertex, down, move, up, undo, reset, update, addEdge,
+    mousePosition,
 	color,
 	actions = {},
-    mousePos
+    mousePos,
+    grid
 },
 	getVertex[] := If[Length[vertices] > 0,
 		First[
@@ -26,6 +29,7 @@ HypergraphDraw[initHg : _Hypergraph ? HypergraphQ : Hypergraph[]] := DynamicModu
     mousePosition[] := Replace[MousePosition["Graphics"], {None -> mousePos, pos_ :> (mousePos = pos)}];
 	down[i_] := (
 		Which[
+
             i == 1 && edgeUp,
 			edge = tmpEdge;
 			edgeFinish = True,
@@ -73,9 +77,9 @@ HypergraphDraw[initHg : _Hypergraph ? HypergraphQ : Hypergraph[]] := DynamicModu
                 update[]
             ],
 
-            i == 1,
+            i == 1 && ! multiSelect,
 			edgeStart = True;
-            edgeNest = True;
+            edgeNext = True;
 			edge = {getVertex[] -> mousePosition[]}
 		];
 	);
@@ -121,9 +125,12 @@ HypergraphDraw[initHg : _Hypergraph ? HypergraphQ : Hypergraph[]] := DynamicModu
 		update[]
 	);
 	up[] := (
+        If[ multiSelect && ! (vertexMove || edgeMove),
+            tmpEdge = Append[tmpEdge, getVertex[] -> mousePosition[]];
+        ];
         If[ vertexMove,
             vertexMove = False;
-            vertxId = Missing[];
+            vertexId = Missing[];
         ];
         If[ edgeMove,
             edgeMove = False;
@@ -143,23 +150,7 @@ HypergraphDraw[initHg : _Hypergraph ? HypergraphQ : Hypergraph[]] := DynamicModu
 			]
 		];
 		If[ edgeFinish,
-			AppendTo[
-				edges,
-				Map[
-					If[ MissingQ[#[[1]]],
-						With[{v = Max[0, Select[Keys[vertices], IntegerQ]] + 1},
-							AppendTo[vertices, v -> #[[2]]];
-							AppendTo[vertexStyles, v -> color];
-							AppendTo[actions, "VertexAdd"];
-							v
-						],
-						#[[1]]
-					] &,
-                    tmpEdge
-				]
-			];
-			AppendTo[edgeStyles, color];
-			AppendTo[actions, "EdgeAdd"];
+			addEdge[];
 			edgeFinish = False;
 			edgeUp = False
 		];
@@ -169,6 +160,26 @@ HypergraphDraw[initHg : _Hypergraph ? HypergraphQ : Hypergraph[]] := DynamicModu
 
 		update[]
 	);
+    addEdge[] := (
+        AppendTo[
+            edges,
+            Map[
+                If[ MissingQ[#[[1]]],
+                    With[{v = Max[0, Select[Keys[vertices], IntegerQ]] + 1},
+                        AppendTo[vertices, v -> #[[2]]];
+                        AppendTo[vertexStyles, v -> color];
+                        AppendTo[actions, "VertexAdd"];
+                        v
+                    ],
+                    #[[1]]
+                ] &,
+                tmpEdge
+            ]
+        ];
+        AppendTo[edgeStyles, color];
+		AppendTo[actions, "EdgeAdd"];
+        tmpEdge = {};
+    );
 	update[] := (
 		hg = Hypergraph[
 			Keys[vertices], edges,
@@ -196,7 +207,10 @@ HypergraphDraw[initHg : _Hypergraph ? HypergraphQ : Hypergraph[]] := DynamicModu
         actions = {};
 
         If[ Not[VertexCount[initHg] == Length[vertices] == Length[vertexStyles] && EdgeCount[initHg] == Length[edges] == Length[edgeStyles]],
-            vertices = AssociationThread[VertexList[initHg], RescalingTransform[CoordinateBounds[#], {{.1, .9}, {.1, .9}}][#] & @ HypergraphEmbedding[initHg]];
+            vertices = AssociationThread[
+                VertexList[initHg],
+                If[# === {}, {}, RescalingTransform[If[#2 - #1 == 0, {#1, #1 + 1}, {##}] & @@@ CoordinateBounds[#], {{.1, .9}, {.1, .9}}][#]] & @ HypergraphEmbedding[initHg]
+            ];
             vertexStyles = AssociationThread[Range[Length[vertices]], color];
             edgeStyles = PadRight[edgeStyles, Length[edges], color];
         ];
@@ -206,13 +220,22 @@ HypergraphDraw[initHg : _Hypergraph ? HypergraphQ : Hypergraph[]] := DynamicModu
 
     reset[];
 
-	Grid[{{
-		Dynamic @ EventHandler[
-			Show[{
+	grid = Grid[{{
+		EventHandler[
+			Dynamic @ Show[{
 				SimpleHypergraphPlot[hg],
 				Graphics[{
-					If[edgeUp, {color, Line[Append[Values[tmpEdge], MousePosition["Graphics"]]], Dotted, Circle[#, 0.02] & /@
-                        Lookup[vertices, Select[Keys[tmpEdge], Not @* MissingQ]]}, Nothing]
+					If[ edgeUp, {color, Line[Append[Values[tmpEdge], MousePosition["Graphics"]]]}, Nothing],
+                    If[ edgeUp || multiSelect && Length[tmpEdge] > 0,
+                        {   color, Dotted,
+                            KeyValueMap[
+                                With[{p = Lookup[vertices, #1]}, Table[Circle[p, 0.02 r], {r, #2}]] &,
+                                Counts[Select[Keys[tmpEdge], Not @* MissingQ]]
+                            ]
+                        },
+                        Nothing
+                    ],
+                    If[ multiSelect, {color, Dashed, Circle[#, 0.02] & /@ Values[Select[tmpEdge, MissingQ[#[[1]]] &]]}, Nothing]
 				}]
             },
 				PlotRange -> {{0, 1}, {0, 1}},
@@ -225,22 +248,47 @@ HypergraphDraw[initHg : _Hypergraph ? HypergraphQ : Hypergraph[]] := DynamicModu
 				"MouseDragged" :> move[],
 				"MouseMoved" :> move[],
 				"MouseUp" :> up[]
-			}
+			},
+            PassEventsDown -> True
         ],
-		Framed[Button["Undo", undo[], ImageSize -> Scaled[.15]], FrameStyle -> Transparent]
+		Framed[Button["Undo (z)", undo[], ImageSize -> Scaled[.15]], FrameStyle -> Transparent]
 	},
-        {SpanFromAbove, Framed[Button["Reset", reset[], ImageSize -> Scaled[.15]], FrameStyle -> Transparent]},
+        {SpanFromAbove, Framed[Button["Reset (r)", reset[], ImageSize -> Scaled[.15]], FrameStyle -> Transparent]},
 		{SpanFromAbove, Dynamic @ Framed[ClickToCopy[Row[{"Click to copy Hypergraph: ", TraditionalForm[hg]}], hg], FrameStyle -> Transparent]},
 		{SpanFromAbove, Row[{ColorSlider[Dynamic @ color], Spacer[10], Column[{"Recolor", Checkbox[Dynamic @ recolor]}, Alignment -> Center]}]},
-        {SpanFromAbove, Pane["
+        {SpanFromAbove, Row[{"Multiselect mode", Checkbox[Dynamic[multiSelect]]}, Alignment -> Center]},
+        {SpanFromAbove, Dynamic @ Pane[If[multiSelect, "
+🖱️(left-click) to create or select a vertex
+Press \[EscapeKey] to cancel vertex selection
+Press 'e' to create an edge
+",
+"
 🖱️(left-click) to create a vertex
 Drag&Move to make an edge
 Press \[AltKey]/\[CommandKey] to change a vertex
+"] <> "
 Press \[ShiftKey] to change an edge
 \[AltKey]/\[CommandKey]+🖱️(right-click) removes a vertex
-\[ShiftKey]+🖱️(right-click) removes an edge", ImageSize -> Scaled[.3], Alignment -> Center]}
+\[ShiftKey]+🖱️(right-click) removes an edge\n\n", ImageSize -> Scaled[.3], Alignment -> Center]}
 	},
-	    Alignment->Top
-	]
+	    Alignment -> Top
+	];
+    CellPrint @ Cell[BoxData @ ToBoxes @ grid, "Output",
+        CellEventActions -> {
+            "KeyDown" :> Switch[
+                CurrentValue["EventKey"],
+                "e", addEdge[]; update[],
+                "\[RawEscape]", tmpEdge = {}; update[],
+                "r", reset[],
+                "z", undo[]; update[]
+            ],
+            PassEventsDown -> True
+        },
+        ShowSelection -> False,
+        Selectable -> False,
+        ContextMenu -> {}
+    ]
 ]
+
+HypergraphDraw[args___] := HypergraphDraw[Hypergraph[args]]
 
