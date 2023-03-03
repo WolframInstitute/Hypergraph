@@ -181,7 +181,7 @@ HypergraphDraw[initHg : _Hypergraph ? HypergraphQ : Hypergraph[]] := DynamicModu
 			EdgeStyle -> Thread[edges -> edgeStyles]
 		];
         Block[{positions},
-            {{edgeRegions}, {positions}} = Reap[plot = SimpleHypergraphPlot[hg], {"Primitive", "Position"}][[2]];
+            {edgeRegions, positions} = First[#, {}] & /@ Reap[plot = SimpleHypergraphPlot[hg], {"Primitive", "Position"}][[2]];
             edgeRegions = edgeRegions[[Ordering[positions]]];
             edgeRegions = If[MatchQ[#, _Line | _BSplineCurve], RegionDilation[#, 0.02] &, Identity] @ DiscretizeGraphics[#] & /@ edgeRegions
         ];
@@ -207,7 +207,7 @@ HypergraphDraw[initHg : _Hypergraph ? HypergraphQ : Hypergraph[]] := DynamicModu
                 VertexList[initHg],
                 If[# === {}, {}, RescalingTransform[If[#2 - #1 == 0, {#1, #1 + 1}, {##}] & @@@ CoordinateBounds[#], {{.1, .9}, {.1, .9}}][#]] & @ HypergraphEmbedding[initHg]
             ];
-            vertexStyles = AssociationThread[Range[Length[vertices]], color];
+            vertexStyles = AssociationThread[Keys[vertices], color];
             edgeStyles = PadRight[edgeStyles, Length[edges], color];
         ];
 
