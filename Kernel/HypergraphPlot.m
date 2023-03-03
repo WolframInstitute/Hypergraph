@@ -6,7 +6,7 @@ PackageExport["HypergraphEmbedding"]
 
 
 
-Options[SimpleHypergraphPlot] = Join[{
+Options[SimpleHypergraphPlot] := Join[{
     ColorFunction -> ColorData[97],
     "EdgeArrows" -> False,
     "EdgeType" -> "Cyclic",

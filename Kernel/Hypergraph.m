@@ -93,9 +93,9 @@ hg : Hypergraph[vs_List, he_Hyperedges ? HyperedgesQ, symm : _ ? AssociationQ : 
 hg_Hypergraph[prop_String, args___] := HypergraphProp[hg, prop, args]
 
 
-Options[Hypergraph] = Join[{"LayoutDimension" -> 2}, Options[Graph]]
+Options[Hypergraph] := Join[{"LayoutDimension" -> 2}, Options[Graph]]
 
-Options[Hypergraph3D] = Options[Hypergraph]
+Options[Hypergraph3D] := Options[Hypergraph]
 
 Hypergraph3D[args___, opts : OptionsPattern[]] := Hypergraph[args, FilterRules[{"LayoutDimension" -> 3, opts}, Options[Hypergraph]]]
 

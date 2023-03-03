@@ -3,7 +3,7 @@ PacletObject[
     "Name" -> "WolframInstitute/Hypergraph",
     "Description" -> "Hypergraph tools",
     "Creator" -> "Nikolay Murzin",
-    "Version" -> "0.0.1",
+    "Version" -> "0.0.2",
     "WolframVersion" -> "13.2+",
     "PublisherID" -> "WolframInstitute",
     "License" -> "MIT",
