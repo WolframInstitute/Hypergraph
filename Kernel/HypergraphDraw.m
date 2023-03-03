@@ -243,7 +243,12 @@ HypergraphDraw[initHg : _Hypergraph ? HypergraphQ : Hypergraph[], opts : Options
                         },
                         Nothing
                     ],
-                    If[ multiSelect, {color, Dashed, Circle[#, 0.02] & /@ Values[Select[tmpEdge, MissingQ[#[[1]]] &]]}, Nothing]
+                    If[ multiSelect, {
+                        color, Dashed,
+                        KeyValueMap[Table[Circle[#1, 0.02 r], {r, #2}] &, Counts[Values[Select[tmpEdge, MissingQ[#[[1]]] &]]]]
+                    },
+                        Nothing
+                    ]
 				}]
             },
 				PlotRange -> {{0, 1}, {0, 1}},
