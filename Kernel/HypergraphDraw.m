@@ -10,7 +10,6 @@ HypergraphDraw[initHg : _Hypergraph ? HypergraphQ : Hypergraph[]] := DynamicModu
     vertexStyles, edgeStyles,
 	edgeStart = False, edgeUp = False, edgeNext = False, edgeFinish = False, vertexMove = False, edgeMove = False,
     multiSelect = False,
-    recolor = False,
 	edge = {}, tmpEdge = {}, vertexId, edgeId = Missing[], oldVertices = <||>,
 	getVertex, down, move, up, undo, reset, update, addEdge,
     mousePosition,
@@ -20,18 +19,18 @@ HypergraphDraw[initHg : _Hypergraph ? HypergraphQ : Hypergraph[]] := DynamicModu
     plot, grid,
     edgeRegions
 },
-	getVertex[] := If[Length[vertices] > 0,
+    mousePosition[] := Replace[MousePosition["Graphics"], {None -> mousePos, pos_ :> (mousePos = pos)}];
+	getVertex[pos_ : mousePosition[]] := If[Length[vertices] > 0,
 		First[
-			Nearest[Reverse /@ Normal[vertices], MousePosition["Graphics"], {1, .02}],
+			Nearest[Reverse /@ Normal[vertices], pos, {1, .02}],
 			Missing[]
 		],
 		Missing[]
 	];
-    mousePosition[] := Replace[MousePosition["Graphics"], {None -> mousePos, pos_ :> (mousePos = pos)}];
 	down[i_] := (
         startMousePos = mousePosition[];
         edgeId = First[MapIndexed[If[RegionMember[#, startMousePos], #2[[1]], Nothing] &, edgeRegions], Missing[]];
-        vertexId = First[Nearest[Values[vertices] -> Keys[vertices], startMousePos, {1, .02}], Missing[]];
+        vertexId = getVertex[startMousePos];
 		Which[
 
             i == 1 && edgeUp,
@@ -41,21 +40,25 @@ HypergraphDraw[initHg : _Hypergraph ? HypergraphQ : Hypergraph[]] := DynamicModu
             i == 1 && CurrentValue["AltKey"] && ! MissingQ[vertexId],
             vertexMove = True;
             oldVertices = vertices;
-            If[ recolor,
+            If[ CurrentValue["ShiftKey"],
                 AppendTo[actions, "VertexRecolor"[vertexId, vertexStyles[vertexId]]];
                 vertexStyles[vertexId] = color
             ];
             update[],
 
+            i == 1 && ! multiSelect && (CurrentValue["AltKey"] || MissingQ[edgeId] || ! MissingQ[vertexId]),
+			edgeStart = True;
+            edgeNext = True;
+			edge = {vertexId -> mousePosition[]},
+
             i == 1 && ! MissingQ[edgeId] && MissingQ[vertexId],
             edgeMove = True;
             oldVertices = vertices;
-            If[ recolor,
+            If[ CurrentValue["ShiftKey"],
                 AppendTo[actions, "EdgeRecolor"[edgeId, edgeStyles[[edgeId]]]];
                 edgeStyles[[edgeId]] = color
             ];
             update[],
-
 
             i == 2 && ! MissingQ[edgeId],
             AppendTo[actions, "EdgeDelete"[edges[[edgeId]], edgeStyles[[edgeId]]]];
@@ -68,12 +71,7 @@ HypergraphDraw[initHg : _Hypergraph ? HypergraphQ : Hypergraph[]] := DynamicModu
             vertices = Delete[vertices, Key[vertexId]];
             vertexStyles = Delete[vertexStyles, Key[vertexId]];
             edges = Map[DeleteCases[#, vertexId] &, edges];
-            update[],
-
-            i == 1 && ! multiSelect,
-			edgeStart = True;
-            edgeNext = True;
-			edge = {getVertex[] -> mousePosition[]}
+            update[]
 		];
 	);
 	move[] := (
@@ -118,7 +116,7 @@ HypergraphDraw[initHg : _Hypergraph ? HypergraphQ : Hypergraph[]] := DynamicModu
 		update[]
 	);
 	up[] := (
-        If[ multiSelect && ! (vertexMove || edgeMove),
+        If[ multiSelect && (! vertexMove && ! edgeMove || CurrentValue["AltKey"]),
             tmpEdge = Append[tmpEdge, getVertex[] -> mousePosition[]];
         ];
         If[ vertexMove,
@@ -182,9 +180,11 @@ HypergraphDraw[initHg : _Hypergraph ? HypergraphQ : Hypergraph[]] := DynamicModu
 			VertexStyle -> Normal[vertexStyles],
 			EdgeStyle -> Thread[edges -> edgeStyles]
 		];
-        plot = SimpleHypergraphPlot[hg];
-        edgeRegions = Cases[ResourceFunction["ExtractGraphicsPrimitives"][plot], _Disk | _Line | _BSplineCurve | _FilledCurve];
-        edgeRegions = If[MatchQ[#, _Line | _BSplineCurve], RegionDilation[#, 0.02] &, Identity] @ DiscretizeGraphics[#] & /@ edgeRegions;
+        Block[{positions},
+            {{edgeRegions}, {positions}} = Reap[plot = SimpleHypergraphPlot[hg], {"Primitive", "Position"}][[2]];
+            edgeRegions = edgeRegions[[Ordering[positions]]];
+            edgeRegions = If[MatchQ[#, _Line | _BSplineCurve], RegionDilation[#, 0.02] &, Identity] @ DiscretizeGraphics[#] & /@ edgeRegions
+        ];
 	);
     reset[] := (
 	    vertices = Association @ Lookup[initHg["Options"], VertexCoordinates, <||>];
@@ -250,8 +250,8 @@ HypergraphDraw[initHg : _Hypergraph ? HypergraphQ : Hypergraph[]] := DynamicModu
 		Framed[Button["Undo (z)", undo[], ImageSize -> Scaled[.15]], FrameStyle -> Transparent]
 	},
         {SpanFromAbove, Framed[Button["Reset (r)", reset[], ImageSize -> Scaled[.15]], FrameStyle -> Transparent]},
-		{SpanFromAbove, Dynamic @ Framed[ClickToCopy[Row[{"Click to copy Hypergraph: ", TraditionalForm[hg]}], hg], FrameStyle -> Transparent]},
-		{SpanFromAbove, Row[{ColorSlider[Dynamic @ color], Spacer[10], Column[{"Recolor", Checkbox[Dynamic @ recolor]}, Alignment -> Center]}]},
+		{SpanFromAbove, Dynamic @ Framed[ClickToCopy[Row[{"Click to copy Hypergraph:\n", TraditionalForm[hg]}], hg], FrameStyle -> Transparent]},
+		{SpanFromAbove, ColorSlider[Dynamic @ color]},
         {SpanFromAbove, Row[{"Multiselect mode", Checkbox[Dynamic[multiSelect]]}, Alignment -> Center]},
         {SpanFromAbove, Dynamic @ Pane[If[multiSelect, "
 🖱️(left-click) to create or select a vertex
@@ -262,9 +262,12 @@ Press 'e' to create an edge
 🖱️(left-click) to create a vertex
 🖱️(left-click) on a vertex and 🖱️(move) to make an edge
 "] <> "
-Press \[AltKey]/\[CommandKey] and 🖱️(left-click) to change a vertex
-🖱️(left-click) inside an edge to change it
-🖱️(right-click) to remove a vertex or an edge\n\n", ImageSize -> Scaled[.3], Alignment -> Center]}
+🖱️(left-click) inside an edge to drag it
+\[AltKey]/\[CommandKey] + 🖱️(left-click) on a vertex to drag it
+\[ShiftKey] applies color
+🖱️(right-click) to remove a vertex or an edge
+
+", ImageSize -> Scaled[.4], Alignment -> Center]}
 	},
 	    Alignment -> Top
 	];

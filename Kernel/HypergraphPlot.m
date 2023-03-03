@@ -24,8 +24,10 @@ SimpleHypergraphPlot[h_Hypergraph, plotOpts : OptionsPattern[]] := Enclose @ Blo
     vertexStyle, vertexLabelStyle, edgeStyle,
     vertexCoordinates,
     size, dim,
-    opts = FilterRules[{h["Options"], plotOpts}, Options[SimpleHypergraphPlot]]
+    opts = FilterRules[{h["Options"], plotOpts}, Options[SimpleHypergraphPlot]],
+    edgeIndex
 },
+    edgeIndex = PositionIndex[es];
     colorFunction = OptionValue[SimpleHypergraphPlot, opts, ColorFunction];
     vertexLabels = OptionValue[SimpleHypergraphPlot, opts, VertexLabels];
     vertexStyle = Replace[Flatten[{OptionValue[SimpleHypergraphPlot, opts, VertexStyle]}], {Automatic -> _ -> Black, s : Except[_Rule] :> _ -> s}, {1}];
@@ -73,14 +75,25 @@ SimpleHypergraphPlot[h_Hypergraph, plotOpts : OptionsPattern[]] := Enclose @ Blo
 		Opacity[.5],
 		Arrowheads[{{Medium, .5}}],
 		AbsoluteThickness[Medium],
-		MapIndexed[With[{edge = #1[[1]], emb = Replace[#1[[1]], vertexEmbedding, {1}], mult = #1[[2]], i = #2[[1]]}, {
+		MapIndexed[With[{edge = #1[[1]], emb = Replace[#1[[1]], vertexEmbedding, {1}], mult = #1[[2]], i = #2[[1]]},
+            {
                 Replace[edge, Append[edgeStyle, _ -> Directive[colorFunction[i], EdgeForm[colorFunction[i]]]]],
                 Switch[Length[emb],
                     0, Nothing,
-                    1, Block[{r = size 0.03, dr = size 0.01}, Table[Switch[dim, 2, Disk[First[emb], r += dr], 3, Sphere[First[emb], r += dr], _, Nothing], mult]],
-                    2, If[edgeArrowsQ, Map[Arrow], Identity][GraphComputation`GraphElementData["Line"][#, None] /. BezierCurve -> BSplineCurve] & /@ Lookup[edgeEmbedding, DirectedEdge @@ #1[[1]]],
+                    1, Block[{r = size 0.03, dr = size 0.01},
+                        Table[
+                            Sow[edgeIndex[edge][[j]], "Position"];
+                            Sow[Switch[dim, 2, Disk[First[emb], r += dr], 3, Sphere[First[emb], r += dr], _, Nothing], "Primitive"],
+                            {j, mult}
+                        ]
+                    ],
+                    2, If[edgeArrowsQ, Map[Arrow], Identity] @ MapIndexed[
+                        (Sow[edgeIndex[edge][[#2[[1]]]], "Position"]; Sow[#1[[1]], "Primitive"]) &,
+                        GraphComputation`GraphElementData["Line"][#, None] /. BezierCurve -> BSplineCurve & /@ Lookup[edgeEmbedding, DirectedEdge @@ edge]
+                    ],
                     _, Block[{counts = <||>, points},
                         Table[
+                            Sow[edgeIndex[edge][[j]], "Position"];
                             points = With[{c = Lookup[counts, #, 0] + 1},
                                 AppendTo[counts, # -> c];
                                 Lookup[edgeEmbedding, #][[c]]
@@ -88,14 +101,13 @@ SimpleHypergraphPlot[h_Hypergraph, plotOpts : OptionsPattern[]] := Enclose @ Blo
                             With[{curves = Catenate[GraphComputation`GraphElementData["Line"][#, None] /. BezierCurve -> BSplineCurve & /@ points]}, {
                                 EdgeForm[Transparent],
                                 Switch[dim,
-                                    2, FilledCurve[curves],
+                                    2, Sow[FilledCurve[curves], "Primitive"],
                                     3, Block[{pts, region},
                                         pts = MeshCoordinates @ DiscretizeGraphics @ curves;
                                         region = DiscretizeRegion[#, MaxCellMeasure -> {"Area" -> Area[#] / (Length[pts] + 1)}] & @
                                             Polygon[Prepend[First[pts]] /@ Partition[pts[[2 ;; -2]], 2, 1]];
-                                        {EdgeForm[], areaGradientDescent[region, .1, 20]}
+                                        {EdgeForm[], Sow[areaGradientDescent[region, .1, 20], "Primitive"]}
                                     ]
-                                    (* 3, Polygon @ Catenate @ #[[All, j]] *)
                                 ],
                                 If[ edgeArrowsQ,
                                     With[{lengths = RegionMeasure @* DiscretizeGraphics /@ curves},
