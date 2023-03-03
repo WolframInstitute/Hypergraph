@@ -81,7 +81,7 @@ HyperMatrix[hg : {___List}] := HyperMatrix[Union @@ hg, hg]
 
 HyperMatrix[hg_Hypergraph] := HyperMatrix[VertexList[hg], EdgeList[hg]]
 
-hm : HyperMatrix[arr___SparseArray] /; System`Private`HoldNotValidQ[hm] && Equal @@ Catenate[Dimensions /@ {arr}] := System`Private`HoldSetValid[hm]
+hm : HyperMatrix[arr : (_Integer | _SparseArray) ...] /; System`Private`HoldNotValidQ[hm] && Equal @@ Catenate[Dimensions /@ {arr}] := System`Private`HoldSetValid[hm]
 
 
 (hm_HyperMatrix ? HyperMatrixQ)["Arrays"] := List @@ hm
