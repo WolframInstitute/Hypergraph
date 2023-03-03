@@ -160,30 +160,26 @@ HypergraphDraw[initHg : _Hypergraph ? HypergraphQ : Hypergraph[], opts : Options
 
 		update[]
 	);
-    addEdge[] := (
-        AppendTo[
-            edges,
-            Splice @ KeyValueMap[
-                ConstantArray[
-                    If[ MissingQ[#[[1]]],
-                        With[{v = Max[0, Select[Keys[vertices], IntegerQ]] + 1},
-                            AppendTo[vertices, v -> #[[2]]];
-                            AppendTo[vertexStyles, v -> color];
-                            AppendTo[actions, "VertexAdd"];
-                            v
-                        ],
-                        #[[1]]
-                    ],
-                    #2
-                ] &,
-                Counts[tmpEdge]
-            ]
-        ];
+    addEdge[] := With[{
+        newEdge = KeyValueMap[
+            If[ MissingQ[#[[1]]],
+                    With[{v = Max[0, Select[Keys[vertices], IntegerQ]] + 1},
+                    AppendTo[vertices, v -> #[[2]]];
+                    AppendTo[vertexStyles, v -> color];
+                    AppendTo[actions, "VertexAdd"];
+                    Splice @ Table[v, #2]
+                ],
+                #[[1]]
+            ] &,
+            Counts[tmpEdge]
+        ]
+    },
+        AppendTo[edges, newEdge];
         AppendTo[edgeStyles, color];
 		AppendTo[actions, "EdgeAdd"];
         tmpEdge = {};
         actions = DeleteCases[actions, "VertexSelect"];
-    );
+    ];
 	update[] := (
 		hg = Hypergraph[
 			Keys[vertices], edges,
