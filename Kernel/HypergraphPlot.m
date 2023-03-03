@@ -79,7 +79,7 @@ SimpleHypergraphPlot[h_Hypergraph, plotOpts : OptionsPattern[]] := Enclose @ Blo
             {
                 Replace[edge, Append[edgeStyle, _ -> Directive[colorFunction[i], EdgeForm[colorFunction[i]]]]],
                 Switch[Length[emb],
-                    0, Nothing,
+                    0, Table[Sow[edgeIndex[edge][[j]], "Position"]; Sow[EmptyRegion[2], "Primitive"], {j, mult}],
                     1, Block[{r = size 0.03, dr = size 0.01},
                         Table[
                             Sow[edgeIndex[edge][[j]], "Position"];
