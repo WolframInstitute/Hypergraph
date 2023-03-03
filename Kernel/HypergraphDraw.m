@@ -4,7 +4,7 @@ PackageExport["HypergraphDraw"]
 
 
 
-Options[HypergraphDraw] := Join[{"InitialColor" -> Black}, Options[Hypergraph]]
+Options[HypergraphDraw] := Join[{"InitialColor" -> Automatic}, Options[Hypergraph]]
 
 HypergraphDraw[initHg : _Hypergraph ? HypergraphQ : Hypergraph[], opts : OptionsPattern[]] := DynamicModule[{
 	hg,
@@ -54,17 +54,18 @@ HypergraphDraw[initHg : _Hypergraph ? HypergraphQ : Hypergraph[], opts : Options
             oldVertices = vertices;
             update[],
 
-            i == 2 && ! MissingQ[edgeId],
-            AppendTo[actions, "EdgeDelete"[edges[[edgeId]], edgeStyles[[edgeId]]]];
-            edges = Delete[edges, edgeId];
-            edgeStyles = Delete[edgeStyles, edgeId];
-            update[],
-
             i == 2 && ! MissingQ[vertexId],
+            tmpEdge = {};
             AppendTo[actions, "VertexDelete"[vertexId -> vertices[vertexId], vertexStyles[vertexId], edges]];
             vertices = Delete[vertices, Key[vertexId]];
             vertexStyles = Delete[vertexStyles, Key[vertexId]];
             edges = Map[DeleteCases[#, vertexId] &, edges];
+            update[],
+
+            i == 2 && ! MissingQ[edgeId],
+            AppendTo[actions, "EdgeDelete"[edges[[edgeId]], edgeStyles[[edgeId]]]];
+            edges = Delete[edges, edgeId];
+            edgeStyles = Delete[edgeStyles, edgeId];
             update[]
 		];
 	);
@@ -106,7 +107,9 @@ HypergraphDraw[initHg : _Hypergraph ? HypergraphQ : Hypergraph[], opts : Options
                 actions = Most[actions]
             ),
             "EdgeDelete"[edge_, style_] :> (AppendTo[edges, edge]; AppendTo[edgeStyles, style]; actions = Most[actions]),
-            "VertexSelect" :> (tmpEdge = Most[tmpEdge]; actions = Most[actions])
+            "VertexSelect" :> (tmpEdge = Most[tmpEdge]; actions = Most[actions]),
+            "VertexMove"[vertexId_, oldPos_] :> (vertices[vertexId] = oldPos; actions = Most[actions]),
+            "EdgeMove"[edge_, oldPos_] :> (MapThread[(vertices[#1] = #2) &, {edge, oldPos}]; actions = Most[actions])
         }];
 		update[]
 	);
@@ -121,6 +124,7 @@ HypergraphDraw[initHg : _Hypergraph ? HypergraphQ : Hypergraph[], opts : Options
                 AppendTo[actions, "VertexRecolor"[vertexId, vertexStyles[vertexId]]];
                 vertexStyles[vertexId] = color
             ];
+            AppendTo[actions, "VertexMove"[vertexId, startMousePos]];
             vertexId = Missing[];
         ];
         If[ edgeMove,
@@ -129,6 +133,7 @@ HypergraphDraw[initHg : _Hypergraph ? HypergraphQ : Hypergraph[], opts : Options
                 AppendTo[actions, "EdgeRecolor"[edgeId, edgeStyles[[edgeId]]]];
                 edgeStyles[[edgeId]] = color
             ];
+            AppendTo[actions, "EdgeMove"[edges[[edgeId]], Lookup[oldVertices, edges[[edgeId]]]]];
             edgeId = Missing[];
         ];
 		If[ edgeStart,
@@ -174,12 +179,14 @@ HypergraphDraw[initHg : _Hypergraph ? HypergraphQ : Hypergraph[], opts : Options
         AppendTo[edgeStyles, color];
 		AppendTo[actions, "EdgeAdd"];
         tmpEdge = {};
+        actions = DeleteCases[actions, "VertexSelect"];
     );
 	update[] := (
 		hg = Hypergraph[
 			Keys[vertices], edges,
+            "LayoutDimension" -> 2,
             FilterRules[{opts}, Options[Hypergraph]],
-            FilterRules[initHg["Options"], Except[VertexCoordinates | VertexStyle | EdgeStyle]],
+            FilterRules[initHg["Options"], Except[VertexCoordinates | VertexStyle | EdgeStyle | "LayoutDimension"]],
 			VertexCoordinates -> Normal[vertices],
 			VertexLabels -> Automatic,
 			VertexStyle -> Normal[vertexStyles],
@@ -192,6 +199,7 @@ HypergraphDraw[initHg : _Hypergraph ? HypergraphQ : Hypergraph[], opts : Options
         ];
 	);
     reset[] := (
+        tmpEdge = {};
 	    vertices = Association @ Lookup[initHg["Options"], VertexCoordinates, <||>];
         vertexStyles = Replace[Lookup[initHg["Options"], VertexStyle, Automatic], {
             rules : {___Rule} :> Association[rules],
@@ -204,13 +212,13 @@ HypergraphDraw[initHg : _Hypergraph ? HypergraphQ : Hypergraph[], opts : Options
             Automatic :> Array[ColorData[97], Length[edges]],
             style_ :> ConstantArray[style, Length[edges]]
         }];
-        color = FirstCase[vertexStyles, _ ? ColorQ, OptionValue["InitialColor"], All];
+        color = Replace[OptionValue["InitialColor"], Automatic -> FirstCase[vertexStyles, _ ? ColorQ, Black, All]];
         actions = {};
 
         If[ Not[VertexCount[initHg] == Length[vertices] == Length[vertexStyles] && EdgeCount[initHg] == Length[edges] == Length[edgeStyles]],
             vertices = AssociationThread[
                 VertexList[initHg],
-                If[# === {}, {}, RescalingTransform[If[#2 - #1 == 0, {#1, #1 + 1}, {##}] & @@@ CoordinateBounds[#], {{.1, .9}, {.1, .9}}][#]] & @ HypergraphEmbedding[initHg]
+                If[# === {}, {}, RescalingTransform[If[#2 - #1 == 0, {#1, #1 + 1}, {##}] & @@@ CoordinateBounds[#], {{.1, .9}, {.1, .9}}][#]] & @ HypergraphEmbedding[initHg][[All, ;; 2]]
             ];
             vertexStyles = AssociationThread[Keys[vertices], color];
             edgeStyles = PadRight[edgeStyles, Length[edges], color];
@@ -281,7 +289,7 @@ Press \[ReturnKey] or 'e' to create an edge
             "KeyDown" :> Switch[
                 CurrentValue["EventKey"],
                 "\r" | "e", addEdge[]; update[],
-                "\[RawEscape]" | "q", tmpEdge = {}; update[],
+                "\[RawEscape]" | "q", tmpEdge = {}; actions = DeleteCases[actions, "VertexSelect"]; update[],
                 "r", reset[],
                 "z", undo[]; update[]
             ]
@@ -293,5 +301,5 @@ Press \[ReturnKey] or 'e' to create an edge
     ]
 ]
 
-HypergraphDraw[args___] := HypergraphDraw[Hypergraph[args]]
+HypergraphDraw[arg___, opts : OptionsPattern[]] := HypergraphDraw[Hypergraph[arg], opts]
 

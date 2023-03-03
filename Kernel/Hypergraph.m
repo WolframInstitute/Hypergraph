@@ -65,9 +65,9 @@ HypergraphQ[___] := False
 
 (* Constructors *)
 
-Hypergraph[edgeSpec : {___List}, symm_Association : <||>, opts : OptionsPattern[]] := Hypergraph[Hyperedges @@ edgeSpec, symm, opts]
-
 Hypergraph[vs_List, edgeSpec : {___List}, symm_Association : <||>, opts : OptionsPattern[]] := Hypergraph[vs, Hyperedges @@ edgeSpec, symm, opts]
+
+Hypergraph[edgeSpec : {___List}, symm_Association : <||>, opts : OptionsPattern[]] := Hypergraph[Hyperedges @@ edgeSpec, symm, opts]
 
 Hypergraph[] := Hypergraph[0]
 
