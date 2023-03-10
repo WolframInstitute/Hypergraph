@@ -1,6 +1,7 @@
 Package["WolframInstitute`Hypergraph`"]
 
 
+PackageExport["HypergraphRuleQ"]
 PackageExport["HypergraphRule"]
 PackageExport["ToPatternRules"]
 PackageExport["PatternRuleToMultiReplaceRule"]
@@ -49,45 +50,87 @@ PatternRuleToMultiReplaceRule[rule : _[lhs_List | Verbatim[HoldPattern][lhs_List
         ]
 
 
-HighlightRule[rule_HypergraphRule, hg_ ? HypergraphQ] := Block[{
+Options[HighlightRule] := Options[SimpleHypergraphPlot]
+
+HighlightRule[rule_HypergraphRule, hg_ ? HypergraphQ, opts : OptionsPattern[]] := Block[{
     edges = EdgeList[hg], matches
 },
-    matches = KeyMap[First] @ Map[First] @ ResourceFunction["MultiReplace"][
+    edgeStyles = Thread[edges ->
+        Replace[
             edges,
-            PatternRuleToMultiReplaceRule @ ToPatternRules @ rule,
-            {1},
-            "Mode" -> "OrderlessSubsets"
-        ];
+            Join[
+                Replace[Flatten[{OptionValue[SimpleHypergraphPlot, hg["Options"], EdgeStyle]}], {Automatic -> Nothing, s : Except[_Rule] :> _ -> s}, {1}],
+                MapIndexed[#1 -> Directive[OptionValue[SimpleHypergraphPlot, hg["Options"], ColorFunction][#2[[1]]], EdgeForm[Transparent]] &, edges]
+            ],
+            {1}
+        ]
+    ];
+    matches = Block[{$ModuleNumber = 1},
+        KeyMap[First] @ Map[First] @ ResourceFunction["MultiReplace"][
+                edges,
+                PatternRuleToMultiReplaceRule @ ToPatternRules @ rule,
+                {1},
+                "Mode" -> "OrderlessSubsets"
+        ]
+    ];
     KeyValueMap[{pos, rhs} |->
-        Framed[
+        GraphicsRow[{
             SimpleHypergraphPlot[
                 hg,
+                opts,
                 EdgeStyle -> Map[
-                    # -> Directive[Red, EdgeForm[Directive[Dashed, Red, Thick]]] &,
+                    # -> Directive[Thick, Dashed, Red, EdgeForm[Directive[Dashed, Red, Thick]]] &,
                     Extract[edges, pos]
                 ],
-                ImageSize -> Tiny
-            ] ->
+                ImageSize -> Medium
+            ],
+            Graphics[{Arrowheads[0.3], Arrow[{{0, 0}, {.25, 0}}]}, ImageSize -> Medium],
             SimpleHypergraphPlot[
                 rhs,
-                EdgeStyle -> Map[
-                    # -> Directive[Red, EdgeForm[Directive[Dashed, Red, Thick]]] &,
-                    (* output edges always getting splices at the first position *)
-                    rhs[[ Range[pos[[1, 1]]] + Length[pos] - 1 ]]
+                opts,
+                EdgeStyle -> Join[
+                    Map[
+                        # -> Directive[Thick, Dashed, Red, EdgeForm[Directive[Dashed, Red, Thick]]] &,
+                        (* output edges always getting splices at the first position *)
+                        rhs[[ Range[Length[pos]] + pos[[1, 1]] - 1 ]]
+                    ],
+                    edgeStyles
                 ],
-                ImageSize -> Tiny
+                ImageSize -> Medium,
+                VertexCoordinates -> Thread[VertexList[hg] -> HypergraphEmbedding[hg]],
+                hg["Options"]
             ]
-        ],
+        }],
         matches
     ]
 ]
 
 
-HypergraphRule /: MakeBoxes[HypergraphRule[input_ ? HypergraphQ, output_ ? HypergraphQ], form_] :=
-    ToBoxes[
-        Deploy @ Framed[
-            SimpleHypergraphPlot[input, VertexLabels -> Automatic, ImageSize -> Tiny] ->
+
+HypergraphRuleQ[hr_HypergraphRule] := System`Private`HoldValidQ[hr]
+
+HypergraphRuleQ[___] := $Failed
+
+Options[HypergraphRule] := Options[Hypergraph]
+
+(hr : HypergraphRule[input_, output_, opts : OptionsPattern[]]) /; ! HypergraphRuleQ[Unevaluated[hr]] :=
+    Enclose[
+        System`Private`HoldSetValid @ HypergraphRule[##] & [
+            ConfirmBy[Hypergraph[input, opts], HypergraphQ],
+            ConfirmBy[Hypergraph[output, opts], HypergraphQ]
+        ]
+    ]
+
+HypergraphRule /: MakeBoxes[hr : HypergraphRule[input_, output_] ? HypergraphRuleQ, form_] := With[{
+    boxes = ToBoxes[
+        GraphicsRow[{
+            SimpleHypergraphPlot[input, VertexLabels -> Automatic, ImageSize -> Tiny],
+            Graphics[{Arrowheads[.5], Arrow[{{0, 0}, {.5, 0}}]}, ImageSize -> Tiny],
             SimpleHypergraphPlot[output, VertexLabels -> Automatic, ImageSize -> Tiny]
-        ],
+        }],
         form
     ]
+},
+    InterpretationBox[boxes, hr]
+]
+
