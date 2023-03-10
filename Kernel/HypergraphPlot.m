@@ -48,7 +48,7 @@ SimpleHypergraphPlot[h_Hypergraph, plotOpts : OptionsPattern[]] := Enclose @ Blo
             Annotation[DirectedEdge[##], EdgeWeight -> 1] & @@@ Cases[es, {_, _}],
             Catenate[
                 MapIndexed[{edge, i} |->
-                    With[{clickEdges = Catenate[{#, If[Equal @@ #, Nothing, Reverse[#]]} & /@ #] & @ Subsets[edge, {2}], weight = Length[edge]},
+                    With[{clickEdges = Catenate[{#, If[SameQ @@ #, Nothing, Reverse[#]]} & /@ #] & @ Subsets[edge, {2}], weight = Length[edge]},
                         Join[
                             Annotation[DirectedEdge[##, edge], EdgeWeight -> 1] & @@@ clickEdges,
                             If[ DuplicateFreeQ @ edge,
@@ -77,7 +77,7 @@ SimpleHypergraphPlot[h_Hypergraph, plotOpts : OptionsPattern[]] := Enclose @ Blo
 		AbsoluteThickness[Medium],
 		MapIndexed[With[{edge = #1[[1]], emb = Replace[#1[[1]], vertexEmbedding, {1}], mult = #1[[2]], i = #2[[1]]},
             {
-                Replace[edge, Append[edgeStyle, _ -> Directive[colorFunction[i], EdgeForm[colorFunction[i]]]]],
+                Replace[edge, Append[edgeStyle, _ -> Directive[colorFunction[i], EdgeForm[Transparent]]]],
                 Switch[Length[emb],
                     0, Table[Sow[edgeIndex[edge][[j]], "Position"]; Sow[EmptyRegion[2], "Primitive"], {j, mult}],
                     1, Block[{r = size 0.03, dr = size 0.01},
@@ -99,7 +99,6 @@ SimpleHypergraphPlot[h_Hypergraph, plotOpts : OptionsPattern[]] := Enclose @ Blo
                                 Lookup[edgeEmbedding, #][[c]]
                             ] & /@ (DirectedEdge[##, edge] & @@@ Partition[#1[[1]], 2, 1, If[edgeType === "Cyclic", 1, None]]);
                             With[{curves = Catenate[GraphComputation`GraphElementData["Line"][#, None] /. BezierCurve -> BSplineCurve & /@ points]}, {
-                                EdgeForm[Transparent],
                                 Switch[dim,
                                     2, Sow[FilledCurve[curves], "Primitive"],
                                     3, Block[{pts, region},

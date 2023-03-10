@@ -39,15 +39,15 @@ HypergraphDraw[initHg : _Hypergraph ? HypergraphQ : Hypergraph[], opts : Options
 			edge = tmpEdge;
 			edgeFinish = True,
 
+            i == 1 && ! multiSelect && (MissingQ[edgeId] || ! MissingQ[vertexId]) && ! CurrentValue["AltKey"],
+			edgeStart = True;
+            edgeNext = True;
+			edge = {vertexId -> mousePosition[]},
+
             i == 1 && (vertexMode || CurrentValue["AltKey"]) && ! MissingQ[vertexId],
             vertexMove = True;
             oldVertices = vertices;
             update[],
-
-            i == 1 && ! multiSelect && (vertexMode || CurrentValue["AltKey"] || MissingQ[edgeId] || ! MissingQ[vertexId]),
-			edgeStart = True;
-            edgeNext = True;
-			edge = {vertexId -> mousePosition[]},
 
             i == 1 && (! vertexMode || CurrentValue["AltKey"]) && ! MissingQ[edgeId] && MissingQ[vertexId],
             edgeMove = True;
@@ -163,13 +163,13 @@ HypergraphDraw[initHg : _Hypergraph ? HypergraphQ : Hypergraph[], opts : Options
     addEdge[] := With[{
         newEdge = KeyValueMap[
             If[ MissingQ[#[[1]]],
-                    With[{v = Max[0, Select[Keys[vertices], IntegerQ]] + 1},
+                With[{v = Max[0, Select[Keys[vertices], IntegerQ]] + 1},
                     AppendTo[vertices, v -> #[[2]]];
                     AppendTo[vertexStyles, v -> color];
                     AppendTo[actions, "VertexAdd"];
                     Splice @ Table[v, #2]
                 ],
-                #[[1]]
+                Splice @ Table[#[[1]], #2]
             ] &,
             Counts[tmpEdge]
         ]
