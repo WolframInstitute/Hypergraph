@@ -50,9 +50,10 @@ PatternRuleToMultiReplaceRule[rule : _[lhs_List | Verbatim[HoldPattern][lhs_List
 
 
 (rule : HypergraphRule[input_ ? HypergraphQ, output_ ? HypergraphQ])[hg_ ? HypergraphQ] := Block[{
-    vertices = VertexList[hg], edges= EdgeList[hg],
+    vertices = VertexList[hg], edges = EdgeList[hg],
     inputVertices = VertexList[input], ouputVertices = VertexList[output],
     inputEdges = EdgeList[input], outputEdges = EdgeList[output],
+    edgeStyles, embedding,
     matches,
     lhsVertices, inputFreeVertices, newVertices, deleteVertices, newVertexMap
 },
@@ -67,6 +68,19 @@ PatternRuleToMultiReplaceRule[rule : _[lhs_List | Verbatim[HoldPattern][lhs_List
     newVertices = Complement[ouputVertices, inputVertices];
     deleteVertices = Complement[inputVertices, ouputVertices];
     newVertexMap = Block[{$ModuleNumber = 1}, # -> Unique["\[FormalX]"] & /@ newVertices];
+
+    edgeStyles = Thread[edges ->
+        Replace[
+            edges,
+            Join[
+                Replace[Flatten[{OptionValue[SimpleHypergraphPlot, hg["Options"], EdgeStyle]}], {Automatic -> Nothing, s : Except[_Rule] :> _ -> s}, {1}],
+                MapIndexed[#1 -> Directive[OptionValue[SimpleHypergraphPlot, hg["Options"], ColorFunction][#2[[1]]], EdgeForm[Transparent]] &, edges]
+            ],
+            {1}
+        ]
+    ];
+    embedding = Thread[vertices -> HypergraphEmbedding[hg]];
+
     Catenate @ Map[pos |-> Block[{matchEdges = Extract[edges, pos], matchVertices, matchVertexMap},
         matchVertices = Union @@ matchEdges;
         matchVertexMap = DeleteDuplicatesBy[Thread[Catenate @ inputEdges -> Catenate @ matchEdges], First];
@@ -86,7 +100,10 @@ PatternRuleToMultiReplaceRule[rule : _[lhs_List | Verbatim[HoldPattern][lhs_List
                         Replace[Delete[edges, pos], Alternatives @@ deleteOrigVertices -> Nothing, {2}],
                         Splice @ newEdges,
                         Min[pos]
-                    ]
+                    ],
+                    EdgeStyle -> edgeStyles,
+                    VertexCoordinates -> embedding,
+                    hg["Options"]
                 ],
                 "MatchVertices" -> Join[#, matchVertices],
                 "MatchEdges" -> matchEdges,
@@ -114,21 +131,10 @@ Options[HighlightRule] := Options[SimpleHypergraphPlot]
 
 HighlightRule[rule_HypergraphRule, hg_ ? HypergraphQ, opts : OptionsPattern[]] := Block[{
     vs = VertexList[hg], edges = EdgeList[hg],
-    matches, embedding
+    matches
 },
     matches = rule[hg];
 
-    edgeStyles = Thread[edges ->
-        Replace[
-            edges,
-            Join[
-                Replace[Flatten[{OptionValue[SimpleHypergraphPlot, hg["Options"], EdgeStyle]}], {Automatic -> Nothing, s : Except[_Rule] :> _ -> s}, {1}],
-                MapIndexed[#1 -> Directive[OptionValue[SimpleHypergraphPlot, hg["Options"], ColorFunction][#2[[1]]], EdgeForm[Transparent]] &, edges]
-            ],
-            {1}
-        ]
-    ];
-    embedding = Thread[vs -> HypergraphEmbedding[hg]];
     Map[
         GraphicsRow[{
             SimpleHypergraphPlot[
@@ -146,18 +152,13 @@ HighlightRule[rule_HypergraphRule, hg_ ? HypergraphQ, opts : OptionsPattern[]] :
             SimpleHypergraphPlot[
                 #Hypergraph,
                 opts,
-                EdgeStyle -> Join[
-                    Map[
-                        # -> Directive[Thick, Dashed, Red, EdgeForm[Directive[Dashed, Red, Thick]]] &,
-                        (* output edges always getting spliced at the first position *)
-                        #NewEdges
-                    ],
-                    edgeStyles
+                EdgeStyle -> Map[
+                    # -> Directive[Thick, Dashed, Red, EdgeForm[Directive[Dashed, Red, Thick]]] &,
+                    (* output edges always getting spliced at the first position *)
+                    #NewEdges
                 ],
                 VertexStyle -> Map[# -> Directive[PointSize[0.02], Red] &, #NewVertices],
-                VertexCoordinates -> embedding,
                 ImageSize -> Medium,
-                hg["Options"],
                 $HypergraphRulePlotOptions
             ]
         }, PlotRangePadding -> 1] &,

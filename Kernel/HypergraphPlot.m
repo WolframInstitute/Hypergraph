@@ -24,15 +24,15 @@ SimpleHypergraphPlot[h_Hypergraph, plotOpts : OptionsPattern[]] := Enclose @ Blo
     vertexStyle, vertexLabelStyle, edgeStyle,
     vertexCoordinates,
     size, dim,
-    opts = FilterRules[{h["Options"], plotOpts}, Options[SimpleHypergraphPlot]],
+    opts = FilterRules[{plotOpts, h["Options"]}, Options[SimpleHypergraphPlot]],
     edgeIndex
 },
     edgeIndex = PositionIndex[es];
     colorFunction = OptionValue[SimpleHypergraphPlot, opts, ColorFunction];
     vertexLabels = OptionValue[SimpleHypergraphPlot, opts, VertexLabels];
-    vertexStyle = Replace[Flatten[{OptionValue[SimpleHypergraphPlot, opts, VertexStyle]}], {Automatic -> _ -> Black, s : Except[_Rule] :> _ -> s}, {1}];
-    vertexLabelStyle = Replace[Flatten[{OptionValue[SimpleHypergraphPlot, opts, VertexLabelStyle]}], {Automatic -> _ -> Black, s : Except[_Rule] :> _ -> s}, {1}];
-    edgeStyle = Replace[Flatten[{OptionValue[SimpleHypergraphPlot, opts, EdgeStyle]}], {Automatic -> Nothing, s : Except[_Rule] :> _ -> s}, {1}];
+    vertexStyle = Append[Replace[Flatten[ReplaceList[VertexStyle, opts]], {Automatic -> _ -> Black, s : Except[_Rule] :> _ -> s}, {1}], _ -> Black];
+    vertexLabelStyle = Append[Replace[Flatten[ReplaceList[VertexLabelStyle, opts]], {Automatic -> _ -> Black, s : Except[_Rule] :> _ -> s}, {1}], _ -> Black];
+    edgeStyle = Replace[Flatten[ReplaceList[EdgeStyle, opts]], {Automatic -> Nothing, s : Except[_Rule] :> _ -> s}, {1}];
     edgeArrowsQ = TrueQ[OptionValue[SimpleHypergraphPlot, opts, "EdgeArrows"]];
     edgeType = OptionValue[SimpleHypergraphPlot, opts, "EdgeType"];
     dim = ConfirmMatch[OptionValue[SimpleHypergraphPlot, opts, "LayoutDimension"], 2 | 3];
@@ -125,7 +125,7 @@ SimpleHypergraphPlot[h_Hypergraph, plotOpts : OptionsPattern[]] := Enclose @ Blo
             Tally[es]
         ],
         Opacity[1],
-		KeyValueMap[{Replace[#1, Append[vertexStyle, _ -> Black]], Point[#2]} &, vertexEmbedding],
+		KeyValueMap[{Replace[#1, vertexStyle], Point[#2]} &, vertexEmbedding],
         Switch[vertexLabels,
             Automatic, KeyValueMap[{Replace[#1, vertexLabelStyle], Text[##, {1, 1}]} &, vertexEmbedding],
             Placed[Automatic, _Offset], KeyValueMap[{Replace[#1, vertexLabelStyle], Text[##, vertexLabels[[2, 1]]]} &, vertexEmbedding],
