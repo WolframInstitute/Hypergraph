@@ -50,7 +50,10 @@ PatternRuleToMultiReplaceRule[rule : _[lhs_List | Verbatim[HoldPattern][lhs_List
 
 
 (rule : HypergraphRule[input_ ? HypergraphQ, output_ ? HypergraphQ])[hg_ ? HypergraphQ] := Block[{
-    vertices = VertexList[hg], edges= EdgeList[hg], matches,
+    vertices = VertexList[hg], edges= EdgeList[hg],
+    inputVertices = VertexList[input], ouputVertices = VertexList[output],
+    inputEdges = EdgeList[input], outputEdges = EdgeList[output],
+    matches,
     lhsVertices, inputFreeVertices, newVertices, deleteVertices, newVertexMap
 },
     matches = First /@ Keys @ ResourceFunction["MultiReplace"][
@@ -59,36 +62,38 @@ PatternRuleToMultiReplaceRule[rule : _[lhs_List | Verbatim[HoldPattern][lhs_List
         {1},
         "Mode" -> "OrderlessSubsets"
     ];
-    lhsVertices = Union @@ EdgeList[input];
-    inputFreeVertices = Complement[VertexList[input], lhsVertices];
-    newVertices = Complement[VertexList[output], VertexList[input]];
-    deleteVertices = Complement[VertexList[input], VertexList[output]];
+    lhsVertices = Union @@ inputEdges;
+    inputFreeVertices = Complement[inputVertices, lhsVertices];
+    newVertices = Complement[ouputVertices, inputVertices];
+    deleteVertices = Complement[inputVertices, ouputVertices];
     newVertexMap = Block[{$ModuleNumber = 1}, # -> Unique["\[FormalX]"] & /@ newVertices];
-    Catenate @ Map[pos |-> With[{matchVertices = Union @@ Extract[edges, pos]},
+    Catenate @ Map[pos |-> Block[{matchEdges = Extract[edges, pos], matchVertices, matchVertexMap},
+        matchVertices = Union @@ matchEdges;
+        matchVertexMap = DeleteDuplicatesBy[Thread[Catenate @ inputEdges -> Catenate @ matchEdges], First];
         Block[{
             origVertexMap = Join[
-                Thread[lhsVertices -> matchVertices],
+                matchVertexMap,
                 Thread[inputFreeVertices -> #],
                 newVertexMap
             ],
             deleteOrigVertices, newEdges
         },
             deleteOrigVertices = Replace[deleteVertices, origVertexMap, {1}];
-            newEdges = Replace[EdgeList[output], origVertexMap, {2}];
+            newEdges = Replace[outputEdges, origVertexMap, {2}];
             <| "Hypergraph" -> Hypergraph[
-                    Union[DeleteElements[VertexList[hg], deleteOrigVertices], Replace[VertexList[output], origVertexMap, {1}]],
+                    Union[DeleteElements[vertices, deleteOrigVertices], Replace[ouputVertices, origVertexMap, {1}]],
                     Insert[
-                        Replace[Delete[EdgeList[hg], pos], Alternatives @@ deleteOrigVertices -> Nothing, {2}],
+                        Replace[Delete[edges, pos], Alternatives @@ deleteOrigVertices -> Nothing, {2}],
                         Splice @ newEdges,
                         Min[pos]
                     ]
                 ],
                 "MatchVertices" -> Join[#, matchVertices],
-                "MatchEdges" -> Extract[edges, pos],
+                "MatchEdges" -> matchEdges,
                 "NewVertices" -> Values[newVertexMap],
                 "NewEdges" -> newEdges
             |>
-        ] & /@ Join[#, Reverse /@ #] & @ Subsets[Complement[vertices, matchVertices], {Length[inputFreeVertices]}]
+        ] & /@ Catenate[Permutations /@ Subsets[Complement[vertices, matchVertices], {Length[inputFreeVertices]}]]
     ],
         matches
     ]
