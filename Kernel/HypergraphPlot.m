@@ -125,9 +125,9 @@ SimpleHypergraphPlot[h_Hypergraph, plotOpts : OptionsPattern[]] := Enclose @ Blo
             Tally[es]
         ],
         Opacity[1],
-		KeyValueMap[{Replace[#1, vertexStyle], Point[#2]} &, vertexEmbedding],
+		KeyValueMap[{Replace[#1, Append[vertexStyle, _ -> Black]], Point[#2]} &, vertexEmbedding],
         Switch[vertexLabels,
-            Automatic, KeyValueMap[{Replace[#1, vertexLabelStyle], Text[##, {2, 2}]} &, vertexEmbedding],
+            Automatic, KeyValueMap[{Replace[#1, vertexLabelStyle], Text[##, {1, 1}]} &, vertexEmbedding],
             Placed[Automatic, _Offset], KeyValueMap[{Replace[#1, vertexLabelStyle], Text[##, vertexLabels[[2, 1]]]} &, vertexEmbedding],
             _, Nothing
         ]

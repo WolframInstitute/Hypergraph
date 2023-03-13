@@ -3,10 +3,19 @@ Package["WolframInstitute`Hypergraph`"]
 
 PackageExport["HypergraphRuleQ"]
 PackageExport["HypergraphRule"]
+PackageExport["ToPatternEdges"]
 PackageExport["ToPatternRules"]
 PackageExport["PatternRuleToMultiReplaceRule"]
 PackageExport["HighlightRule"]
 
+
+
+ToPatternEdges[edges : {___List}] := Block[{vs = Union @@ edges, varSymbols},
+    varSymbols = Association @ MapIndexed[#1 -> Symbol["\[FormalX]" <> ToString[#2[[1]]]] &, vs];
+    Replace[edges, Pattern[#, _] & /@ varSymbols, {2}]
+]
+
+ToPatternEdges[hg_ ? HypergraphQ] := ToPatternEdges[EdgeList[hg]]
 
 
 ToPatternRules[lhs : {___List}, rhs : {___List}] := Block[{vs = Union @@ lhs, ws = Union @@ rhs, varSymbols, newVars},
@@ -15,7 +24,7 @@ ToPatternRules[lhs : {___List}, rhs : {___List}] := Block[{vs = Union @@ lhs, ws
     Replace[lhs, Pattern[#, _] & /@ varSymbols, {2}] :> Module[##] & [Replace[newVars, varSymbols, {1}], Replace[rhs, varSymbols, {2}]]
 ]
 
-ToPatternRules[HypergraphRule[input_ ? HypergraphQ, output_ ? HypergraphQ]] := ToPatternRules[input["EdgeList"], output["EdgeList"]]
+ToPatternRules[HypergraphRule[input_ ? HypergraphQ, output_ ? HypergraphQ]] := ToPatternRules[EdgeList[input], EdgeList[output]]
 
 ToPatternRules[rules : {___HypergraphRule}] := ToPatternRules /@ rules
 
@@ -40,21 +49,70 @@ PatternRuleToMultiReplaceRule[rule : _[lhs_List | Verbatim[HoldPattern][lhs_List
 ]
 
 
-(rule : HypergraphRule[input_ ? HypergraphQ, output_ ? HypergraphQ])[hg_ ? HypergraphQ] :=
-    Hypergraph[VertexList[input], #[[1]]] & /@
-        Values @ ResourceFunction["MultiReplace"][
-            hg["EdgeList"],
-            PatternRuleToMultiReplaceRule @ ToPatternRules @ rule,
-            {1},
-            "Mode" -> "OrderlessSubsets"
-        ]
+(rule : HypergraphRule[input_ ? HypergraphQ, output_ ? HypergraphQ])[hg_ ? HypergraphQ] := Block[{
+    vertices = VertexList[hg], edges= EdgeList[hg], matches,
+    lhsVertices, inputFreeVertices, newVertices, deleteVertices, newVertexMap
+},
+    matches = First /@ Keys @ ResourceFunction["MultiReplace"][
+        edges,
+        ToPatternEdges @ input,
+        {1},
+        "Mode" -> "OrderlessSubsets"
+    ];
+    lhsVertices = Union @@ EdgeList[input];
+    inputFreeVertices = Complement[VertexList[input], lhsVertices];
+    newVertices = Complement[VertexList[output], VertexList[input]];
+    deleteVertices = Complement[VertexList[input], VertexList[output]];
+    newVertexMap = Block[{$ModuleNumber = 1}, # -> Unique["\[FormalX]"] & /@ newVertices];
+    Catenate @ Map[pos |-> With[{matchVertices = Union @@ Extract[edges, pos]},
+        Block[{
+            origVertexMap = Join[
+                Thread[lhsVertices -> matchVertices],
+                Thread[inputFreeVertices -> #],
+                newVertexMap
+            ],
+            deleteOrigVertices, newEdges
+        },
+            deleteOrigVertices = Replace[deleteVertices, origVertexMap, {1}];
+            newEdges = Replace[EdgeList[output], origVertexMap, {2}];
+            <| "Hypergraph" -> Hypergraph[
+                    Union[DeleteElements[VertexList[hg], deleteOrigVertices], Replace[VertexList[output], origVertexMap, {1}]],
+                    Insert[
+                        Replace[Delete[EdgeList[hg], pos], Alternatives @@ deleteOrigVertices -> Nothing, {2}],
+                        Splice @ newEdges,
+                        Min[pos]
+                    ]
+                ],
+                "MatchVertices" -> Join[#, matchVertices],
+                "MatchEdges" -> Extract[edges, pos],
+                "NewVertices" -> Values[newVertexMap],
+                "NewEdges" -> newEdges
+            |>
+        ] & /@ Join[#, Reverse /@ #] & @ Subsets[Complement[vertices, matchVertices], {Length[inputFreeVertices]}]
+    ],
+        matches
+    ]
+]
 
+
+$HypergraphRulePlotOptions = {
+    VertexLabels -> Automatic,
+    Frame -> True,
+    FrameTicks -> None,
+    PlotRangePadding -> .5,
+    ImagePadding -> 3,
+    AspectRatio -> 1,
+    ImageSize -> Tiny
+};
 
 Options[HighlightRule] := Options[SimpleHypergraphPlot]
 
 HighlightRule[rule_HypergraphRule, hg_ ? HypergraphQ, opts : OptionsPattern[]] := Block[{
-    edges = EdgeList[hg], matches
+    vs = VertexList[hg], edges = EdgeList[hg],
+    matches, embedding
 },
+    matches = rule[hg];
+
     edgeStyles = Thread[edges ->
         Replace[
             edges,
@@ -65,42 +123,39 @@ HighlightRule[rule_HypergraphRule, hg_ ? HypergraphQ, opts : OptionsPattern[]] :
             {1}
         ]
     ];
-    matches = Block[{$ModuleNumber = 1},
-        KeyMap[First] @ Map[First] @ ResourceFunction["MultiReplace"][
-                edges,
-                PatternRuleToMultiReplaceRule @ ToPatternRules @ rule,
-                {1},
-                "Mode" -> "OrderlessSubsets"
-        ]
-    ];
-    KeyValueMap[{pos, rhs} |->
+    embedding = Thread[vs -> HypergraphEmbedding[hg]];
+    Map[
         GraphicsRow[{
             SimpleHypergraphPlot[
                 hg,
                 opts,
                 EdgeStyle -> Map[
                     # -> Directive[Thick, Dashed, Red, EdgeForm[Directive[Dashed, Red, Thick]]] &,
-                    Extract[edges, pos]
+                    #MatchEdges
                 ],
-                ImageSize -> Medium
+                VertexStyle -> Map[# -> Directive[PointSize[0.02], Red] &, #MatchVertices],
+                ImageSize -> Medium,
+                $HypergraphRulePlotOptions
             ],
             Graphics[{Arrowheads[0.3], Arrow[{{0, 0}, {.25, 0}}]}, ImageSize -> Medium],
             SimpleHypergraphPlot[
-                rhs,
+                #Hypergraph,
                 opts,
                 EdgeStyle -> Join[
                     Map[
                         # -> Directive[Thick, Dashed, Red, EdgeForm[Directive[Dashed, Red, Thick]]] &,
-                        (* output edges always getting splices at the first position *)
-                        rhs[[ Range[Length[pos]] + pos[[1, 1]] - 1 ]]
+                        (* output edges always getting spliced at the first position *)
+                        #NewEdges
                     ],
                     edgeStyles
                 ],
+                VertexStyle -> Map[# -> Directive[PointSize[0.02], Red] &, #NewVertices],
+                VertexCoordinates -> embedding,
                 ImageSize -> Medium,
-                VertexCoordinates -> Thread[VertexList[hg] -> HypergraphEmbedding[hg]],
-                hg["Options"]
+                hg["Options"],
+                $HypergraphRulePlotOptions
             ]
-        }],
+        }, PlotRangePadding -> 1] &,
         matches
     ]
 ]
@@ -113,6 +168,10 @@ HypergraphRuleQ[___] := $Failed
 
 Options[HypergraphRule] := Options[Hypergraph]
 
+HypergraphRule[input_, _]["Input"] := input
+
+HypergraphRule[_, output_]["Output"] := output
+
 (hr : HypergraphRule[input_, output_, opts : OptionsPattern[]]) /; ! HypergraphRuleQ[Unevaluated[hr]] :=
     Enclose[
         System`Private`HoldSetValid @ HypergraphRule[##] & [
@@ -124,10 +183,12 @@ Options[HypergraphRule] := Options[Hypergraph]
 HypergraphRule /: MakeBoxes[hr : HypergraphRule[input_, output_] ? HypergraphRuleQ, form_] := With[{
     boxes = ToBoxes[
         GraphicsRow[{
-            SimpleHypergraphPlot[input, VertexLabels -> Automatic, ImageSize -> Tiny],
+            SimpleHypergraphPlot[input, $HypergraphRulePlotOptions],
             Graphics[{Arrowheads[.5], Arrow[{{0, 0}, {.5, 0}}]}, ImageSize -> Tiny],
-            SimpleHypergraphPlot[output, VertexLabels -> Automatic, ImageSize -> Tiny]
-        }],
+            SimpleHypergraphPlot[output, $HypergraphRulePlotOptions]
+        },
+            PlotRangePadding -> 1
+        ],
         form
     ]
 },
