@@ -83,7 +83,7 @@ hg : Hypergraph[vs_List, he_Hyperedges ? HyperedgesQ, symm_Association : <||>, o
 
 hg : Hypergraph[vs_List, he_Hyperedges ? HyperedgesQ, symm : _ ? AssociationQ : <||>, opts : OptionsPattern[]] /;
 	ContainsAll[vs, he["VertexList"]] && System`Private`HoldNotValidQ[hg] := System`Private`SetNoEntry[
-		System`Private`HoldSetValid[Hypergraph[vs, he, symm, ##]] & @@ Flatten[{opts}]
+		System`Private`HoldSetValid[Hypergraph[vs, he, symm, ##]] & @@ DeleteDuplicatesBy[Flatten[{opts}], First]
 	]
 
 

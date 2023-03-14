@@ -10,7 +10,8 @@ HypergraphDraw[initHg : _Hypergraph ? HypergraphQ : Hypergraph[], opts : Options
 	hg,
 	vertices, edges,
     vertexStyles, edgeStyles,
-	edgeStart = False, edgeUp = False, edgeNext = False, edgeFinish = False, vertexMove = False, edgeMove = False,
+	edgeStart = False, edgeUp = False, edgeNext = False, edgeFinish = False,
+    vertexSelect = False, edgeSelect = False, vertexMove = False, edgeMove = False,
     multiSelect = True, vertexMode = False,
 	edge = {}, tmpEdge = {}, vertexId, edgeId = Missing[], oldVertices = <||>,
 	getVertex, down, move, up,
@@ -20,7 +21,8 @@ HypergraphDraw[initHg : _Hypergraph ? HypergraphQ : Hypergraph[], opts : Options
 	actions = {}, actionId = None, addAction,
     mousePos, startMousePos,
     plot, grid,
-    edgeRegions
+    edgeRegions,
+    edgeArrowsQ = False
 },
     mousePosition[] := Replace[MousePosition["Graphics"], {None -> mousePos, pos_ :> (mousePos = pos)}];
 	getVertex[pos_ : mousePosition[]] := If[Length[vertices] > 0,
@@ -52,12 +54,12 @@ HypergraphDraw[initHg : _Hypergraph ? HypergraphQ : Hypergraph[], opts : Options
 			edge = {vertexId -> mousePosition[]},
 
             i == 1 && (vertexMode || CurrentValue["AltKey"]) && ! MissingQ[vertexId],
-            vertexMove = True;
+            vertexSelect = True;
             oldVertices = vertices;
             update[],
 
             i == 1 && (! vertexMode || CurrentValue["AltKey"]) && ! MissingQ[edgeId] && MissingQ[vertexId],
-            edgeMove = True;
+            edgeSelect = True;
             oldVertices = vertices;
             update[],
 
@@ -81,6 +83,12 @@ HypergraphDraw[initHg : _Hypergraph ? HypergraphQ : Hypergraph[], opts : Options
             edgeNext = False;
 			edgeFinish = False;
 		];
+        If[ vertexSelect,
+            vertexMove = True
+        ];
+        If[ edgeSelect,
+            edgeMove = True
+        ];
         If[ vertexMove,
             With[{diff = mousePosition[] - Lookup[oldVertices, vertexId]},
                 vertices = MapAt[# + diff &, oldVertices, Key[vertexId]];
@@ -116,7 +124,7 @@ HypergraphDraw[initHg : _Hypergraph ? HypergraphQ : Hypergraph[], opts : Options
 		update[]
 	);
 	undo[] := (
-        If[actionId === None, Return[]];
+        If[actionId === None || actionId <= 0, Return[]];
 		Replace[actions[[actionId]], {
 			"EdgeAdd"[__] :>
 			    If[Length[edges] > 0, edges = Most[edges]; edgeStyles = Most[edgeStyles]],
@@ -139,11 +147,10 @@ HypergraphDraw[initHg : _Hypergraph ? HypergraphQ : Hypergraph[], opts : Options
 		update[]
 	);
 	up[] := (
-        If[ multiSelect && (! vertexMove && ! edgeMove || vertexMode || CurrentValue["AltKey"]),
-            addAction["VertexSelect"[getVertex[] -> mousePosition[]]];
+        If[ multiSelect && (! edgeSelect || vertexSelect || MissingQ[vertexId]) && ! vertexMove && ! edgeMove,
+            addAction["VertexSelect"[vertexId -> mousePosition[]]];
         ];
         If[ vertexMove,
-            vertexMove = False;
             If[ startMousePos =!= mousePos,
                 addAction["VertexMove"[vertexId, startMousePos, mousePos]]
             ];
@@ -153,7 +160,6 @@ HypergraphDraw[initHg : _Hypergraph ? HypergraphQ : Hypergraph[], opts : Options
             vertexId = Missing[];
         ];
         If[ edgeMove,
-            edgeMove = False;
             With[{oldPos = Lookup[oldVertices, edges[[edgeId]]], newPos = Lookup[vertices, edges[[edgeId]]]},
                 If[ oldPos =!= newPos,
                     addAction["EdgeMove"[edgeId, oldPos, newPos]]
@@ -167,7 +173,7 @@ HypergraphDraw[initHg : _Hypergraph ? HypergraphQ : Hypergraph[], opts : Options
 		If[ edgeStart,
 			If[ MissingQ[getVertex[]],
 				With[{v = Max[0, Select[Keys[vertices], IntegerQ]] + 1},
-                    addAction["VertexAdd"[v -> mousePosition[], v -> color]]
+                    addAction["VertexAdd"[v -> mousePos, v -> color]]
                 ],
 				addAction["EdgeAdd"[{getVertex[]}, color]]
 			]
@@ -179,7 +185,7 @@ HypergraphDraw[initHg : _Hypergraph ? HypergraphQ : Hypergraph[], opts : Options
 		];
 
 		edge = tmpEdge;
-		edgeStart = False;
+		edgeStart = vertexSelect = edgeSelect = vertexMove = edgeMove = False;
 
 		update[]
 	);
@@ -195,19 +201,22 @@ HypergraphDraw[initHg : _Hypergraph ? HypergraphQ : Hypergraph[], opts : Options
             Counts[tmpEdge]
         ]
     },
+        If[ tmpEdge =!= {},
+		    addAction["ResetSelect"[tmpEdge]]
+        ];
 		addAction["EdgeAdd"[newEdge, color]];
-		addAction["ResetSelect"[tmpEdge]];
     ];
 	update[] := (
 		hg = Hypergraph[
 			Keys[vertices], edges,
             "LayoutDimension" -> 2,
-            FilterRules[{opts}, Options[Hypergraph]],
-            FilterRules[initHg["Options"], Except[VertexCoordinates | VertexStyle | EdgeStyle | "LayoutDimension"]],
-			VertexCoordinates -> Normal[vertices],
-			VertexLabels -> Automatic,
+            "EdgeArrows" -> edgeArrowsQ,
 			VertexStyle -> Normal[vertexStyles],
-			EdgeStyle -> Thread[edges -> edgeStyles]
+			EdgeStyle -> Thread[edges -> edgeStyles],
+			VertexCoordinates -> Normal[vertices],
+            FilterRules[{opts}, Options[Hypergraph]],
+            initHg["Options"],
+			VertexLabels -> Automatic
 		];
         Block[{positions},
             {edgeRegions, positions} = First[#, {}] & /@ Reap[plot = SimpleHypergraphPlot[hg], {"Primitive", "Position"}][[2]];
@@ -288,6 +297,7 @@ HypergraphDraw[initHg : _Hypergraph ? HypergraphQ : Hypergraph[], opts : Options
         {SpanFromAbove, Framed[Button["Redo (d)", do[], ImageSize -> Scaled[.15]], FrameStyle -> Transparent]},
         {SpanFromAbove, Framed[Button["Reset (r)", reset[], ImageSize -> Scaled[.15]], FrameStyle -> Transparent]},
 		{SpanFromAbove, Dynamic @ Framed[ClickToCopy[Column[{"Click to copy Hypergraph:", TraditionalForm[hg]}, Alignment -> Center], hg], FrameStyle -> Transparent]},
+		{SpanFromAbove, Row[{"Edge arrows", Checkbox[Dynamic[edgeArrowsQ, (edgeArrowsQ = #; update[]) &]]}, Alignment -> Center]},
 		{SpanFromAbove, ColorSlider[Dynamic @ color]},
         {SpanFromAbove, Row[{"Multiselect mode", Checkbox[Dynamic[multiSelect]]}, Alignment -> Center]},
         {SpanFromAbove, RadioButtonBar[Dynamic[vertexMode], {True -> "Vertex mode", False -> "Edge mode"}]},
