@@ -4,20 +4,22 @@ Package["WolframInstitute`Hypergraph`"]
 
 
 Hypergraph /: MakeBoxes[hg_Hypergraph /; HypergraphQ[Unevaluated[hg]], form : StandardForm] := With[{
-	boxes = ToBoxes[
-        SimpleHypergraphPlot[hg, BaseStyle -> {GraphicsHighlightColor -> Red}],
-        form
+	boxes = Block[{BoxForm`$UseTextFormattingWhenConvertingInput = False},
+        ToBoxes[
+            SimpleHypergraphPlot[#, BaseStyle -> {GraphicsHighlightColor -> Red}],
+            form
+        ]
     ]
 },
-	hypergraphBox[boxes, hg]
-]
+	hypergraphBox[boxes, #]
+] & @ hg
 
 Hypergraph /: MakeBoxes[hg_Hypergraph /; HypergraphQ[Unevaluated[hg]], form : TraditionalForm] := With[{
-	edgeBoxes = ToBoxes[hg["Edges"], form],
-    tooltip = ToBoxes[hg["Symmetry"]]
+	edgeBoxes = ToBoxes[#["Edges"], form],
+    tooltip = ToBoxes[#["Symmetry"]]
 },
-	InterpretationBox[edgeBoxes, hg, Tooltip -> tooltip]
-]
+	InterpretationBox[edgeBoxes, #, Tooltip -> tooltip]
+] & @ hg
 
 
 (* mimicking Graph and Tree behaviour *)
@@ -28,7 +30,7 @@ hypergraphBox[(head : GraphicsBox | Graphics3DBox)[box_, opts___], hg_] := head[
 	opts
 ]
 
-hypergraphBox[box_, hg_] := ToBoxes[hg, TraditionalForm]
+hypergraphBox[_, hg_] := ToBoxes[hg, TraditionalForm]
 
 
 PossibleHypergraphBoxQ[HoldPattern[(GraphicsBox | Graphics3DBox)[NamespaceBox["Hypergraph", _, ___], ___]]] := True

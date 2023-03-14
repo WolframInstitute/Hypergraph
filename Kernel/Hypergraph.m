@@ -57,7 +57,7 @@ Hyperedges /: MakeBoxes[hg : Hyperedges[args___] /; HyperedgesQ[Unevaluated[hg]]
 
 
 HypergraphQ[hg_Hypergraph] := System`Private`HoldValidQ[hg] ||
-	MatchQ[hg, Hypergraph[_List, _ ? HyperedgesQ, _Association, OptionsPattern[]]]
+	MatchQ[Unevaluated[hg], Hypergraph[_List, _ ? HyperedgesQ, _Association, OptionsPattern[]]]
 
 HypergraphQ[___] := False
 
