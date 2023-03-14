@@ -64,13 +64,12 @@ HypergraphDraw[initHg : _Hypergraph ? HypergraphQ : Hypergraph[], opts : Options
             update[],
 
             i == 2 && (vertexMode || CurrentValue["AltKey"]) && ! MissingQ[vertexId],
-            tmpEdge = {};
-            addAction["VertexDelete"[vertexId -> vertices[vertexId], vertexStyles[vertexId], edges]];
-            update[],
+            addAction["ResetSelect"[tmpEdge]];
+            tmpEdge = DeleteCases[tmpEdge, vertexId -> _];
+            addAction["VertexDelete"[vertexId -> vertices[vertexId], vertexStyles[vertexId], edges]],
 
             i == 2 && (! vertexMode || CurrentValue["AltKey"]) && ! MissingQ[edgeId],
-            addAction["EdgeDelete"[edgeId, edges[[edgeId]], edgeStyles[[edgeId]]]];
-            update[]
+            addAction["EdgeDelete"[edgeId, edges[[edgeId]], edgeStyles[[edgeId]]]]
 		];
 	);
 	move[] := (
@@ -112,7 +111,7 @@ HypergraphDraw[initHg : _Hypergraph ? HypergraphQ : Hypergraph[], opts : Options
             "VertexDelete"[vertexId_ -> _, _, newEdges_] :> (
                 vertices = Delete[vertices, Key[vertexId]];
                 vertexStyles = Delete[vertexStyles, Key[vertexId]];
-                edges = newEdges
+                edges = Map[DeleteCases[#, vertexId] &, newEdges]
             ),
             "EdgeDelete"[edgeId_, __] :> (edges = Delete[edges, edgeId]; edgeStyles = Delete[edgeStyles, edgeId]),
             "VertexSelect"[vertex_] :> AppendTo[tmpEdge, vertex],
@@ -135,9 +134,9 @@ HypergraphDraw[initHg : _Hypergraph ? HypergraphQ : Hypergraph[], opts : Options
             "VertexDelete"[vertex : (vertexId_ -> _), style_, newEdges_] :> (
                 AppendTo[vertices, vertex];
                 AppendTo[vertexStyles, vertexId -> style];
-                edges = Map[DeleteCases[#, vertexId] &, newEdges]
+                edges = newEdges
             ),
-            "EdgeDelete"[edge_, style_] :> (AppendTo[edges, edge]; AppendTo[edgeStyles, style]),
+            "EdgeDelete"[_, edge_, style_] :> (AppendTo[edges, edge]; AppendTo[edgeStyles, style]),
             "VertexSelect"[_] :> (tmpEdge = Most[tmpEdge]),
             "ResetSelect"[oldTmpEdge_] :> (tmpEdge = oldTmpEdge),
             "VertexMove"[vertexId_, oldPos_, _] :> (vertices[vertexId] = oldPos),
