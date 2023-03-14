@@ -17,7 +17,7 @@ HypergraphDraw[initHg : _Hypergraph ? HypergraphQ : Hypergraph[], opts : Options
 	edge = {}, tmpEdge = {}, vertexId, edgeId = Missing[], oldVertices = <||>,
 	getVertex, down, move, up,
     do, undo, reset, update, addEdge,
-    vertexName,
+    vertexName, vertexRename,
     mousePosition,
 	color,
 	actions = {}, actionId = None, addAction,
@@ -122,13 +122,13 @@ HypergraphDraw[initHg : _Hypergraph ? HypergraphQ : Hypergraph[], opts : Options
             "ResetSelect"[_] :> (tmpEdge = {}),
             "VertexMove"[vertexId_, _, newPos_] :> (vertices[vertexId] = newPos),
             "EdgeMove"[edgeId_, _, newPos_] :> (MapThread[(vertices[#1] = #2) &, {edges[[edgeId]], newPos}]),
-            "VertexRename"[newVertexId_, oldTmpEdge_] :> (
+            "VertexRename"[newVertexId_, oldVertices_, _, _] :> (
                 addAction["ResetSelect"[ReplacePart[tmpEdge, {_, 1} -> newVertexId]], False];
-                If[ ! MissingQ[#],
-                    vertices = KeyMap[Replace[# -> newVertexId], vertices];
-                    vertexStyles = KeyMap[Replace[# -> newVertexId], vertexStyles];
-                    edges = Replace[edges, # -> newVertexId, {2}]
-                ] & /@ Keys[oldTmpEdge];
+                With[{repl = Alternatives @@ Keys[oldVertices] -> newVertexId},
+                    vertices = KeyMap[Replace[repl], ReverseSortBy[vertices, # === newVertexId &]];
+                    vertexStyles = KeyMap[Replace[repl], ReverseSortBy[vertexStyles, # === newVertexId &]];
+                    edges = Replace[edges, repl, {2}]
+                ];
             )
         }];
 		If[updateQ, update[]]
@@ -152,13 +152,10 @@ HypergraphDraw[initHg : _Hypergraph ? HypergraphQ : Hypergraph[], opts : Options
             "ResetSelect"[oldTmpEdge_] :> (tmpEdge = oldTmpEdge),
             "VertexMove"[vertexId_, oldPos_, _] :> (vertices[vertexId] = oldPos),
             "EdgeMove"[edgeId_, oldPos_, _] :> (MapThread[(vertices[#1] = #2) &, {edges[[edgeId]], oldPos}]),
-            "VertexRename"[newVertexId_, oldTmpEdge_] :> (
-                If[ ! MissingQ[#],
-                    vertices = KeyMap[Replace[newVertexId -> #], vertices];
-                    vertexStyles = KeyMap[Replace[newVertexId -> #], vertexStyles];
-                    edges = Replace[edges, newVertexId -> #, {2}];
-                ] & /@ Keys[oldTmpEdge];
-                tmpEdge = oldTmpEdge;
+            "VertexRename"[newVertexId_, oldVertices_, oldVertexStyles_, oldEdges_] :> (
+                vertices = <|Delete[vertices, Key[newVertexId]], oldVertices|>;
+                vertexStyles = <|Delete[vertexStyles, Key[newVertexId]], oldVertexStyles|>;
+                edges = oldEdges
             )
         }];
         actionId -= 1;
@@ -168,23 +165,27 @@ HypergraphDraw[initHg : _Hypergraph ? HypergraphQ : Hypergraph[], opts : Options
         If[ multiSelect && (! edgeSelect || vertexSelect || MissingQ[vertexId]) && ! vertexMove && ! edgeMove,
             addAction["VertexSelect"[vertexId -> mousePosition[]]];
         ];
+        If[ vertexSelect,
+            If[ CurrentValue["ShiftKey"] && vertexStyles[vertexId] =!= color,
+                addAction["VertexRecolor"[vertexId, vertexStyles[vertexId], color]]
+            ]
+        ];
         If[ vertexMove,
             If[ startMousePos =!= mousePos,
                 addAction["VertexMove"[vertexId, startMousePos, mousePos]]
             ];
-            If[ CurrentValue["ShiftKey"] && vertexStyles[vertexId] =!= color,
-                addAction["VertexRecolor"[vertexId, vertexStyles[vertexId], color]]
-            ];
             vertexId = Missing[];
+        ];
+        If[ edgeSelect,
+            If[ CurrentValue["ShiftKey"] && edgeStyles[[edgeId]] =!= color,
+                addAction["EdgeRecolor"[edgeId, edgeStyles[[edgeId]], color]]
+            ];
         ];
         If[ edgeMove,
             With[{oldPos = Lookup[oldVertices, edges[[edgeId]]], newPos = Lookup[vertices, edges[[edgeId]]]},
                 If[ oldPos =!= newPos,
                     addAction["EdgeMove"[edgeId, oldPos, newPos]]
                 ]
-            ];
-            If[ CurrentValue["ShiftKey"] && edgeStyles[[edgeId]] =!= color,
-                addAction["EdgeRecolor"[edgeId, edgeStyles[[edgeId]], color]]
             ];
             edgeId = Missing[];
         ];
@@ -208,6 +209,9 @@ HypergraphDraw[initHg : _Hypergraph ? HypergraphQ : Hypergraph[], opts : Options
 		update[]
 	);
     vertexName[] := Max[0, Select[Keys[vertices], IntegerQ]] + 1;
+    vertexRename[] := With[{keys = Key /@ Intersection[Keys[vertices], Append[Keys[tmpEdge], vertexLabel]]},
+        addAction["VertexRename"[vertexLabel, vertices[[keys]], vertexStyles[[keys]], edges]]
+    ];
     addVertices[] := With[{
         newEdge = KeyValueMap[
             If[ MissingQ[#[[1]]],
@@ -311,7 +315,7 @@ HypergraphDraw[initHg : _Hypergraph ? HypergraphQ : Hypergraph[], opts : Options
 				"MouseDragged" :> move[],
 				"MouseMoved" :> move[],
 				"MouseUp" :> up[],
-                "MouseEntered" :> (SelectionMove[EvaluationBox[], All, CellContents]; graphicsSelectedQ = True),
+                "MouseEntered" :> (graphicsSelectedQ = True),
                 "MouseExited" :> (graphicsSelectedQ = False)
             },
             PassEventsDown -> False,
@@ -322,8 +326,8 @@ HypergraphDraw[initHg : _Hypergraph ? HypergraphQ : Hypergraph[], opts : Options
         Button["Redo (d)", do[], ImageSize -> Scaled[.15]],
         Button["Reset (r)", reset[], ImageSize -> Scaled[.15]],
         Row[{"Vertex: ",
-            InputField[Dynamic[vertexLabel, (vertexLabel = #; addAction["VertexRename"[vertexLabel, tmpEdge]]) &], FieldSize -> 10],
-            Button["Rename", addAction["VertexRename"[vertexLabel, tmpEdge]]]
+            InputField[Dynamic[vertexLabel, (vertexLabel = #; vertexRename[]) &], FieldSize -> 10],
+            Button["Rename", vertexRename[]]
         }],
 		Dynamic @ ClickToCopy[Column[{"Click to copy Hypergraph:", TraditionalForm[hg]}, Alignment -> Center], hg],
 		Row[{"Edge arrows", Checkbox[Dynamic[edgeArrowsQ, (edgeArrowsQ = #; update[]) &]]}],
