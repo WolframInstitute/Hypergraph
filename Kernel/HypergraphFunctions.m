@@ -27,11 +27,13 @@ VertexDegree[hg_Hypergraph ? HypergraphQ] ^:= Values[Length /@ HypergraphInciden
 VertexDegree[hg_Hypergraph ? HypergraphQ, vertex_] ^:= If[ListQ[vertex], Map[Length], Length] @ Lookup[HypergraphIncidence[hg], vertex]
 
 
-CanonicalHypergraph[hg_ ? HypergraphQ] := Block[{vs = hg["VertexList"], edges = hg["EdgeList"], newVertices, newEdges, iso, perm},
+CanonicalHypergraph[hg_ ? HypergraphQ] := Block[{vs = hg["VertexList"], edges = hg["EdgeList"], newVertices, emptyEdges, newEdges, iso, perm},
+    emptyEdges = Cases[edges, {}];
+    edges = DeleteCases[edges, {}];
     {perm, iso} = ResourceFunction["FindCanonicalHypergraphIsomorphism"][edges, "IncludePermutation" -> True];
     newEdges = Permute[edges /. iso, perm];
     newVertices = Union[Values[iso], Max[iso] + Range[Length @ DeleteElements[vs, Keys[iso]]]];
-    Hypergraph[newVertices, newEdges, hg["Options"]]
+    Hypergraph[newVertices, Join[emptyEdges, newEdges], hg["Options"]]
 ]
 
 
