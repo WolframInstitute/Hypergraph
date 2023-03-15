@@ -13,7 +13,7 @@ HypergraphDraw[initHg : _Hypergraph ? HypergraphQ : Hypergraph[], opts : Options
 	edgeStart = False, edgeUp = False, edgeNext = False, edgeFinish = False,
     vertexSelect = False, edgeSelect = False, vertexMove = False, edgeMove = False,
     multiSelect = True, vertexMode = False,
-    vertexLabel = Null,
+    vertexLabel = Null, edgeLabel = Null,
 	edge = {}, tmpEdge = {}, vertexId, edgeId = Missing[], oldVertices = <||>,
 	getVertex, down, move, up,
     do, undo, reset, update, addEdge,
@@ -45,6 +45,8 @@ HypergraphDraw[initHg : _Hypergraph ? HypergraphQ : Hypergraph[], opts : Options
         startMousePos = mousePosition[];
         edgeId = First[MapIndexed[If[RegionMember[#, startMousePos], #2[[1]], Nothing] &, edgeRegions], Missing[]];
         vertexId = getVertex[startMousePos];
+        If[! MissingQ[vertexId], vertexLabel = vertexId];
+        If[! MissingQ[edgeId], edgeLabel = edges[[edgeId]]];
 		Which[
 
             i == 1 && edgeUp,
@@ -326,9 +328,10 @@ HypergraphDraw[initHg : _Hypergraph ? HypergraphQ : Hypergraph[], opts : Options
         Button["Redo (d)", do[], ImageSize -> Scaled[.15]],
         Button["Reset (r)", reset[], ImageSize -> Scaled[.15]],
         Row[{"Vertex: ",
-            InputField[Dynamic[vertexLabel, (vertexLabel = #; vertexRename[]) &], FieldSize -> 10],
+            InputField[Dynamic[vertexLabel, (vertexLabel = #; vertexRename[]) &], FieldSize -> 10, ReturnEntersInput -> False],
             Button["Rename", vertexRename[]]
         }],
+        Row[{"Edge: ", InputField[Dynamic[edgeLabel], FieldSize -> 10, Enabled -> False]}],
 		Dynamic @ ClickToCopy[Column[{"Click to copy Hypergraph:", TraditionalForm[hg]}, Alignment -> Center], hg],
 		Row[{"Edge arrows", Checkbox[Dynamic[edgeArrowsQ, (edgeArrowsQ = #; update[]) &]]}],
 		ColorSlider[Dynamic @ color],
@@ -374,7 +377,8 @@ Press \[ReturnKey] or 'e' to create an edge
         Editable -> False,
         ContextMenu -> {},
         GeneratedCell -> True
-    ]
+    ],
+    SaveDefinitions -> True
 ]
 
 HypergraphDraw[arg___, opts : OptionsPattern[]] := HypergraphDraw[Hypergraph[arg], opts]
