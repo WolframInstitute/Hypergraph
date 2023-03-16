@@ -7,7 +7,7 @@ PacletObject[
     "Creator" -> "Nikolay Murzin",
     "License" -> "MIT",
     "PublisherID" -> "WolframInstitute",
-    "Version" -> "1.0.0",
+    "Version" -> "1.0.1",
     "WolframVersion" -> "13.2+",
     "Extensions" -> {
       {
@@ -23,11 +23,25 @@ PacletObject[
         "Symbols" -> {
           "WolframInstitute`Hypergraph`AdjacencyHypergraph",
           "WolframInstitute`Hypergraph`AdjacencyTensor",
+          "WolframInstitute`Hypergraph`CanonicalHypergraph",
+          "WolframInstitute`Hypergraph`EnumerateHypergraphRules",
+          "WolframInstitute`Hypergraph`EnumerateHypergraphs",
+          "WolframInstitute`Hypergraph`HighlightRule",
+          "WolframInstitute`Hypergraph`Hypergraph",
+          "WolframInstitute`Hypergraph`Hypergraph3D",
           "WolframInstitute`Hypergraph`HypergraphDraw",
+          "WolframInstitute`Hypergraph`HypergraphEmbedding",
           "WolframInstitute`Hypergraph`HypergraphIncidenceMatrix",
+          "WolframInstitute`Hypergraph`HypergraphRule",
+          "WolframInstitute`Hypergraph`HypergraphTransitionMatrix",
           "WolframInstitute`Hypergraph`HyperMatrix",
           "WolframInstitute`Hypergraph`HyperMatrixGraph",
-          "WolframInstitute`Hypergraph`IncidenceHypergraph"
+          "WolframInstitute`Hypergraph`IncidenceHypergraph",
+          "WolframInstitute`Hypergraph`IsomorphicHypergraphsQ",
+          "WolframInstitute`Hypergraph`RandomHypergraph",
+          "WolframInstitute`Hypergraph`RandomHypergraphRule",
+          "WolframInstitute`Hypergraph`SimpleHypergraphPlot",
+          "WolframInstitute`Hypergraph`SimpleHypergraphPlot3D"
         }
       },
       {
