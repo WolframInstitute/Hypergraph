@@ -354,7 +354,8 @@ Press \[ReturnKey] or 'e' to create an edge
 
 "] @@ If[vertexMode, Identity, Reverse] @ {"a vertex", "an edge"}, ImageSize -> Scaled[.4], Alignment -> Center]}, Alignment -> Center]
 	},
-	    Alignment -> Top
+	    Alignment -> Top,
+        ImageSize -> 1280
 	];
     CellPrint @ Cell[BoxData @ ToBoxes @ grid, "Output",
         CellEventActions -> {
