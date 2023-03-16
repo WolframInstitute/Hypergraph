@@ -53,7 +53,7 @@ PatternRuleToMultiReplaceRule[rule : _[lhs_List | Verbatim[HoldPattern][lhs_List
     vertices = VertexList[hg], edges = EdgeList[hg],
     inputVertices = VertexList[input], ouputVertices = VertexList[output],
     inputEdges = EdgeList[input], outputEdges = EdgeList[output],
-    edgeStyles, embedding,
+    vertexStyles, edgeStyles, embedding,
     matches,
     lhsVertices, inputFreeVertices, newVertices, deleteVertices, newVertexMap
 },
@@ -68,6 +68,14 @@ PatternRuleToMultiReplaceRule[rule : _[lhs_List | Verbatim[HoldPattern][lhs_List
     newVertices = Complement[ouputVertices, inputVertices];
     deleteVertices = Complement[inputVertices, ouputVertices];
     newVertexMap = Block[{$ModuleNumber = 1}, # -> Unique["\[FormalX]"] & /@ newVertices];
+
+    vertexStyles = Thread[vertices ->
+        Replace[
+            vertices,
+            Replace[Flatten[{OptionValue[SimpleHypergraphPlot, hg["Options"], VertexStyle]}], {Automatic -> Nothing, s : Except[_Rule] :> _ -> s}, {1}],
+            {1}
+        ]
+    ];
 
     edgeStyles = Thread[edges ->
         Replace[
@@ -101,9 +109,10 @@ PatternRuleToMultiReplaceRule[rule : _[lhs_List | Verbatim[HoldPattern][lhs_List
                         Splice @ newEdges,
                         Min[pos]
                     ],
-                    EdgeStyle -> edgeStyles,
+                    VertexStyle -> DeleteCases[vertexStyles, Alternatives @@ deleteOrigVertices -> _],
+                    EdgeStyle -> DeleteCases[edgeStyles, Alternatives @@ matcheEdges -> _],
                     VertexCoordinates -> embedding,
-                    hg["Options"]
+                    FilterRules[hg["Options"], Except[EdgeStyle | VertexStyle | VertexCoordinates]]
                 ],
                 "MatchVertices" -> Join[#, matchVertices],
                 "MatchEdges" -> matchEdges,
@@ -121,7 +130,7 @@ $HypergraphRulePlotOptions = {
     VertexLabels -> Automatic,
     Frame -> True,
     FrameTicks -> None,
-    PlotRangePadding -> .5,
+    PlotRangePadding -> .1,
     ImagePadding -> 3,
     AspectRatio -> 1,
     ImageSize -> Tiny
