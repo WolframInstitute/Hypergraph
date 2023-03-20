@@ -117,7 +117,9 @@ PatternRuleToMultiReplaceRule[rule : _[lhs_List | Verbatim[HoldPattern][lhs_List
                 "MatchVertices" -> Join[#, matchVertices],
                 "MatchEdges" -> matchEdges,
                 "NewVertices" -> Values[newVertexMap],
-                "NewEdges" -> newEdges
+                "NewEdges" -> newEdges,
+                "DeletedVertices" -> deleteOrigVertices,
+                "RuleVertexMap" -> origVertexMap
             |>
         ] & /@ Catenate[Permutations /@ Subsets[Complement[vertices, matchVertices], {Length[inputFreeVertices]}]]
     ],
