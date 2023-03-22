@@ -43,7 +43,7 @@ HypergraphDraw[initHg : _Hypergraph ? HypergraphQ : Hypergraph[], opts : Options
     );
 	down[i_] := (
         startMousePos = mousePosition[];
-        edgeId = First[MapIndexed[If[RegionMember[#, startMousePos], #2[[1]], Nothing] &, edgeRegions], Missing[]];
+        edgeId = First[MapIndexed[If[RegionDistance[#, startMousePos] < 0.01, #2[[1]], Nothing] &, edgeRegions], Missing[]];
         vertexId = getVertex[startMousePos];
         If[! MissingQ[vertexId], vertexLabel = vertexId];
         If[! MissingQ[edgeId], edgeLabel = edges[[edgeId]]];
@@ -174,7 +174,7 @@ HypergraphDraw[initHg : _Hypergraph ? HypergraphQ : Hypergraph[], opts : Options
 		If[updateQ, update[]]
 	);
 	up[] := (
-        If[ multiSelect && (! edgeSelect || vertexSelect || MissingQ[vertexId]) && ! vertexMove && ! edgeMove,
+        If[ multiSelect && (! edgeSelect || vertexSelect || MissingQ[vertexId]) && ! vertexMove && ! edgeMove && ! CurrentValue["ShiftKey"],
             addAction["VertexSelect"[vertexId -> mousePosition[]]];
         ];
         If[ vertexSelect,
@@ -256,9 +256,7 @@ HypergraphDraw[initHg : _Hypergraph ? HypergraphQ : Hypergraph[], opts : Options
 		];
         Block[{positions},
             {edgeRegions, positions} = First[#, {}] & /@ Reap[plot = SimpleHypergraphPlot[hg], {"Primitive", "Position"}][[2]];
-            edgeRegions = edgeRegions[[Ordering[positions]]];
-            edgeRegions = If[MatchQ[#, _Line | _BSplineCurve], RegionDilation[#, 0.02] &, Identity] @
-                DiscretizeGraphics[Replace[#, Circle[p_, r_] :> Annulus[p, {0.75 r, 1.25 r}]]] & /@ edgeRegions
+            edgeRegions = DiscretizeGraphics /@ edgeRegions[[Ordering[positions]]]
         ];
         SelectionMove[EvaluationBox[], All, CellContents];
         graphicsSelectedQ = True
