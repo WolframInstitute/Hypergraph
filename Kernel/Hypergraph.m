@@ -22,6 +22,8 @@ Hyperedges[0] := Hyperedges[]
 Hyperedges[1] := Hyperedges[{}]
 
 
+(he : Hyperedges[edges___])["EdgeListTagged"] /; HyperedgesQ[Unevaluated[he]] := {edges}
+
 (he : Hyperedges[edges___])["EdgeList"] /; HyperedgesQ[Unevaluated[he]] := Replace[{edges}, (edge_ -> _) :> edge, {1}]
 
 (he : Hyperedges[edges___])["VertexList"] /; HyperedgesQ[Unevaluated[he]] := DeleteDuplicates @ Catenate @ he["EdgeList"]
@@ -93,7 +95,14 @@ hg : Hypergraph[vs_List, he_Hyperedges ? HyperedgesQ, symm : _ ? AssociationQ : 
 hg_Hypergraph[prop_String, args___] := HypergraphProp[hg, prop, args]
 
 
-Options[Hypergraph] := Join[{"LayoutDimension" -> 2}, Options[Graph]]
+Options[Hypergraph] := Join[{
+	 ColorFunction -> ColorData[97],
+	"LayoutDimension" -> 2,
+    "EdgeArrows" -> False,
+    "EdgeType" -> "Cyclic"
+},
+	Options[Graph]
+]
 
 Options[Hypergraph3D] := Options[Hypergraph]
 
@@ -114,6 +123,10 @@ HypergraphProp[Hypergraph[vertices_, __], "VertexList"] := vertices
 HypergraphProp[Hypergraph[_, edges_, __], "Edges"] := edges
 
 HypergraphProp[Hypergraph[_, _, symm_, ___], "Symmetry"] := <|symm, _ -> "Unordered"|>
+
+HypergraphProp[hg_, "EdgeListTagged"] := hg["Edges"]["EdgeListTagged"]
+
+HypergraphProp[hg_, "EdgeTags"] := Replace[hg["EdgeListTagged"], {(_ -> tag_) :> tag, _ -> None}, {1}]
 
 HypergraphProp[hg_, "EdgeList"] := hg["Edges"]["EdgeList"]
 

@@ -12,6 +12,8 @@ EdgeList[hg_Hypergraph ? HypergraphQ, patt_] ^:= Cases[hg["EdgeList"], patt]
 
 EdgeCount[hg_Hypergraph ? HypergraphQ] ^:= Length @ EdgeList[hg]
 
+EdgeTags[hg_Hypergraph ? HypergraphQ] ^:= hg["EdgeTags"]
+
 VertexList[hg_Hypergraph ? HypergraphQ] ^:= hg["VertexList"]
 
 VertexList[hg_Hypergraph ? HypergraphQ, patt_] ^:= Cases[hg["VertexList"], patt]
