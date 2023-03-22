@@ -8,13 +8,13 @@ Options[HypergraphDraw] := Join[{"InitialColor" -> Automatic}, Options[Hypergrap
 
 HypergraphDraw[initHg : _Hypergraph ? HypergraphQ : Hypergraph[], opts : OptionsPattern[]] := DynamicModule[{
 	hg,
-	vertices, edges,
+	vertices, edges, nullEdges,
     vertexStyles, edgeStyles,
 	edgeStart = False, edgeUp = False, edgeNext = False, edgeFinish = False,
     vertexSelect = False, edgeSelect = False, vertexMove = False, edgeMove = False,
     multiSelect = True, vertexMode = False,
     vertexLabel = Null, edgeLabel = Null,
-	edge = {}, tmpEdge = {}, vertexId, edgeId = Missing[], oldVertices = <||>,
+	edge = {}, tmpEdge = {}, vertexId, edgeId = Missing[], oldVertices = <||>, oldNullEdges = <||>,
 	getVertex, down, move, up,
     do, undo, reset, update, addEdge,
     vertexName, vertexRename,
@@ -22,7 +22,7 @@ HypergraphDraw[initHg : _Hypergraph ? HypergraphQ : Hypergraph[], opts : Options
 	color,
 	actions = {}, actionId = None, addAction,
     mousePos, startMousePos,
-    plot, grid,
+    initPlot = SimpleHypergraphPlot[initHg], plot, grid,
     edgeRegions,
     edgeArrowsQ = False,
     graphicsSelectedQ = True
@@ -61,11 +61,13 @@ HypergraphDraw[initHg : _Hypergraph ? HypergraphQ : Hypergraph[], opts : Options
             i == 1 && (vertexMode || CurrentValue["AltKey"]) && ! MissingQ[vertexId],
             vertexSelect = True;
             oldVertices = vertices;
+            oldNullEdges = nullEdges;
             update[],
 
             i == 1 && (! vertexMode || CurrentValue["AltKey"]) && ! MissingQ[edgeId] && MissingQ[vertexId],
             edgeSelect = True;
             oldVertices = vertices;
+            oldNullEdges = nullEdges;
             update[],
 
             i == 2 && (vertexMode || CurrentValue["AltKey"]) && ! MissingQ[vertexId],
@@ -102,6 +104,9 @@ HypergraphDraw[initHg : _Hypergraph ? HypergraphQ : Hypergraph[], opts : Options
         If[ edgeMove,
             With[{diff = mousePosition[] - startMousePos},
                 vertices = MapAt[# + diff &, oldVertices, {Key[#]} & /@ edges[[edgeId]]];
+                If[ edges[[edgeId]] === {},
+                    nullEdges = MapAt[# + diff &, oldNullEdges, Key[\[FormalN][Count[edges[[;; edgeId]], {}]]]];
+                ];
                 update[]
             ]
         ];
@@ -110,7 +115,10 @@ HypergraphDraw[initHg : _Hypergraph ? HypergraphQ : Hypergraph[], opts : Options
         If[actionId === None || actionId >= Length[actions], Return[]];
         actionId += 1;
 		Replace[actions[[actionId]], {
-			"EdgeAdd"[edge_, edgeStyle_] :> (AppendTo[edges, edge]; AppendTo[edgeStyles, edgeStyle]),
+			"EdgeAdd"[edge_, edgeStyle_] :> (
+                AppendTo[edges, edge]; AppendTo[edgeStyles, edgeStyle];
+                If[edge === {}, AppendTo[nullEdges, \[FormalN][Length[nullEdges] + 1] -> mousePos]]
+            ),
 			"VertexAdd"[vertex_Rule, vertexStyle_] :> (AppendTo[vertices, vertex]; AppendTo[vertexStyles, vertexStyle]),
             "VertexRecolor"[vertexId_, _, newStyle_] :> (vertexStyles[vertexId] = newStyle),
             "EdgeRecolor"[edgeId_, _, newStyle_] :> (edgeStyles[[edgeId]] = newStyle),
@@ -138,8 +146,10 @@ HypergraphDraw[initHg : _Hypergraph ? HypergraphQ : Hypergraph[], opts : Options
 	undo[updateQ_ : True] := (
         If[actionId === None || actionId <= 0, Return[]];
 		Replace[actions[[actionId]], {
-			"EdgeAdd"[__] :>
-			    If[Length[edges] > 0, edges = Most[edges]; edgeStyles = Most[edgeStyles]],
+			"EdgeAdd"[__] :> (
+                If[Last[edges] === {}, nullEdges = Most[nullEdges]];
+			    If[Length[edges] > 0, edges = Most[edges]; edgeStyles = Most[edgeStyles]]
+            ),
 			"VertexAdd"[__] :>
 			    If[Length[vertices] > 0, vertices = Most[vertices]; vertexStyles = Most[vertexStyles]],
             "VertexRecolor"[vertexId_, oldStyle_, _] :> (vertexStyles[vertexId] = oldStyle),
@@ -239,7 +249,7 @@ HypergraphDraw[initHg : _Hypergraph ? HypergraphQ : Hypergraph[], opts : Options
             "EdgeArrows" -> edgeArrowsQ,
 			VertexStyle -> Normal[vertexStyles],
 			EdgeStyle -> Thread[edges -> edgeStyles],
-			VertexCoordinates -> Normal[vertices],
+			VertexCoordinates -> Normal[Join[vertices, nullEdges]],
             FilterRules[{opts}, Options[Hypergraph]],
             initHg["Options"],
 			VertexLabels -> Automatic
@@ -247,7 +257,8 @@ HypergraphDraw[initHg : _Hypergraph ? HypergraphQ : Hypergraph[], opts : Options
         Block[{positions},
             {edgeRegions, positions} = First[#, {}] & /@ Reap[plot = SimpleHypergraphPlot[hg], {"Primitive", "Position"}][[2]];
             edgeRegions = edgeRegions[[Ordering[positions]]];
-            edgeRegions = If[MatchQ[#, _Line | _BSplineCurve], RegionDilation[#, 0.02] &, Identity] @ DiscretizeGraphics[#] & /@ edgeRegions
+            edgeRegions = If[MatchQ[#, _Line | _BSplineCurve], RegionDilation[#, 0.02] &, Identity] @
+                DiscretizeGraphics[Replace[#, Circle[p_, r_] :> Annulus[p, {0.75 r, 1.25 r}]]] & /@ edgeRegions
         ];
         SelectionMove[EvaluationBox[], All, CellContents];
         graphicsSelectedQ = True
@@ -271,9 +282,13 @@ HypergraphDraw[initHg : _Hypergraph ? HypergraphQ : Hypergraph[], opts : Options
         actionId = None;
 
         If[ Not[VertexCount[initHg] == Length[vertices] == Length[vertexStyles] && EdgeCount[initHg] == Length[edges] == Length[edgeStyles]],
-            vertices = AssociationThread[
-                VertexList[initHg],
-                If[# === {}, {}, RescalingTransform[If[#2 - #1 == 0, {#1, #1 + 1}, {##}] & @@@ CoordinateBounds[#], {{.1, .9}, {.1, .9}}][#]] & @ HypergraphEmbedding[initHg][[All, ;; 2]]
+            Block[{scaledCoordinates = If[# === {}, {}, RescalingTransform[If[#2 - #1 == 0, {#1, #1 + 1}, {##}] & @@@ CoordinateBounds[#], {{.1, .9}, {.1, .9}}][#]] & @
+                    Join[Cases[initPlot, Point[p_] :> p, Infinity], Cases[initPlot, Circle[p_, ___] :> p, Infinity]],
+                scaledVertexCoordinates, nullEdgeCoordinates
+            },
+                {scaledVertexCoordinates, nullEdgeCoordinates} = TakeDrop[scaledCoordinates, VertexCount[initHg]];
+                vertices = AssociationThread[VertexList[initHg], scaledVertexCoordinates];
+                nullEdges = AssociationThread[\[FormalN] /@ Range[Count[edges, {}]], nullEdgeCoordinates];
             ];
             vertexStyles = AssociationThread[Keys[vertices], color];
             edgeStyles = PadRight[edgeStyles, Length[edges], color];

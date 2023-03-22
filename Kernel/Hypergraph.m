@@ -24,7 +24,7 @@ Hyperedges[1] := Hyperedges[{}]
 
 (he : Hyperedges[edges___])["EdgeListTagged"] /; HyperedgesQ[Unevaluated[he]] := {edges}
 
-(he : Hyperedges[edges___])["EdgeList"] /; HyperedgesQ[Unevaluated[he]] := Replace[{edges}, (edge_ -> _) :> edge, {1}]
+(he : Hyperedges[edges___])["EdgeList"] /; HyperedgesQ[Unevaluated[he]] := Replace[{edges}, (edge_ -> _) :> Developer`ToList[edge], {1}]
 
 (he : Hyperedges[edges___])["VertexList"] /; HyperedgesQ[Unevaluated[he]] := DeleteDuplicates @ Catenate @ he["EdgeList"]
 
@@ -67,9 +67,9 @@ HypergraphQ[___] := False
 
 (* Constructors *)
 
-Hypergraph[vs_List, edgeSpec : {___List}, symm_Association : <||>, opts : OptionsPattern[]] := Hypergraph[vs, Hyperedges @@ edgeSpec, symm, opts]
+Hypergraph[vs_List, edgeSpec : {(_List | _Rule) ...}, symm_Association : <||>, opts : OptionsPattern[]] := Hypergraph[vs, Hyperedges @@ edgeSpec, symm, opts]
 
-Hypergraph[edgeSpec : {___List}, symm_Association : <||>, opts : OptionsPattern[]] := Hypergraph[Hyperedges @@ edgeSpec, symm, opts]
+Hypergraph[edgeSpec : {(_List | _Rule) ...}, symm_Association : <||>, opts : OptionsPattern[]] := Hypergraph[Hyperedges @@ edgeSpec, symm, opts]
 
 Hypergraph[] := Hypergraph[0]
 
@@ -106,11 +106,11 @@ Options[Hypergraph] := Join[{
 
 Options[Hypergraph3D] := Options[Hypergraph]
 
-Hypergraph3D[args___, opts : OptionsPattern[]] := Hypergraph[args, FilterRules[{"LayoutDimension" -> 3, opts}, Options[Hypergraph]]]
+Hypergraph3D[args___, opts : OptionsPattern[]] := Hypergraph[args, Sequence @@ FilterRules[{"LayoutDimension" -> 3, opts}, Options[Hypergraph]]]
 
 Hypergraph3D[hg_Hypergraph, opts : OptionsPattern[]] := Hypergraph3D[hg["VertexList"], hg["EdgeList"], opts,
 	"LayoutDimension" -> 3,
-	VertexCoordinates -> Replace[OptionValue[Hypergraph, hg["Options"], VertexCoordinates], rules : {___Rule} :> Replace[rules, {(v_ -> c_) :> v -> Append[c, 0], c_ :> Append[c, 0]}, {1}]],
+	VertexCoordinates -> Replace[OptionValue[Hypergraph, hg["Options"], VertexCoordinates], rules : {___Rule} :> Replace[rules, {(v_ -> c_) :> v -> Append[c, Automatic], c_ :> Append[c, Automatic]}, {1}]],
 	FilterRules[hg["Options"], Except["LayoutDimension" | VertexCoordinates]]
 ]
 

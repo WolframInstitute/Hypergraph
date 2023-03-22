@@ -6,28 +6,6 @@ PackageExport["HypergraphEmbedding"]
 
 
 
-makeEdge[edge_, tag_, edgeLabels_, edgeLabelStyle_, primitive_, defaultPos_] := Block[{
-    pos = Replace[RegionCentroid[If[RegionQ[primitive], Identity, DiscretizeGraphics] @ primitive], {} -> defaultPos],
-    edgeTagged, label, style
-},
-    edgeTagged = If[tag === None, edge, edge -> tag];
-    label = Replace[edgeTagged, edgeLabels];
-    style = Replace[edgeTagged, edgeLabelStyle];
-    {
-        Replace[edgeTagged, Append[edgeStyle, _ -> Directive[colorFunction[i], EdgeForm[Transparent]]]],
-        primitive /. _EmptyRegion -> Nothing,
-        Replace[label, {
-            None -> Nothing,
-            Automatic | "Name" :> {style, Text[edge, pos]},
-            "EdgeTag" :> {style, Text[tag, pos]},
-            Placed[Automatic | "Name", offset_] :> {style, Text[edge, pos, offset]},
-            Placed["EdgeTag", offset_] :> {style, Text[tag, pos, offset]},
-            Placed[placedLabel_, offset_] :> {style, Text[placedLabel, pos, offset]},
-            _ :> {style, Text[label, pos]}
-        }]
-    }
-]
-
 makeVertexLabel[vertex_, label_, style_, pos_] := Replace[label, {
     None -> Nothing,
     Automatic | "Name" :> {style, Text[vertex, pos, {1, 1}]},
@@ -45,14 +23,15 @@ SimpleHypergraphPlot[h_Hypergraph, plotOpts : OptionsPattern[]] := Enclose @ Blo
     graph,
     vertexEmbedding, edgeEmbedding,
     vs = h["VertexList"], es = h["EdgeList"], edgeTags = h["EdgeTags"],
-    longEdges, ws,
+    nullEdges, longEdges, ws,
     colorFunction, edgeArrowsQ, edgeType,
     vertexStyle,vertexLabels, vertexLabelStyle,
     edgeStyle, edgeLabels, edgeLabelStyle,
     vertexCoordinates,
     bounds, corner, size, dim,
     opts = FilterRules[{plotOpts, h["Options"]}, Options[SimpleHypergraphPlot]],
-    edgeIndex
+    edgeIndex,
+    makeEdge
 },
     edgeIndex = PositionIndex[es];
     colorFunction = OptionValue[SimpleHypergraphPlot, opts, ColorFunction];
@@ -66,8 +45,9 @@ SimpleHypergraphPlot[h_Hypergraph, plotOpts : OptionsPattern[]] := Enclose @ Blo
     edgeType = OptionValue[SimpleHypergraphPlot, opts, "EdgeType"];
     dim = ConfirmMatch[OptionValue[SimpleHypergraphPlot, opts, "LayoutDimension"], 2 | 3];
 
+    nullEdges = \[FormalN] /@ Range[Count[es, {}]];
     longEdges = Cases[es, {_, _, __}];
-    ws = Join[vs, \[FormalE] /@ Range[Length[longEdges]]];
+    ws = Join[vs, nullEdges, \[FormalE] /@ Range[Length[longEdges]]];
 
     vertexCoordinates = OptionValue[SimpleHypergraphPlot, opts, VertexCoordinates];
     If[ MatchQ[vertexCoordinates, {___Rule}],
@@ -107,11 +87,41 @@ SimpleHypergraphPlot[h_Hypergraph, plotOpts : OptionsPattern[]] := Enclose @ Blo
         GraphLayout -> {"SpringEmbedding", "EdgeWeighted" -> True}
     ];
     {vertexEmbedding, edgeEmbedding} = First[#, {}] & /@ Reap[GraphPlot[graph], {"v", "e"}][[2]];
-	vertexEmbedding = Chop /@ Association[vertexEmbedding][[Key /@ vs]];
-    edgeEmbedding = Chop /@ Merge[edgeEmbedding, Identity];
+	edgeEmbedding = Chop /@ Join[Merge[edgeEmbedding, Identity], Association[vertexEmbedding][[Key /@ nullEdges]]];
+    vertexEmbedding = Chop /@ Association[vertexEmbedding][[Key /@ vs]];
     bounds = CoordinateBounds[Values[vertexEmbedding]];
     corner = bounds[[All, 1]];
     size = Max[1, #2 - #1 & @@@ bounds];
+
+    makeEdge[edge_, tag_, i_, j_, initPrimitive_] := Block[{
+        primitive,
+        pos = Replace[RegionCentroid[If[RegionQ[initPrimitive], Identity, DiscretizeGraphics] @ initPrimitive], {} -> corner],
+        edgeTagged, style, label, labelStyle, labelPrimitive
+    },
+        edgeTagged = If[tag === None, edge, edge -> tag];
+        style = ResourceFunction["LookupPart"][ReplaceList[edgeTagged, Append[edgeStyle, _ -> Directive[colorFunction[i], EdgeForm[Transparent]]]], j, {}];
+        label = ResourceFunction["LookupPart"][ReplaceList[edgeTagged, edgeLabels], j, None];
+        labelStyle = ResourceFunction["LookupPart"][ReplaceList[edgeTagged, edgeLabelStyle], j, {}];
+        labelPrimitive = Replace[label, {
+            None -> Nothing,
+            Automatic | "Name" :> Text[edge, pos],
+            "EdgeTag" :> Text[tag, pos],
+            Placed[Automatic | "Name", offset_] :> Text[edge, pos, offset],
+            Placed["EdgeTag", offset_] :> Text[tag, pos, offset],
+            Placed[placedLabel_, offset_] :> Text[placedLabel, pos, offset],
+            label_ :> Text[label, pos]
+        }];
+        primitive = initPrimitive /. _EmptyRegion -> {};
+        {
+            If[MatchQ[pos, {_, _, _}], EdgeForm[], Nothing],
+            style,
+            If[ MatchQ[label, Placed[_, Tooltip]],
+                Tooltip[primitive, Replace[labelPrimitive, Text[expr_, ___] :> Style[expr, labelStyle]]],
+                {primitive, labelStyle, labelPrimitive}
+            ]
+        }
+    ];
+
 	Switch[dim, 2, Graphics, 3, Graphics3D][{
 		Opacity[.5],
 		Arrowheads[{{Medium, .5}}],
@@ -126,15 +136,15 @@ SimpleHypergraphPlot[h_Hypergraph, plotOpts : OptionsPattern[]] := Enclose @ Blo
                 Switch[Length[emb],
                     0, Table[
                         Sow[position = edgeIndex[edge][[j]], "Position"];
-                        Sow[primitive = EmptyRegion[2], "Primitive"];
-                        makeEdge[edge, edgeTags[[ position ]], edgeLabels, edgeLabelStyle, primitive, corner],
+                        Sow[primitive = Switch[dim, 2, Circle, 3, Sphere][Lookup[edgeEmbedding, \[FormalN][j]], size 0.03], "Primitive"];
+                        makeEdge[edge, edgeTags[[ position ]], i, j, primitive],
                         {j, mult}
                     ],
                     1, Block[{r = size 0.03, dr = size 0.01},
                         Table[
                             Sow[position = edgeIndex[edge][[j]], "Position"];
                             Sow[primitive = Switch[dim, 2, Disk[First[emb], r += dr], 3, Sphere[First[emb], r += dr], _, Nothing], "Primitive"];
-                            makeEdge[edge, edgeTags[[ position ]], edgeLabels, edgeLabelStyle, primitive, corner],
+                            makeEdge[edge, edgeTags[[ position ]], i, j, primitive],
                             {j, mult}
                         ]
                     ],
@@ -142,7 +152,7 @@ SimpleHypergraphPlot[h_Hypergraph, plotOpts : OptionsPattern[]] := Enclose @ Blo
                         (
                             Sow[position = edgeIndex[edge][[#2[[1]]]], "Position"];
                             Sow[primitive = #1[[1]], "Primitive"];
-                            makeEdge[edge, edgeTags[[ position ]], edgeLabels, edgeLabelStyle, If[edgeArrowsQ, Arrow, Identity] @ primitive, corner]
+                            makeEdge[edge, edgeTags[[ position ]], i, #2[[1]], If[edgeArrowsQ, Arrow, Identity] @ primitive]
                         ) &,
                         GraphComputation`GraphElementData["Line"][#, None] /. BezierCurve -> BSplineCurve & /@ Lookup[edgeEmbedding, DirectedEdge @@ edge]
                     ],
@@ -171,7 +181,7 @@ SimpleHypergraphPlot[h_Hypergraph, plotOpts : OptionsPattern[]] := Enclose @ Blo
                                     ],
                                     Nothing
                                 ],
-                                makeEdge[edge, edgeTags[[ position ]], edgeLabels, edgeLabelStyle, primitive, corner]
+                                makeEdge[edge, edgeTags[[ position ]], i, j, primitive]
                             }],
                             {j, mult}
                         ]
@@ -198,5 +208,5 @@ SimpleHypergraphPlot[h_Hypergraph, plotOpts : OptionsPattern[]] := Enclose @ Blo
 SimpleHypergraphPlot3D[h_, opts___] := SimpleHypergraphPlot[h, "LayoutDimension" -> 3, opts]
 
 
-HypergraphEmbedding[hg_Hypergraph ? HypergraphQ] := Cases[SimpleHypergraphPlot[hg], Point[p_] :> p, Infinity]
+HypergraphEmbedding[hg_Hypergraph ? HypergraphQ] := Cases[SimpleHypergraphPlot[hg], Point[p_, ___] :> p, Infinity]
 
