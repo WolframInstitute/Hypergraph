@@ -131,7 +131,10 @@ HypergraphDraw[initHg : _Hypergraph ? HypergraphQ : Hypergraph[], opts : Options
             "VertexSelect"[vertex_] :> (AppendTo[tmpEdge, vertex]; If[! MissingQ[vertex[[1]]], vertexLabel = vertex[[1]]]),
             "ResetSelect"[_] :> (tmpEdge = {}),
             "VertexMove"[vertexId_, _, newPos_] :> (vertices[vertexId] = newPos),
-            "EdgeMove"[edgeId_, _, newPos_] :> (MapThread[(vertices[#1] = #2) &, {edges[[edgeId]], newPos}]),
+            "EdgeMove"[edgeId_, _, newPos_] :> If[edges[[edgeId]] === {},
+                nullEdges[\[FormalN][Count[edges[[;; edgeId]], {}]]] = newPos,
+                MapThread[(vertices[#1] = #2) &, {edges[[edgeId]], newPos}]
+            ],
             "VertexRename"[newVertexId_, oldVertices_, _, _] :> (
                 addAction["ResetSelect"[ReplacePart[tmpEdge, {_, 1} -> newVertexId]], False];
                 With[{repl = Alternatives @@ Keys[oldVertices] -> newVertexId},
@@ -163,7 +166,10 @@ HypergraphDraw[initHg : _Hypergraph ? HypergraphQ : Hypergraph[], opts : Options
             "VertexSelect"[_] :> (tmpEdge = Most[tmpEdge]),
             "ResetSelect"[oldTmpEdge_] :> (tmpEdge = oldTmpEdge),
             "VertexMove"[vertexId_, oldPos_, _] :> (vertices[vertexId] = oldPos),
-            "EdgeMove"[edgeId_, oldPos_, _] :> (MapThread[(vertices[#1] = #2) &, {edges[[edgeId]], oldPos}]),
+            "EdgeMove"[edgeId_, oldPos_, _] :> If[edges[[edgeId]] === {},
+                nullEdges[\[FormalN][Count[edges[[;; edgeId]], {}]]] = oldPos,
+                MapThread[(vertices[#1] = #2) &, {edges[[edgeId]], oldPos}]
+            ],
             "VertexRename"[newVertexId_, oldVertices_, oldVertexStyles_, oldEdges_] :> (
                 vertices = <|Delete[vertices, Key[newVertexId]], oldVertices|>;
                 vertexStyles = <|Delete[vertexStyles, Key[newVertexId]], oldVertexStyles|>;
@@ -194,9 +200,11 @@ HypergraphDraw[initHg : _Hypergraph ? HypergraphQ : Hypergraph[], opts : Options
             ];
         ];
         If[ edgeMove,
-            With[{oldPos = Lookup[oldVertices, edges[[edgeId]]], newPos = Lookup[vertices, edges[[edgeId]]]},
-                If[ oldPos =!= newPos,
-                    addAction["EdgeMove"[edgeId, oldPos, newPos]]
+            With[{key = If[edges[[edgeId]] === {}, \[FormalN][Count[edges[[;; edgeId]], {}]], edges[[edgeId]]]},
+                With[{oldPos = Lookup[Join[oldVertices, oldNullEdges], key], newPos = Lookup[Join[vertices, nullEdges], key]},
+                    If[ oldPos =!= newPos,
+                        addAction["EdgeMove"[edgeId, oldPos, newPos]]
+                    ]
                 ]
             ];
             edgeId = Missing[];
