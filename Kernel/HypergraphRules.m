@@ -72,7 +72,10 @@ PatternRuleToMultiReplaceRule[rule : _[lhs_List | Verbatim[HoldPattern][lhs_List
     vertexStyles = Thread[vertices ->
         Replace[
             vertices,
-            Replace[Flatten[{OptionValue[SimpleHypergraphPlot, hg["Options"], VertexStyle]}], {Automatic -> Nothing, s : Except[_Rule] :> _ -> s}, {1}],
+            Append[
+                Replace[Flatten[{OptionValue[SimpleHypergraphPlot, hg["Options"], VertexStyle]}], {Automatic -> Nothing, s : Except[_Rule] :> _ -> s}, {1}],
+                _ -> Black
+            ],
             {1}
         ]
     ];
