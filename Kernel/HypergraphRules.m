@@ -24,7 +24,7 @@ ToPatternRules[lhs : {___List}, rhs : {___List}] := Block[{vs = Union @@ lhs, ws
     Replace[lhs, Pattern[#, _] & /@ varSymbols, {2}] :> Module[##] & [Replace[newVars, varSymbols, {1}], Replace[rhs, varSymbols, {2}]]
 ]
 
-ToPatternRules[HypergraphRule[input_ ? HypergraphQ, output_ ? HypergraphQ]] := ToPatternRules[EdgeList[input], EdgeList[output]]
+ToPatternRules[HoldPattern[HypergraphRule[input_ ? HypergraphQ, output_ ? HypergraphQ]]] := ToPatternRules[EdgeList[input], EdgeList[output]]
 
 ToPatternRules[rules : {___HypergraphRule}] := ToPatternRules /@ rules
 
@@ -49,7 +49,7 @@ PatternRuleToMultiReplaceRule[rule : _[lhs_List | Verbatim[HoldPattern][lhs_List
 ]
 
 
-(rule : HypergraphRule[input_ ? HypergraphQ, output_ ? HypergraphQ])[hg_ ? HypergraphQ] := Block[{
+(rule : HoldPattern[HypergraphRule[input_ ? HypergraphQ, output_ ? HypergraphQ]])[hg_ ? HypergraphQ] /; HypergraphRuleQ[rule] := Block[{
     vertices = VertexList[hg], edges = EdgeList[hg],
     inputVertices = VertexList[input], ouputVertices = VertexList[output],
     inputEdges = EdgeList[input], outputEdges = EdgeList[output],
@@ -188,11 +188,11 @@ HypergraphRuleQ[___] := $Failed
 
 Options[HypergraphRule] := Options[Hypergraph]
 
-HypergraphRule[input_, _]["Input"] := input
+HoldPattern[HypergraphRule[input_, _]]["Input"] := input
 
-HypergraphRule[_, output_]["Output"] := output
+HoldPattern[HypergraphRule[_, output_]]["Output"] := output
 
-(hr : HypergraphRule[input_, output_, opts : OptionsPattern[]]) /; ! HypergraphRuleQ[Unevaluated[hr]] :=
+(hr : HoldPattern[HypergraphRule[input_, output_, opts : OptionsPattern[]]]) /; ! HypergraphRuleQ[Unevaluated[hr]] :=
     Enclose[
         System`Private`HoldSetValid @ HypergraphRule[##] & [
             ConfirmBy[Hypergraph[input, opts], HypergraphQ],
@@ -200,7 +200,7 @@ HypergraphRule[_, output_]["Output"] := output
         ]
     ]
 
-HypergraphRule /: MakeBoxes[hr : HypergraphRule[input_, output_] ? HypergraphRuleQ, form_] := With[{
+HypergraphRule /: MakeBoxes[hr : HoldPattern[HypergraphRule[input_, output_]] ? HypergraphRuleQ, form_] := With[{
     boxes = ToBoxes[
         GraphicsRow[{
             SimpleHypergraphPlot[input, $HypergraphRulePlotOptions],
