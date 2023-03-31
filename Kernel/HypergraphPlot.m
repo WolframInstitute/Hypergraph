@@ -38,8 +38,8 @@ SimpleHypergraphPlot[h_Hypergraph, plotOpts : OptionsPattern[]] := Enclose @ Blo
     vertexLabels = Append[Replace[Flatten[ReplaceList[VertexLabels, opts]], {Automatic -> _ -> "Name", s : Except[_Rule] :> _ -> s}, {1}], _ -> None];
     vertexStyle = Append[Replace[Flatten[ReplaceList[VertexStyle, opts]], {Automatic -> _ -> Black, s : Except[_Rule] :> _ -> s}, {1}], _ -> Black];
     vertexLabelStyle = Append[Replace[Flatten[ReplaceList[VertexLabelStyle, opts]], {Automatic -> _ -> Black, s : Except[_Rule] :> _ -> s}, {1}], _ -> Black];
-    edgeLabels = Append[Replace[Flatten[ReplaceList[EdgeLabels, opts]], {Automatic -> _ -> "Name", s : Except[_Rule] :> _ -> s}, {1}], _ -> None];
-    edgeLabelStyle = Append[Replace[Flatten[ReplaceList[EdgeLabelStyle, opts]], {Automatic -> _ -> Black, s : Except[_Rule] :> _ -> s}, {1}], _ -> Black];
+    edgeLabels = Replace[Flatten[ReplaceList[EdgeLabels, opts]], {Automatic -> _ -> "Name", s : Except[_Rule] :> _ -> s}, {1}];
+    edgeLabelStyle = Replace[Flatten[ReplaceList[EdgeLabelStyle, opts]], {Automatic -> _ -> Black, s : Except[_Rule] :> _ -> s}, {1}];
     edgeStyle = Replace[Flatten[ReplaceList[EdgeStyle, opts]], {Automatic -> Nothing, s : Except[_Rule] :> _ -> s}, {1}];
     edgeArrowsQ = TrueQ[OptionValue[SimpleHypergraphPlot, opts, "EdgeArrows"]];
     edgeType = OptionValue[SimpleHypergraphPlot, opts, "EdgeType"];
@@ -99,9 +99,11 @@ SimpleHypergraphPlot[h_Hypergraph, plotOpts : OptionsPattern[]] := Enclose @ Blo
         edgeTagged, style, label, labelStyle, labelPrimitive
     },
         edgeTagged = If[tag === None, edge, edge -> tag];
-        style = ResourceFunction["LookupPart"][ReplaceList[edgeTagged, Append[edgeStyle, _ -> Directive[colorFunction[i], EdgeForm[Transparent]]]], j, {}];
-        label = ResourceFunction["LookupPart"][ReplaceList[edgeTagged, edgeLabels], j, None];
-        labelStyle = ResourceFunction["LookupPart"][ReplaceList[edgeTagged, edgeLabelStyle], j, {}];
+        style = With[{defStyle = Directive[colorFunction[i], EdgeForm[Transparent]]},
+            If[Length[#] > 1, ResourceFunction["LookupPart"][#, j, defStyle], Last[#, defStyle]] & @ ReplaceList[edgeTagged, edgeStyle]
+        ];
+        label = If[Length[#] > 1, ResourceFunction["LookupPart"][#, j, None], Last[#, None]] & @ ReplaceList[edgeTagged, edgeLabels];
+        labelStyle = If[Length[#] > 1, ResourceFunction["LookupPart"][#, j, Last[#, {}]], Last[#, {}]] & @ ReplaceList[edgeTagged, edgeLabelStyle];
         labelPrimitive = Replace[label, {
             None -> Nothing,
             Automatic | "Name" :> Text[edge, pos],
