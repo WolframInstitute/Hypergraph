@@ -29,13 +29,32 @@ VertexDegree[hg_Hypergraph ? HypergraphQ] ^:= Values[Length /@ HypergraphInciden
 VertexDegree[hg_Hypergraph ? HypergraphQ, vertex_] ^:= If[ListQ[vertex], Map[Length], Length] @ Lookup[HypergraphIncidence[hg], vertex]
 
 
+mapEdgeOptions[f_, opt_] := Replace[Flatten[{opt}], {((edge_List -> tag_) -> v_) :> (f[edge] -> tag) -> v, (edge_List -> v_) :> f[edge] -> v}, {1}]
+
+mapVertexOptions[f_, opt_] := Replace[Flatten[{opt}], (vertex_ -> v_) :> f[vertex] -> v, {1}]
+
+
 CanonicalHypergraph[hg_ ? HypergraphQ] := Block[{vs = hg["VertexList"], edges = hg["EdgeList"], newVertices, emptyEdges, newEdges, iso, perm},
     emptyEdges = Cases[edges, {}];
     edges = DeleteCases[edges, {}];
     {perm, iso} = ResourceFunction["FindCanonicalHypergraphIsomorphism"][edges, "IncludePermutation" -> True];
     newEdges = Permute[edges /. iso, perm];
     newVertices = Union[Values[iso], Max[iso] + Range[Length @ DeleteElements[vs, Keys[iso]]]];
-    Hypergraph[newVertices, Join[emptyEdges, newEdges], hg["Options"]]
+    Hypergraph[
+        newVertices, Join[emptyEdges, newEdges],
+        With[{keys = Keys[hg["Options"]]},
+            Association @ hg["Options"] //
+                MapAt[
+                    mapEdgeOptions[Replace[#, iso, {1}] &, #] &,
+                    {Key[#]} & /@ Intersection[{EdgeStyle, EdgeLabels, EdgeLabelStyle, "Symmetry"}, keys]
+                ] //
+                MapAt[
+                    mapVertexOptions[Replace[#, iso] &, #] &,
+                    {Key[#]} & /@ Intersection[{VertexStyle, VertexLabels, VertexLabelStyle, VertexCoordinates}, keys]
+                ] //
+                Normal
+        ]
+    ]
 ]
 
 

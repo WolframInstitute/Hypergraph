@@ -26,6 +26,7 @@ PacletObject[
           "WolframInstitute`Hypergraph`CanonicalHypergraph",
           "WolframInstitute`Hypergraph`EnumerateHypergraphRules",
           "WolframInstitute`Hypergraph`EnumerateHypergraphs",
+          "WolframInstitute`Hypergraph`EnumerateOrderedHypergraphs",
           "WolframInstitute`Hypergraph`HighlightRule",
           "WolframInstitute`Hypergraph`Hypergraph",
           "WolframInstitute`Hypergraph`Hypergraph3D",

@@ -59,7 +59,7 @@ Hyperedges /: MakeBoxes[hg : Hyperedges[args___] /; HyperedgesQ[Unevaluated[hg]]
 
 
 HypergraphQ[hg_Hypergraph] := System`Private`HoldValidQ[hg] ||
-	MatchQ[Unevaluated[hg], Hypergraph[_List, _ ? HyperedgesQ, _Association, OptionsPattern[]]]
+	MatchQ[Unevaluated[hg], Hypergraph[_List, _ ? HyperedgesQ, OptionsPattern[]]]
 
 HypergraphQ[___] := False
 
@@ -67,25 +67,25 @@ HypergraphQ[___] := False
 
 (* Constructors *)
 
-Hypergraph[vs_List, edgeSpec : {(_List | _Rule) ...}, symm_Association : <||>, opts : OptionsPattern[]] := Hypergraph[vs, Hyperedges @@ edgeSpec, symm, opts]
+Hypergraph[vs_List, edgeSpec : {(_List | _Rule) ...}, opts : OptionsPattern[]] := Hypergraph[vs, Hyperedges @@ edgeSpec, opts]
 
-Hypergraph[edgeSpec : {(_List | _Rule) ...}, symm_Association : <||>, opts : OptionsPattern[]] := Hypergraph[Hyperedges @@ edgeSpec, symm, opts]
+Hypergraph[edgeSpec : {(_List | _Rule) ...}, opts : OptionsPattern[]] := Hypergraph[Hyperedges @@ edgeSpec, opts]
 
 Hypergraph[] := Hypergraph[0]
 
-hg : Hypergraph[edgeSpec_, symm_Association : <||>, opts : OptionsPattern[]] := Enclose @ With[{edges = ConfirmBy[Hyperedges[edgeSpec], HyperedgesQ]},
-	Hypergraph[edges["VertexList"], edges, symm, opts]
+hg : Hypergraph[edgeSpec_, opts : OptionsPattern[]] := Enclose @ With[{edges = ConfirmBy[Hyperedges[edgeSpec], HyperedgesQ]},
+	Hypergraph[edges["VertexList"], edges, opts]
 ]
 
-Hypergraph[he_Hyperedges ? HyperedgesQ, symm_Association : <||>, opts : OptionsPattern[]] := Hypergraph[he["VertexList"], he, symm, opts]
+Hypergraph[he_Hyperedges ? HyperedgesQ, opts : OptionsPattern[]] := Hypergraph[he["VertexList"], he, opts]
 
 
-hg : Hypergraph[vs_List, he_Hyperedges ? HyperedgesQ, symm_Association : <||>, opts : OptionsPattern[]] /;
-	! ContainsAll[vs, he["VertexList"]] := Hypergraph[Join[vs, DeleteElements[he["VertexList"], vs]], he, symm, opts]
+hg : Hypergraph[vs_List, he_Hyperedges ? HyperedgesQ, opts : OptionsPattern[]] /;
+	! ContainsAll[vs, he["VertexList"]] := Hypergraph[Join[vs, DeleteElements[he["VertexList"], vs]], he, opts]
 
-hg : Hypergraph[vs_List, he_Hyperedges ? HyperedgesQ, symm : _ ? AssociationQ : <||>, opts : OptionsPattern[]] /;
+hg : Hypergraph[vs_List, he_Hyperedges ? HyperedgesQ, opts : OptionsPattern[]] /;
 	ContainsAll[vs, he["VertexList"]] && System`Private`HoldNotValidQ[hg] := System`Private`SetNoEntry[
-		System`Private`HoldSetValid[Hypergraph[vs, he, symm, ##]] & @@ DeleteDuplicatesBy[Flatten[{opts}], First]
+		System`Private`HoldSetValid[Hypergraph[vs, he, ##]] & @@ Sort @ DeleteDuplicatesBy[Flatten[{opts}], First]
 	]
 
 
@@ -99,7 +99,8 @@ Options[Hypergraph] := Join[{
 	 ColorFunction -> ColorData[97],
 	"LayoutDimension" -> 2,
     "EdgeArrows" -> False,
-    "EdgeType" -> "Cyclic"
+    "EdgeType" -> "Cyclic",
+	"Symmetry" -> Automatic
 },
 	Options[Graph]
 ]
@@ -116,13 +117,13 @@ Hypergraph3D[hg_Hypergraph, opts : OptionsPattern[]] := Hypergraph3D[hg["VertexL
 
 Hypergraph[hg_Hypergraph, opts : OptionsPattern[]] := Hypergraph[hg["VertexList"], hg["EdgeList"], opts, "LayoutDimension" -> 2, hg["Options"]]
 
-HypergraphProp[Hypergraph[_, _, _, opts___], "Options"] := Flatten[{opts}]
+HypergraphProp[Hypergraph[_, _, opts___], "Options"] := Flatten[{opts}]
 
-HypergraphProp[Hypergraph[vertices_, __], "VertexList"] := vertices
+HypergraphProp[Hypergraph[vertices_, ___], "VertexList"] := vertices
 
-HypergraphProp[Hypergraph[_, edges_, __], "Edges"] := edges
+HypergraphProp[Hypergraph[_, edges_, ___], "Edges"] := edges
 
-HypergraphProp[Hypergraph[_, _, symm_, ___], "Symmetry"] := <|symm, _ -> "Unordered"|>
+HypergraphProp[hg_, "Symmetry"] := <|Replace[Lookup[hg["Options"], "Symmetry", Nothing], Automatic -> Nothing], _ -> "Unordered"|>
 
 HypergraphProp[hg_, "EdgeListTagged"] := hg["Edges"]["EdgeListTagged"]
 
@@ -134,7 +135,7 @@ HypergraphProp[hg_, "VertexList"] := hg["Edges"]["VertexList"]
 
 HypergraphProp[hg_, "EdgeSymmetry"] := With[{symmFunc = KeyValueMap[{k, v} |->
 		Replace[k, All -> _] -> Replace[v, {
-			"Directed" :> (Cycles[{{}}] &),
+			"Directed" | "Ordered" :> (Cycles[{{}}] &),
 			"Cyclic" :> (Cycles[{Append[Range[Length[#]], 1]}] &),
 			_ :> (Cycles[{#}] & /@ Subsets[Range[Length[#]], {2}] &)
 		}],
