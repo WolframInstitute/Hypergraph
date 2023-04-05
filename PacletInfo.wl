@@ -7,8 +7,9 @@ PacletObject[
     "Creator" -> "Nikolay Murzin",
     "License" -> "MIT",
     "PublisherID" -> "WolframInstitute",
-    "Version" -> "1.0.1",
+    "Version" -> "1.0.2",
     "WolframVersion" -> "13.2+",
+    "PrimaryContext" -> "WolframInstitute`Hypergraph`",
     "Extensions" -> {
       {
         "Kernel",
