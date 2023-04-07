@@ -353,7 +353,7 @@ HypergraphDraw[initHg : _Hypergraph ? HypergraphQ : Hypergraph[], opts : Options
             Button["Rename", vertexRename[]]
         }],
         Row[{"Edge: ", InputField[Dynamic[edgeLabel], FieldSize -> 10, Enabled -> False]}],
-		Dynamic @ ClickToCopy[Column[{"Click to copy Hypergraph:", TraditionalForm[hg]}, Alignment -> Center], hg],
+		Dynamic @ ClickToCopy[Column[{"Click to copy Hypergraph:", Pane[TraditionalForm[hg], Scaled[.3], Alignment -> Center]}, Alignment -> Center], hg],
 		Row[{"Edge arrows", Checkbox[Dynamic[edgeArrowsQ, (edgeArrowsQ = #; update[]) &]]}],
 		ColorSlider[Dynamic @ color],
         Row[{"Multiselect mode", Checkbox[Dynamic[multiSelect]]}],
