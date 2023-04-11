@@ -272,6 +272,7 @@ HypergraphDraw[initHg : _Hypergraph ? HypergraphQ : Hypergraph[], opts : Options
     reset[] := (
         tmpEdge = {};
 	    vertices = Association @ Lookup[initHg["Options"], VertexCoordinates, <||>];
+        nullEdges = <||>;
         vertexStyles = Replace[Lookup[initHg["Options"], VertexStyle, Automatic], {
             rules : {___Rule} :> Association[rules],
             Automatic :> AssociationThread[vertices, Array[ColorData[97], Length[vertices]]],

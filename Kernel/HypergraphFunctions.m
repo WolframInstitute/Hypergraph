@@ -3,6 +3,7 @@ Package["WolframInstitute`Hypergraph`"]
 PackageExport["HypergraphIncidence"]
 PackageExport["CanonicalHypergraph"]
 PackageExport["IsomorphicHypergraphQ"]
+PackageExport["EdgeSymmetry"]
 
 
 
@@ -13,6 +14,8 @@ EdgeList[hg_Hypergraph ? HypergraphQ, patt_] ^:= Cases[hg["EdgeList"], patt]
 EdgeCount[hg_Hypergraph ? HypergraphQ] ^:= Length @ EdgeList[hg]
 
 EdgeTags[hg_Hypergraph ? HypergraphQ] ^:= hg["EdgeTags"]
+
+EdgeSymmetry[hg_Hypergraph ? HypergraphQ] := hg["FullEdgeSymmetry"]
 
 VertexList[hg_Hypergraph ? HypergraphQ] ^:= hg["VertexList"]
 
@@ -45,11 +48,11 @@ CanonicalHypergraph[hg_ ? HypergraphQ] := Block[{vs = hg["VertexList"], edges = 
         With[{keys = Keys[hg["Options"]]},
             Association @ hg["Options"] //
                 MapAt[
-                    mapEdgeOptions[Replace[#, iso, {1}] &, #] &,
-                    {Key[#]} & /@ Intersection[{EdgeStyle, EdgeLabels, EdgeLabelStyle, "Symmetry"}, keys]
+                    Sort @ mapEdgeOptions[Replace[#, iso, {1}] &, #] &,
+                    {Key[#]} & /@ Intersection[{EdgeStyle, EdgeLabels, EdgeLabelStyle, "EdgeSymmetry"}, keys]
                 ] //
                 MapAt[
-                    mapVertexOptions[Replace[#, iso] &, #] &,
+                    Sort @ mapVertexOptions[Replace[#, iso] &, #] &,
                     {Key[#]} & /@ Intersection[{VertexStyle, VertexLabels, VertexLabelStyle, VertexCoordinates}, keys]
                 ] //
                 Normal
@@ -57,9 +60,11 @@ CanonicalHypergraph[hg_ ? HypergraphQ] := Block[{vs = hg["VertexList"], edges = 
     ]
 ]
 
+CanonicalHypergraph[args___] := CanonicalHypergraph[Hypergraph[args]]
+
 
 IsomorphicHypergraphQ[hg1_ ? HypergraphQ, hg2_ ? HypergraphQ] :=
-    Through[{VertexList, EdgeList} @ CanonicalHypergraph[hg1]] === Through[{VertexList, EdgeList} @ CanonicalHypergraph[hg2]]
+    Through[{VertexList, EdgeList, EdgeSymmetry} @ CanonicalHypergraph[hg1]] === Through[{VertexList, EdgeList, EdgeSymmetry} @ CanonicalHypergraph[hg2]]
 
 
 VertexReplace[hg_Hypergraph, rules_] ^:= Hypergraph[

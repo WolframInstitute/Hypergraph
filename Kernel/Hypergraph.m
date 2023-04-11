@@ -100,7 +100,7 @@ Options[Hypergraph] := Join[{
 	"LayoutDimension" -> 2,
     "EdgeArrows" -> False,
     "EdgeType" -> "Cyclic",
-	"Symmetry" -> Automatic
+	"EdgeSymmetry" -> Automatic
 },
 	Options[Graph]
 ]
@@ -123,7 +123,7 @@ HypergraphProp[Hypergraph[vertices_, ___], "VertexList"] := vertices
 
 HypergraphProp[Hypergraph[_, edges_, ___], "Edges"] := edges
 
-HypergraphProp[hg_, "Symmetry"] := <|Replace[Lookup[hg["Options"], "Symmetry", Nothing], Automatic -> Nothing], _ -> "Unordered"|>
+HypergraphProp[hg_, "EdgeSymmetry"] := {Replace[Lookup[hg["Options"], "EdgeSymmetry", Nothing], Automatic -> Nothing], _ -> "Unordered"}
 
 HypergraphProp[hg_, "EdgeListTagged"] := hg["Edges"]["EdgeListTagged"]
 
@@ -133,18 +133,18 @@ HypergraphProp[hg_, "EdgeList"] := hg["Edges"]["EdgeList"]
 
 HypergraphProp[hg_, "VertexList"] := hg["Edges"]["VertexList"]
 
-HypergraphProp[hg_, "EdgeSymmetry"] := With[{symmFunc = KeyValueMap[{k, v} |->
-		Replace[k, All -> _] -> Replace[v, {
-			"Directed" | "Ordered" :> (Cycles[{{}}] &),
-			"Cyclic" :> (Cycles[{Append[Range[Length[#]], 1]}] &),
+HypergraphProp[hg_, "FullEdgeSymmetry"] := With[{symmFunc = Map[
+		Replace[#[[1]], All -> _] -> Replace[#[[2]], {
+			"Directed" | "Ordered" :> ({} &),
+			"Cyclic" :> ({Cycles[{Range[Length[#]]}]} &),
 			_ :> (Cycles[{#}] & /@ Subsets[Range[Length[#]], {2}] &)
-		}],
-		hg["Symmetry"]
+		}] &,
+		Replace[Flatten[{hg["EdgeSymmetry"]}], {Automatic -> _ -> "Unordered", s : Except[_Rule] :> _ -> s}, {1}]
 	]
 },
-	AssociationMap[
-		Replace[#, symmFunc][#] &,
-		hg["EdgeList"]
+	Catenate @ KeyValueMap[{edge, multiplicity} |->
+		edge -> #[edge] & /@ PadRight[#, multiplicity, #] & @ ReplaceList[edge, symmFunc],
+		Counts[hg["EdgeList"]]
 	]
 ]
 

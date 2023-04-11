@@ -55,11 +55,12 @@ PatternRuleToMultiReplaceRule[rule : _[lhs_List | Verbatim[HoldPattern][lhs_List
     inputEdges = EdgeList[input], outputEdges = EdgeList[output],
     vertexStyles, edgeStyles, embedding,
     matches,
-    lhsVertices, inputFreeVertices, newVertices, deleteVertices, newVertexMap
+    lhsVertices, inputFreeVertices, newVertices, deleteVertices, newVertexMap,
+    edgeType = OptionValue[HypergraphRule, hg["Options"], "EdgeType"]
 },
     matches = First /@ Keys @ ResourceFunction["MultiReplace"][
         edges,
-        ToPatternEdges @ input,
+        If[edgeType === "Unordered", Map[{OrderlessPatternSequence @@ #} &], Identity] @ ToPatternEdges @ input,
         {1},
         "Mode" -> "OrderlessSubsets"
     ];
@@ -137,13 +138,13 @@ $HypergraphRulePlotOptions = {
     FrameTicks -> None,
     PlotRangePadding -> .1,
     ImagePadding -> 3,
-    AspectRatio -> 1,
+    (* AspectRatio -> 1, *)
     ImageSize -> Tiny
 };
 
 Options[HighlightRule] := Options[SimpleHypergraphPlot]
 
-HighlightRule[rule_HypergraphRule, hg_ ? HypergraphQ, opts : OptionsPattern[]] := Block[{
+HighlightRule[rule_ ? HypergraphRuleQ, hg_ ? HypergraphQ, opts : OptionsPattern[]] := Block[{
     vs = VertexList[hg], edges = EdgeList[hg],
     matches
 },
