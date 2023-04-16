@@ -3,19 +3,53 @@ Package["WolframInstitute`Hypergraph`"]
 
 PackageExport["HypergraphRuleQ"]
 PackageExport["HypergraphRule"]
-PackageExport["ToPatternEdges"]
+PackageExport["ToLabeledEdges"]
+PackageExport["ToLabeledPatternEdges"]
 PackageExport["ToPatternRules"]
 PackageExport["PatternRuleToMultiReplaceRule"]
 PackageExport["HighlightRule"]
 
 
 
-ToPatternEdges[edges : {___List}] := Block[{vs = Union @@ edges, varSymbols},
-    varSymbols = Association @ MapIndexed[#1 -> Symbol["\[FormalX]" <> ToString[#2[[1]]]] &, vs];
-    Replace[edges, Pattern[#, _] & /@ varSymbols, {2}]
+makeVertexLabelPattern[vertex_, label_, makePattern_ : False] := Replace[label, {
+    None :> If[TrueQ[makePattern], _, vertex],
+    Automatic | "Name" :> If[TrueQ[makePattern], Pattern[#, _] & @ Symbol["\[FormalL]" <> StringDelete[ToString[vertex, InputForm], Except[WordCharacter]]], vertex],
+    Placed[Automatic | "Name", _] :> vertex,
+    Placed[placedLabel_, _] :> placedLabel,
+    _ :> label
+}]
+
+ToLabeledEdges[vertexLabels_Association, edges : {___List}, makePattern_ : False] := Block[{symbols, varSymbols, labeledEdges},
+    symbols = Reap[
+        varSymbols = KeyValueMap[#1 ->
+            If[ TrueQ[makePattern],
+                Labeled[
+                    Pattern[#, _] & @ Symbol["\[FormalX]" <> StringDelete[ToString[#1], Except[WordCharacter]]],
+                    Sow @ #2
+                ],
+                Labeled[#1, #2]
+            ] &, vertexLabels]
+    ][[2]];
+    labeledEdges = Replace[edges, varSymbols, {2}];
+    If[ TrueQ[makePattern],
+        Condition[##] & [labeledEdges, Unequal @@ DeleteDuplicates @ Cases[First[symbols, {}], Verbatim[Pattern][label_, _] :> label, All]],
+        labeledEdges
+    ]
 ]
 
-ToPatternEdges[hg_ ? HypergraphQ] := ToPatternEdges[EdgeList[hg]]
+ToLabeledEdges[hg_ ? HypergraphQ, makePattern_ : False] := Block[{
+    vs = VertexList[hg],
+    vertexLabelRules = Append[
+        Replace[Flatten[ReplaceList[VertexLabels, hg["Options"]]], {Automatic -> _ -> "Name", s : Except[_Rule] :> _ -> s}, {1}],
+        _ -> None
+    ],
+    vertexLabels
+},
+    vertexLabels = AssociationMap[makeVertexLabelPattern[#, Replace[#, vertexLabelRules], makePattern] &, vs];
+    ToLabeledEdges[vertexLabels, EdgeList[hg], makePattern]
+]
+
+ToLabeledPatternEdges[hg_ ? HypergraphQ] := ToLabeledEdges[hg, True]
 
 
 ToPatternRules[lhs : {___List}, rhs : {___List}] := Block[{vs = Union @@ lhs, ws = Union @@ rhs, varSymbols, newVars},
@@ -56,12 +90,13 @@ PatternRuleToMultiReplaceRule[rule : _[lhs_List | Verbatim[HoldPattern][lhs_List
     vertexStyles, edgeStyles, embedding,
     matches,
     lhsVertices, inputFreeVertices, newVertices, deleteVertices, newVertexMap,
-    edgeType = OptionValue[HypergraphRule, hg["Options"], "EdgeType"]
+    edgeType = OptionValue[HypergraphRule, input["Options"], "EdgeType"]
 },
     matches = First /@ Keys @ ResourceFunction["MultiReplace"][
-        edges,
-        If[edgeType === "Unordered", Map[{OrderlessPatternSequence @@ #} &], Identity] @ ToPatternEdges @ input,
+        ToLabeledEdges[hg],
+        If[edgeType === "Unordered", MapAt[{OrderlessPatternSequence @@ #} &, 1], Identity] @ ToLabeledPatternEdges[input],
         {1},
+        (* "PatternSubstitutions" -> True, *)
         "Mode" -> "OrderlessSubsets"
     ];
     lhsVertices = Union @@ inputEdges;
