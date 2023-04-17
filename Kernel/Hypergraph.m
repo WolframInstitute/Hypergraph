@@ -123,7 +123,7 @@ HypergraphProp[Hypergraph[vertices_, ___], "VertexList"] := vertices
 
 HypergraphProp[Hypergraph[_, edges_, ___], "Edges"] := edges
 
-HypergraphProp[hg_, "EdgeSymmetry"] := {Replace[Lookup[hg["Options"], "EdgeSymmetry", Nothing], Automatic -> Nothing], _ -> "Unordered"}
+HypergraphProp[hg_, "EdgeSymmetry"] := Flatten[{Replace[Lookup[hg["Options"], "EdgeSymmetry", Nothing], Automatic -> Nothing], _ -> "Unordered"}]
 
 HypergraphProp[hg_, "EdgeListTagged"] := hg["Edges"]["EdgeListTagged"]
 
@@ -135,8 +135,9 @@ HypergraphProp[hg_, "VertexList"] := hg["Edges"]["VertexList"]
 
 HypergraphProp[hg_, "FullEdgeSymmetry"] := With[{symmFunc = Map[
 		Replace[#[[1]], All -> _] -> Replace[#[[2]], {
-			"Directed" | "Ordered" :> ({} &),
-			"Cyclic" :> ({Cycles[{Range[Length[#]]}]} &),
+			"Directed" | "Ordered" :> ({Cycles[{}]} &),
+			"Cyclic" :> ({Cycles[{}], Cycles[{Range[Length[#]]}]} &),
+			cycles : {___Cycles} :> (cycles &),
 			_ :> (Cycles[{#}] & /@ Subsets[Range[Length[#]], {2}] &)
 		}] &,
 		Replace[Flatten[{hg["EdgeSymmetry"]}], {Automatic -> _ -> "Unordered", s : Except[_Rule] :> _ -> s}, {1}]

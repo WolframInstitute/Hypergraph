@@ -49,8 +49,24 @@ ToLabeledEdges[hg_ ? HypergraphQ, makePattern_ : False] := Block[{
     ToLabeledEdges[vertexLabels, EdgeList[hg], makePattern]
 ]
 
-ToLabeledPatternEdges[hg_ ? HypergraphQ] := With[{edgeType = OptionValue[HypergraphRule, hg["Options"], "EdgeType"]},
-    If[edgeType === "Unordered", MapAt[{OrderlessPatternSequence @@ #} &, 1], Identity] @  ToLabeledEdges[hg, True]
+ToLabeledPatternEdges[hg_ ? HypergraphQ] := Block[{
+    edges = EdgeList[hg],
+    simpleEdgeSymmetry
+},
+    simpleEdgeSymmetry = Replace[edges, Replace[Flatten[{hg["EdgeSymmetry"]}], {Automatic -> _ -> "Unordered", s : Except[_Rule] :> _ -> s}, {1}], {1}];
+    Which[
+        AllTrue[simpleEdgeSymmetry, MatchQ["Unordered" | "Undirected"]],
+        MapAt[{OrderlessPatternSequence @@ #} &, #, {1, All}],
+        AllTrue[simpleEdgeSymmetry, MatchQ["Ordered" | "Directed"]],
+        #,
+        True,
+        With[{edgeSymmetry = Values[EdgeSymmetry[hg]]},
+            MapAt[MapIndexed[With[{edge = #}, Replace[
+                Alternatives @@ (Permute[edge, #] & /@ Flatten[edgeSymmetry[[#2]]]),
+                Verbatim[Alternatives][x_] :> x
+            ]] &], #, {1}]
+        ]
+    ] & @ ToLabeledEdges[hg, True]
 ]
 
 
