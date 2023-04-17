@@ -32,7 +32,7 @@ ToLabeledEdges[vertexLabels_Association, edges : {___List}, makePattern_ : False
     ][[2]];
     labeledEdges = Replace[edges, varSymbols, {2}];
     If[ TrueQ[makePattern],
-        Condition[##] & [labeledEdges, Unequal @@ DeleteDuplicates @ Cases[First[symbols, {}], Verbatim[Pattern][label_, _] :> label, All]],
+        Condition[#1, UnsameQ @@ #2] & [labeledEdges, DeleteDuplicates @ Cases[First[symbols, {}], Verbatim[Pattern][label_, _] :> label, All]],
         labeledEdges
     ]
 ]
