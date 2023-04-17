@@ -49,7 +49,9 @@ ToLabeledEdges[hg_ ? HypergraphQ, makePattern_ : False] := Block[{
     ToLabeledEdges[vertexLabels, EdgeList[hg], makePattern]
 ]
 
-ToLabeledPatternEdges[hg_ ? HypergraphQ] := ToLabeledEdges[hg, True]
+ToLabeledPatternEdges[hg_ ? HypergraphQ] := With[{edgeType = OptionValue[HypergraphRule, hg["Options"], "EdgeType"]},
+    If[edgeType === "Unordered", MapAt[{OrderlessPatternSequence @@ #} &, 1], Identity] @  ToLabeledEdges[hg, True]
+]
 
 
 ToPatternRules[lhs : {___List}, rhs : {___List}] := Block[{vs = Union @@ lhs, ws = Union @@ rhs, varSymbols, newVars},
@@ -89,12 +91,11 @@ PatternRuleToMultiReplaceRule[rule : _[lhs_List | Verbatim[HoldPattern][lhs_List
     inputEdges = EdgeList[input], outputEdges = EdgeList[output],
     vertexStyles, edgeStyles, embedding,
     matches,
-    lhsVertices, inputFreeVertices, newVertices, deleteVertices, newVertexMap,
-    edgeType = OptionValue[HypergraphRule, input["Options"], "EdgeType"]
+    lhsVertices, inputFreeVertices, newVertices, deleteVertices, newVertexMap
 },
     matches = First /@ Keys @ ResourceFunction["MultiReplace"][
         ToLabeledEdges[hg],
-        If[edgeType === "Unordered", MapAt[{OrderlessPatternSequence @@ #} &, 1], Identity] @ ToLabeledPatternEdges[input],
+        ToLabeledPatternEdges[input],
         {1},
         (* "PatternSubstitutions" -> True, *)
         "Mode" -> "OrderlessSubsets"
