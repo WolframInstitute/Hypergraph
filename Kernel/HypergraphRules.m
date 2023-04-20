@@ -35,7 +35,8 @@ ToLabeledEdges[vertexLabels_Association, edges : {___List}, makePattern_ : False
     Scan[Sow[#, "VertexPattern"] &, First[patterns, {}]];
     labeledEdges = Replace[edges, varSymbols, {2}];
     If[ TrueQ[makePattern],
-        Condition[#1, UnsameQ @@ #2] & [labeledEdges, DeleteDuplicates @ Cases[First[labels, {}], Verbatim[Pattern][label_, _] :> label, All]],
+        Condition[labeledEdges, UnsameQ[##]] & @@
+            DeleteDuplicates @ Cases[First[labels, {}], Verbatim[Pattern][label_, _] :> label, All],
         labeledEdges
     ]
 ]
