@@ -133,18 +133,31 @@ HypergraphProp[hg_, "EdgeList"] := hg["Edges"]["EdgeList"]
 
 HypergraphProp[hg_, "VertexList"] := hg["Edges"]["VertexList"]
 
+
+findMinGenSet[groupGens_, order : _Integer | Automatic : Automatic] :=
+	First[FixedPoint[findSmallerGenSet[Replace[order, Automatic :> GroupOrder[PermutationGroup[groupGens]]]], {groupGens, Length[groupGens]}]]
+
+findSmallerGenSet[order_][{genSet_, len_}] := First[
+	Replace[
+		ResourceFunction["SelectSubsets"][genSet, {Max[len - 1, 0]}, Function[subset, GroupOrder[PermutationGroup[subset]] === order], 1],
+		subset_ :> {subset, Max[len - 1, 0]},
+		{1}
+	],
+	{genSet, len}
+]
+
 HypergraphProp[hg_, "FullEdgeSymmetry"] := With[{symmFunc = Map[
 		Replace[#[[1]], All -> _] -> Replace[#[[2]], {
-			"Directed" | "Ordered" :> ({Cycles[{}]} &),
-			"Cyclic" :> ({Cycles[{}], Cycles[{Range[Length[#]]}]} &),
+			"Directed" | "Ordered" :> ({} &),
+			"Cyclic" :> ({Cycles[{Range[Length[#]]}]} &),
 			cycles : {___Cycles} :> (cycles &),
-			_ :> (Prepend[Cycles[{#}] & /@ Subsets[Range[Length[#]], {2}], Cycles[{}]] &)
+			_ :> (Cycles[{#}] & /@ Subsets[Range[Length[#]], {2}] &)
 		}] &,
 		Replace[Flatten[{hg["EdgeSymmetry"]}], {Automatic -> _ -> "Unordered", s : Except[_Rule] :> _ -> s}, {1}]
 	]
 },
 	Catenate @ KeyValueMap[{edge, multiplicity} |->
-		edge -> #[edge] & /@ PadRight[#, multiplicity, #] & @ ReplaceList[edge, symmFunc],
+		edge -> findMinGenSet[#[edge]] & /@ PadRight[#, multiplicity, #] & @ ReplaceList[edge, symmFunc],
 		Counts[hg["EdgeList"]]
 	]
 ]

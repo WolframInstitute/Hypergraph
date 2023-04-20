@@ -46,10 +46,15 @@ ToLabeledEdges[hg_ ? HypergraphQ, makePattern_ : False] := Block[{
         Replace[Flatten[ReplaceList[VertexLabels, hg["Options"]]], {Automatic -> _ -> "Name", s : Except[_Rule] :> _ -> s}, {1}],
         _ -> None
     ],
-    vertexLabels
+    vertexLabels,
+    edgeSymmetry = Values[EdgeSymmetry[hg]]
 },
     vertexLabels = AssociationMap[makeVertexLabelPattern[#, Replace[#, vertexLabelRules], makePattern] &, vs];
-    ToLabeledEdges[vertexLabels, EdgeList[hg], makePattern]
+    MapAt[
+        MapIndexed[With[{edge = #1, symm = Flatten[edgeSymmetry[[#2]]]}, Labeled[edge, symm]] &],
+        ToLabeledEdges[vertexLabels, EdgeList[hg], makePattern],
+        If[makePattern, {1}, {{}}]
+    ]
 ]
 
 ToLabeledPatternEdges[hg_ ? HypergraphQ] := Block[{
@@ -59,15 +64,22 @@ ToLabeledPatternEdges[hg_ ? HypergraphQ] := Block[{
     simpleEdgeSymmetry = Replace[edges, Replace[Flatten[{hg["EdgeSymmetry"]}], {Automatic -> _ -> "Unordered", s : Except[_Rule] :> _ -> s}, {1}], {1}];
     Which[
         AllTrue[simpleEdgeSymmetry, MatchQ["Unordered" | "Undirected"]],
-        MapAt[{OrderlessPatternSequence @@ #} &, #, {1, All}],
+        MapAt[{OrderlessPatternSequence @@ #} &, #, {1, All, 1}],
         AllTrue[simpleEdgeSymmetry, MatchQ["Ordered" | "Directed"]],
         #,
         True,
         With[{edgeSymmetry = Values[EdgeSymmetry[hg]]},
-            MapAt[MapIndexed[With[{edge = #}, Replace[
-                Alternatives @@ (Permute[edge, #] & /@ Flatten[edgeSymmetry[[#2]]]),
-                Verbatim[Alternatives][x_] :> x
-            ]] &], #, {1}]
+            MapAt[
+                SubsetMap[
+                    MapIndexed[With[{edge = #1, symm = Flatten[edgeSymmetry[[#2]]]}, Replace[
+                        Alternatives @@ (Permute[edge, #] & /@ GroupElements[PermutationGroup[symm]]),
+                        Verbatim[Alternatives][x_] :> x
+                    ]] &],
+                    {All, 1}
+                ],
+                #,
+                {1}
+            ]
         ]
     ] & @ ToLabeledEdges[hg, True]
 ]
@@ -114,7 +126,7 @@ PatternRuleToMultiReplaceRule[rule : _[lhs_List | Verbatim[HoldPattern][lhs_List
 },
     patterns = First[
         Reap[
-            matches = Thread @ Keys @ ResourceFunction["MultiReplace"][
+            matches = Thread @ DeleteDuplicatesBy[Sort @* First] @ Keys @ ResourceFunction["MultiReplace"][
                 ToLabeledEdges[hg],
                 ToLabeledPatternEdges[input],
                 {1},
