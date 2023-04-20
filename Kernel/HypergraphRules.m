@@ -47,12 +47,15 @@ ToLabeledEdges[hg_ ? HypergraphQ, makePattern_ : False] := Block[{
         _ -> None
     ],
     vertexLabels,
-    edgeSymmetry = Values[EdgeSymmetry[hg]]
+    edgeSymmetry = Values[EdgeSymmetry[hg]],
+    edgeTags = EdgeTags[hg]
 },
     vertexLabels = AssociationMap[makeVertexLabelPattern[#, Replace[#, vertexLabelRules], makePattern] &, vs];
     MapAt[
-        MapIndexed[With[{edge = #1, symm = Flatten[edgeSymmetry[[#2]]]}, Labeled[edge, symm]] &],
-        ToLabeledEdges[vertexLabels, EdgeList[hg], makePattern],
+        MapIndexed[With[{edge = #1, symm = edgeSymmetry[[#2[[1]]]], tag = edgeTags[[#2[[1]]]]},
+            Labeled[edge, {symm, If[makePattern, Replace[tag, None -> _], tag]}]] &
+        ],
+        ToLabeledEdges[vertexLabels, hg["EdgeList"], makePattern],
         If[makePattern, {1}, {{}}]
     ]
 ]
@@ -117,9 +120,9 @@ PatternRuleToMultiReplaceRule[rule : _[lhs_List | Verbatim[HoldPattern][lhs_List
 
 
 (rule : HoldPattern[HypergraphRule[input_ ? HypergraphQ, output_ ? HypergraphQ]])[hg_ ? HypergraphQ] /; HypergraphRuleQ[rule] := Block[{
-    vertices = VertexList[hg], edges = EdgeList[hg],
+    vertices = VertexList[hg], edges = hg["EdgeListTagged"],
     inputVertices = VertexList[input], ouputVertices = VertexList[output],
-    inputEdges = EdgeList[input], outputEdges = EdgeList[output],
+    inputEdges = EdgeList[input], outputEdges = output["EdgeListTagged"],
     vertexStyles, edgeStyles, embedding,
     matches,
     lhsVertices, inputFreeVertices, newVertices, deleteVertices, newVertexMap
@@ -166,7 +169,7 @@ PatternRuleToMultiReplaceRule[rule : _[lhs_List | Verbatim[HoldPattern][lhs_List
     ];
     embedding = Thread[vertices -> HypergraphEmbedding[hg]];
 
-    Catenate @ MapThread[{pos, bind} |-> Block[{matchEdges = Extract[edges, pos], matchVertices, matchVertexMap},
+    Catenate @ MapThread[{pos, bind} |-> Block[{matchEdges = Replace[Extract[edges, pos], (edge_ -> _) :> edge, {1}], matchVertices, matchVertexMap},
         matchVertices = Union @@ matchEdges;
         matchVertexMap = Thread[inputVertices -> (patterns /. First[bind, {}])];
         Block[{
@@ -178,11 +181,11 @@ PatternRuleToMultiReplaceRule[rule : _[lhs_List | Verbatim[HoldPattern][lhs_List
             deleteOrigVertices, newEdges
         },
             deleteOrigVertices = Replace[deleteVertices, origVertexMap, {1}];
-            newEdges = Replace[outputEdges, origVertexMap, {2}];
+            newEdges = Replace[outputEdges, {(edge_ -> tag_) :> Replace[edge, origVertexMap, {1}] -> tag, edge_ :> Replace[edge, origVertexMap, {1}]}, {1}];
             <| "Hypergraph" -> Hypergraph[
                     Union[DeleteElements[vertices, deleteOrigVertices], Replace[ouputVertices, origVertexMap, {1}]],
                     Insert[
-                        Replace[Delete[edges, pos], Alternatives @@ deleteOrigVertices -> Nothing, {2}],
+                        Replace[Delete[edges, pos], {(edge_ -> tag_) :> DeleteElements[edge, deleteOrigVertices] -> tag, edge_ :> DeleteElements[edge, deleteOrigVertices]}, {1}],
                         Splice @ newEdges,
                         Min[pos]
                     ],

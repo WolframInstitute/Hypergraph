@@ -109,13 +109,13 @@ Options[Hypergraph3D] := Options[Hypergraph]
 
 Hypergraph3D[args___, opts : OptionsPattern[]] := Hypergraph[args, Sequence @@ FilterRules[{"LayoutDimension" -> 3, opts}, Options[Hypergraph]]]
 
-Hypergraph3D[hg_Hypergraph, opts : OptionsPattern[]] := Hypergraph3D[hg["VertexList"], hg["EdgeList"], opts,
+Hypergraph3D[hg_Hypergraph, opts : OptionsPattern[]] := Hypergraph3D[hg["VertexList"], hg["EdgeListTagged"], opts,
 	"LayoutDimension" -> 3,
 	VertexCoordinates -> Replace[OptionValue[Hypergraph, hg["Options"], VertexCoordinates], rules : {___Rule} :> Replace[rules, {(v_ -> c_) :> v -> Append[c, Automatic], c_ :> Append[c, Automatic]}, {1}]],
 	FilterRules[hg["Options"], Except["LayoutDimension" | VertexCoordinates]]
 ]
 
-Hypergraph[hg_Hypergraph, opts : OptionsPattern[]] := Hypergraph[hg["VertexList"], hg["EdgeList"], opts, "LayoutDimension" -> 2, hg["Options"]]
+Hypergraph[hg_Hypergraph, opts : OptionsPattern[]] := Hypergraph[hg["VertexList"], hg["EdgeListTagged"], opts, "LayoutDimension" -> 2, hg["Options"]]
 
 HypergraphProp[Hypergraph[_, _, opts___], "Options"] := Flatten[{opts}]
 
@@ -135,7 +135,7 @@ HypergraphProp[hg_, "VertexList"] := hg["Edges"]["VertexList"]
 
 
 findMinGenSet[groupGens_, order : _Integer | Automatic : Automatic] :=
-	First[FixedPoint[findSmallerGenSet[Replace[order, Automatic :> GroupOrder[PermutationGroup[groupGens]]]], {groupGens, Length[groupGens]}]]
+	Sort @ First[FixedPoint[findSmallerGenSet[Replace[order, Automatic :> GroupOrder[PermutationGroup[groupGens]]]], {groupGens, Length[groupGens]}]]
 
 findSmallerGenSet[order_][{genSet_, len_}] := First[
 	Replace[

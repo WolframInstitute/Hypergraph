@@ -107,9 +107,9 @@ SimpleHypergraphPlot[h_Hypergraph, plotOpts : OptionsPattern[]] := Enclose @ Blo
         labelPrimitive = Replace[label, {
             None -> Nothing,
             Automatic | "Name" :> Text[edge, pos],
-            "EdgeTag" :> Text[tag, pos],
+            "EdgeTag" :> If[tag === None, Nothing, Text[tag, pos]],
             Placed[Automatic | "Name", offset_] :> Text[edge, pos, offset],
-            Placed["EdgeTag", offset_] :> Text[tag, pos, offset],
+            Placed["EdgeTag", offset_] :> If[tag === None, Nothing, Text[tag, pos, offset]],
             Placed[placedLabel_, offset_] :> Text[placedLabel, pos, offset],
             label_ :> Text[label, pos]
         }];
