@@ -19,20 +19,23 @@ makeVertexLabelPattern[vertex_, label_, makePattern_ : False] := Replace[label, 
     _ :> label
 }]
 
-ToLabeledEdges[vertexLabels_Association, edges : {___List}, makePattern_ : False] := Block[{symbols, varSymbols, labeledEdges},
-    symbols = Reap[
+ToLabeledEdges[vertexLabels_Association, edges : {___List}, makePattern_ : False] := Block[{labels, patterns, varSymbols, labeledEdges},
+    {labels, patterns} = Reap[
         varSymbols = KeyValueMap[#1 ->
             If[ TrueQ[makePattern],
                 Labeled[
-                    Pattern[#, _] & @ Symbol["\[FormalX]" <> StringDelete[ToString[#1], Except[WordCharacter]]],
-                    Sow @ #2
+                    Sow[Pattern[#, _] & @ Symbol["\[FormalX]" <> StringDelete[ToString[#1], Except[WordCharacter]]], "VertexPattern"],
+                    Sow[#2, "Label"]
                 ],
                 Labeled[#1, #2]
-            ] &, vertexLabels]
+            ] &, vertexLabels],
+        {"Label", "VertexPattern"}
     ][[2]];
+    Scan[Sow[#, "Label"] &, First[labels, {}]];
+    Scan[Sow[#, "VertexPattern"] &, First[patterns, {}]];
     labeledEdges = Replace[edges, varSymbols, {2}];
     If[ TrueQ[makePattern],
-        Condition[#1, UnsameQ @@ #2] & [labeledEdges, DeleteDuplicates @ Cases[First[symbols, {}], Verbatim[Pattern][label_, _] :> label, All]],
+        Condition[#1, UnsameQ @@ #2] & [labeledEdges, DeleteDuplicates @ Cases[First[labels, {}], Verbatim[Pattern][label_, _] :> label, All]],
         labeledEdges
     ]
 ]
@@ -106,15 +109,21 @@ PatternRuleToMultiReplaceRule[rule : _[lhs_List | Verbatim[HoldPattern][lhs_List
     inputVertices = VertexList[input], ouputVertices = VertexList[output],
     inputEdges = EdgeList[input], outputEdges = EdgeList[output],
     vertexStyles, edgeStyles, embedding,
-    matches,
+    matchPositions, bindings,
     lhsVertices, inputFreeVertices, newVertices, deleteVertices, newVertexMap
 },
-    matches = First /@ Keys @ ResourceFunction["MultiReplace"][
-        ToLabeledEdges[hg],
-        ToLabeledPatternEdges[input],
-        {1},
-        (* "PatternSubstitutions" -> True, *)
-        "Mode" -> "OrderlessSubsets"
+    patterns = First[
+        Reap[
+            {matchPositions, bindings} = Thread @ Keys @ ResourceFunction["MultiReplace"][
+                ToLabeledEdges[hg],
+                ToLabeledPatternEdges[input],
+                {1},
+                "PatternSubstitutions" -> True,
+                "Mode" -> "OrderlessSubsets"
+            ],
+            "VertexPattern"
+        ][[2]],
+        {}
     ];
     lhsVertices = Union @@ inputEdges;
     inputFreeVertices = Complement[inputVertices, lhsVertices];
@@ -145,9 +154,9 @@ PatternRuleToMultiReplaceRule[rule : _[lhs_List | Verbatim[HoldPattern][lhs_List
     ];
     embedding = Thread[vertices -> HypergraphEmbedding[hg]];
 
-    Catenate @ Map[pos |-> Block[{matchEdges = Extract[edges, pos], matchVertices, matchVertexMap},
+    Catenate @ MapThread[{pos, bind} |-> Block[{matchEdges = Extract[edges, pos], matchVertices, matchVertexMap},
         matchVertices = Union @@ matchEdges;
-        matchVertexMap = DeleteDuplicatesBy[Thread[Catenate @ inputEdges -> Catenate @ matchEdges], First];
+        matchVertexMap = Thread[inputVertices -> (patterns /. First[bind, {}])];
         Block[{
             origVertexMap = Join[
                 matchVertexMap,
@@ -179,7 +188,7 @@ PatternRuleToMultiReplaceRule[rule : _[lhs_List | Verbatim[HoldPattern][lhs_List
             |>
         ] & /@ Catenate[Permutations /@ Subsets[Complement[vertices, matchVertices], {Length[inputFreeVertices]}]]
     ],
-        matches
+        {matchPositions, bindings}
     ]
 ]
 

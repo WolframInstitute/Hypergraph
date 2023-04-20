@@ -138,7 +138,7 @@ HypergraphProp[hg_, "FullEdgeSymmetry"] := With[{symmFunc = Map[
 			"Directed" | "Ordered" :> ({Cycles[{}]} &),
 			"Cyclic" :> ({Cycles[{}], Cycles[{Range[Length[#]]}]} &),
 			cycles : {___Cycles} :> (cycles &),
-			_ :> (Cycles[{#}] & /@ Subsets[Range[Length[#]], {2}] &)
+			_ :> (Prepend[Cycles[{#}] & /@ Subsets[Range[Length[#]], {2}], Cycles[{}]] &)
 		}] &,
 		Replace[Flatten[{hg["EdgeSymmetry"]}], {Automatic -> _ -> "Unordered", s : Except[_Rule] :> _ -> s}, {1}]
 	]
