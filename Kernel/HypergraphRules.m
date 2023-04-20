@@ -109,12 +109,12 @@ PatternRuleToMultiReplaceRule[rule : _[lhs_List | Verbatim[HoldPattern][lhs_List
     inputVertices = VertexList[input], ouputVertices = VertexList[output],
     inputEdges = EdgeList[input], outputEdges = EdgeList[output],
     vertexStyles, edgeStyles, embedding,
-    matchPositions, bindings,
+    matches,
     lhsVertices, inputFreeVertices, newVertices, deleteVertices, newVertexMap
 },
     patterns = First[
         Reap[
-            {matchPositions, bindings} = Thread @ Keys @ ResourceFunction["MultiReplace"][
+            matches = Thread @ Keys @ ResourceFunction["MultiReplace"][
                 ToLabeledEdges[hg],
                 ToLabeledPatternEdges[input],
                 {1},
@@ -188,7 +188,7 @@ PatternRuleToMultiReplaceRule[rule : _[lhs_List | Verbatim[HoldPattern][lhs_List
             |>
         ] & /@ Catenate[Permutations /@ Subsets[Complement[vertices, matchVertices], {Length[inputFreeVertices]}]]
     ],
-        {matchPositions, bindings}
+        matches
     ]
 ]
 
