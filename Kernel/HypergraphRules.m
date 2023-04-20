@@ -169,9 +169,13 @@ PatternRuleToMultiReplaceRule[rule : _[lhs_List | Verbatim[HoldPattern][lhs_List
     ];
     embedding = Thread[vertices -> HypergraphEmbedding[hg]];
 
-    Catenate @ MapThread[{pos, bind} |-> Block[{matchEdges = Replace[Extract[edges, pos], (edge_ -> _) :> edge, {1}], matchVertices, matchVertexMap},
+    Catenate @ MapThread[{pos, binding} |-> Block[{
+        matchEdges = Replace[Extract[edges, pos], (edge_ -> _) :> edge, {1}],
+        bind = First[binding, {}],
+        matchVertices, matchVertexMap
+    },
         matchVertices = Union @@ matchEdges;
-        matchVertexMap = Thread[inputVertices -> (patterns /. First[bind, {}])];
+        matchVertexMap = Thread[inputVertices -> (patterns /. bind)];
         Block[{
             origVertexMap = Join[
                 matchVertexMap,
@@ -181,7 +185,13 @@ PatternRuleToMultiReplaceRule[rule : _[lhs_List | Verbatim[HoldPattern][lhs_List
             deleteOrigVertices, newEdges
         },
             deleteOrigVertices = Replace[deleteVertices, origVertexMap, {1}];
-            newEdges = Replace[outputEdges, {(edge_ -> tag_) :> Replace[edge, origVertexMap, {1}] -> tag, edge_ :> Replace[edge, origVertexMap, {1}]}, {1}];
+            newEdges = Replace[outputEdges, {
+                    (edge_ -> tag_) :> Replace[edge, origVertexMap, {1}] ->
+                        (tag /. KeyMap[Replace[Verbatim[Pattern][sym_Symbol, _] :> sym]] @ bind),
+                    edge_ :> Replace[edge, origVertexMap, {1}]
+                },
+                {1}
+            ];
             <| "Hypergraph" -> Hypergraph[
                     Union[DeleteElements[vertices, deleteOrigVertices], Replace[ouputVertices, origVertexMap, {1}]],
                     Insert[
@@ -196,6 +206,7 @@ PatternRuleToMultiReplaceRule[rule : _[lhs_List | Verbatim[HoldPattern][lhs_List
                 ],
                 "MatchVertices" -> Join[#, matchVertices],
                 "MatchEdges" -> matchEdges,
+                "MatchEdgePositions" -> pos,
                 "NewVertices" -> Values[newVertexMap],
                 "NewEdges" -> newEdges,
                 "DeletedVertices" -> deleteOrigVertices,
