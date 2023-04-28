@@ -224,11 +224,18 @@ $HypergraphRulePlotOptions = {
     VertexLabels -> Automatic,
     Frame -> True,
     FrameTicks -> None,
-    PlotRangePadding -> .1,
+    PlotRangePadding -> .2,
     ImagePadding -> 3,
-    (* AspectRatio -> 1, *)
+    AspectRatio -> 1,
     ImageSize -> Tiny
 };
+
+
+$arrow = FilledCurve[
+    {{{0, 2, 0}, {0, 1, 0}, {0, 1, 0}, {0, 1, 0}, {0, 1, 0}, {0, 1, 0}, {0, 1, 0}, {0, 1, 0}, {0, 1, 0}}},
+    {{{-1., 0.1848}, {0.2991, 0.1848}, {-0.1531, 0.6363}, {0.109, 0.8982}, {1., 0.0034},
+    {0.109, -0.8982}, {-0.1531, -0.6363}, {0.2991, -0.1848}, {-1., -0.1848}, {-1., 0.1848}}}
+]
 
 Options[HighlightRule] := Options[SimpleHypergraphPlot]
 
@@ -251,7 +258,7 @@ HighlightRule[rule_ ? HypergraphRuleQ, hg_ ? HypergraphQ, opts : OptionsPattern[
                 ImageSize -> Medium,
                 $HypergraphRulePlotOptions
             ],
-            Graphics[{Arrowheads[0.3], Arrow[{{0, 0}, {.25, 0}}]}, ImageSize -> Medium],
+            Graphics[{GrayLevel[0.65], $arrow}, ImageSize -> Medium],
             SimpleHypergraphPlot[
                 #Hypergraph,
                 opts,
@@ -293,7 +300,7 @@ HypergraphRule /: MakeBoxes[hr : HoldPattern[HypergraphRule[input_, output_]] ? 
     boxes = ToBoxes[
         GraphicsRow[{
             SimpleHypergraphPlot[input, $HypergraphRulePlotOptions],
-            Graphics[{Arrowheads[.5], Arrow[{{0, 0}, {.5, 0}}]}, ImageSize -> Tiny],
+            Graphics[{GrayLevel[0.65], $arrow}, ImageSize -> Scaled[0.01]],
             SimpleHypergraphPlot[output, $HypergraphRulePlotOptions]
         },
             PlotRangePadding -> 1
