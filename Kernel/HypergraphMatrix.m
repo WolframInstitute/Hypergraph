@@ -122,12 +122,15 @@ HyperMatrix /: MakeBoxes[hm_HyperMatrix ? HyperMatrixQ, form_] := BoxForm`Arrang
 
 HyperMatrixGraph[vs_List, hm_List] := With[{n = Length[vs], dims = Dimensions /@ hm},
 	(
-		Hypergraph @ Flatten[
-			KeyValueMap[
-				If[IntegerQ[#2] && #2 > 0, Table[vs[[#1]], #2], Nothing] &,
-				If[ArrayQ[#], Association @ ArrayRules[#], <|{} -> #|>]
-			] & /@ hm,
-			2
+		Hypergraph[
+			Range[n],
+			Flatten[
+				KeyValueMap[
+					If[IntegerQ[#2] && #2 > 0, Table[vs[[#1]], #2], Nothing] &,
+					If[ArrayQ[#], Association @ ArrayRules[#], <|{} -> #|>]
+				] & /@ hm,
+				2
+			]
 		]
 	) /; Equal @@ Prepend[Catenate[dims], n]
 ]
