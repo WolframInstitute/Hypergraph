@@ -168,13 +168,13 @@ HypergraphProp[hg_, "FullEdgeSymmetry"] := With[{symmFunc = Map[
 
 NonCommutativeMultiply[hs___Hypergraph] ^:= Hypergraph[
 	Through[Unevaluated @ NonCommutativeMultiply[hs]["Edges"]],
-	Merge[Through[{hs}["Symmetry"]], Identity],
+	"EdgeSymmetry" -> DeleteDuplicates @ Merge[Through[{hs}["EdgeSymmetry"]], Identity],
 	Normal @ Merge[Through[{hs}["Options"]], First]
 ]
 
 Plus[hs___Hypergraph] ^:= Hypergraph[
 	Through[Unevaluated @ Plus[hs]["Edges"]],
-	Through[Unevaluated @ Join[hs]["Symmetry"]],
+	"EdgeSymmetry" -> DeleteDuplicates @ Through[Unevaluated @ Join[hs]["EdgeSymmetry"]],
 	Normal @ Merge[Through[{hs}["Options"]], First]
 ]
 

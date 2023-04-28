@@ -16,7 +16,7 @@ Hypergraph /: MakeBoxes[hg_Hypergraph /; HypergraphQ[Unevaluated[hg]], form : St
 
 Hypergraph /: MakeBoxes[hg_Hypergraph /; HypergraphQ[Unevaluated[hg]], form : TraditionalForm] := With[{
 	edgeBoxes = ToBoxes[#["Edges"], form],
-    tooltip = ToBoxes[#["Symmetry"]]
+    tooltip = ToBoxes[#["EdgeSymmetry"]]
 },
 	InterpretationBox[edgeBoxes, #, Tooltip -> tooltip]
 ] & @ hg
