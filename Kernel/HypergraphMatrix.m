@@ -68,23 +68,27 @@ HyperMatrixQ[_HyperMatrix ? System`Private`HoldValidQ] := True
 HyperMatrixQ[___] := False
 
 
-HyperMatrix[vs_List, hg : {___List}] := Block[{n, index},
+HyperMatrix[vs_List, edges : {(_List | _Rule) ...}, symm : {___Rule}] := Block[{n, index},
 	n = Length[vs];
 	index = First /@ PositionIndex[vs];
 	HyperMatrix @@ KeyValueMap[
-		If[#1 == 0, Length[#2], SparseArray[Normal @ Counts[Partition[Lookup[index, Catenate[#2]], #]], Table[n, #1]]] &,
-		KeySort @ GroupBy[hg, Length]
+		#1 -> If[#1[[1]] == 0, Length[#2], SparseArray[Normal @ Counts[Partition[Lookup[index, Catenate[Replace[#2, (e_ -> tag_) :> e, {1}]]], #1[[1]]]], Table[n, #1[[1]]]]] &,
+		KeySort @ GroupBy[edges, Through @* {Length, Lookup[symm, Key[#]] &}]
 	]
 ]
 
 HyperMatrix[hg : {___List}] := HyperMatrix[Union @@ hg, hg]
 
-HyperMatrix[hg_Hypergraph] := HyperMatrix[VertexList[hg], EdgeList[hg]]
+HyperMatrix[hg_Hypergraph] := HyperMatrix[VertexList[hg], hg["EdgeListTagged"], EdgeSymmetry[hg]]
 
-hm : HyperMatrix[arr : (_Integer | _SparseArray) ...] /; System`Private`HoldNotValidQ[hm] && Equal @@ Catenate[Dimensions /@ {arr}] := System`Private`HoldSetValid[hm]
+hm : HyperMatrix[rules : ({_Integer, {___Cycles}} -> _Integer | _SparseArray) ...] /;
+	System`Private`HoldNotValidQ[hm] && Equal @@ Catenate[Dimensions /@ {rules}[[All, 2]]] :=
+	System`Private`HoldSetValid[hm]
 
 
-(hm_HyperMatrix ? HyperMatrixQ)["Arrays"] := List @@ hm
+(hm_HyperMatrix ? HyperMatrixQ)["Association"] := Association @@ hm
+
+(hm_HyperMatrix ? HyperMatrixQ)["Arrays"] := (List @@ hm)[[All, 2]]
 
 (hm_HyperMatrix ? HyperMatrixQ)["Dimensions"] := Dimensions /@ hm["Arrays"]
 
@@ -139,7 +143,7 @@ HyperMatrixGraph[hm_List] := With[{dims = Catenate[Dimensions /@ hm]},
 	HyperMatrixGraph[Range[First[dims]], hm] /; Equal @@ dims
 ]
 
-HyperMatrixGraph[hm_HyperMatrix ? HyperMatrixQ] := HyperMatrixGraph[List @@ hm]
+HyperMatrixGraph[hm_HyperMatrix ? HyperMatrixQ] := HyperMatrixGraph[hm["Arrays"]]
 
 
 

@@ -158,7 +158,7 @@ HypergraphProp[hg_, "FullEdgeSymmetry"] := With[{symmFunc = Map[
 },
 	Catenate @ KeyValueMap[{edge, multiplicity} |->
 		edge -> findMinGenSet[#[edge]] & /@ PadRight[#, multiplicity, #] & @ ReplaceList[edge, symmFunc],
-		Counts[hg["EdgeList"]]
+		Counts[hg["EdgeListTagged"]]
 	]
 ]
 
