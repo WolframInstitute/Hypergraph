@@ -8,12 +8,11 @@ PackageScope["makeAnnotationRules"]
 
 
 
-makeVertexLabel[vertex_, label_, style_, pos_] := Replace[label, {
+makeVertexLabel[vertex_, label_, style_, pos_] := Replace[label /. "Name" -> vertex, {
     None -> Nothing,
-    Automatic | "Name" :> {style, Text[vertex, pos, {1, 1}]},
-    Placed[Automatic | "Name", offset_] :> {style, Text[vertex, pos, offset]},
+    Automatic :> {style, Text[vertex, pos, {1, 1}]},
     Placed[placedLabel_, offset_] :> {style, Text[placedLabel, pos, offset]},
-    _ :> {style, Text[label, pos, {1, 1}]}
+    l_ :> {style, Text[l, pos, {1, 1}]}
 }]
 
 
