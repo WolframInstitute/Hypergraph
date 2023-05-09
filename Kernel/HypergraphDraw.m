@@ -359,7 +359,8 @@ HypergraphDraw[initHg : _Hypergraph ? HypergraphQ : Hypergraph[], opts : Options
 		ColorSlider[Dynamic @ color],
         Row[{"Multiselect mode", Checkbox[Dynamic[multiSelect]]}],
         RadioButtonBar[Dynamic[vertexMode], {True -> "Vertex mode", False -> "Edge mode"}],
-        Dynamic @ Pane[If[multiSelect, "
+        Dynamic @ Pane[Style[
+            If[multiSelect, "
 🖱️(left-click) to select a vertex
 Press \[EscapeKey] or 'q' to cancel vertex selection
 Press 'v' to create vertices
@@ -374,7 +375,13 @@ Press \[ReturnKey] or 'e' to create an edge
 \[AltKey]/\[CommandKey] + ️🖱(right-click) to remove `2`
 \[ShiftKey] applies current color selection
 
-"] @@ If[vertexMode, Identity, Reverse] @ {"a vertex", "an edge"}, ImageSize -> Scaled[.4], Alignment -> Center]}, Alignment -> Center]
+"] @@ If[vertexMode, Identity, Reverse] @ {"a vertex", "an edge"},
+            FontFamily -> "Courier", FontSize -> 8
+        ],
+        ImageSize -> Scaled[.4], Alignment -> Center
+    ]},
+        Alignment -> Center
+    ]
 	},
 	    Alignment -> Top,
         ImageSize -> 1280
