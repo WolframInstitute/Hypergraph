@@ -124,26 +124,25 @@ HyperMatrix /: MakeBoxes[hm_HyperMatrix ? HyperMatrixQ, form_] := BoxForm`Arrang
 ]
 
 
-HyperMatrixGraph[vs_List, hm_List] := With[{n = Length[vs], dims = Dimensions /@ hm},
+HyperMatrixGraph[vs_List, hm_List, keys_List] := Block[{n = Length[vs], dims = Dimensions /@ hm, edges},
 	(
+		edges = KeyValueMap[
+			If[IntegerQ[#2] && #2 > 0, Table[vs[[#1]], #2], Nothing] &,
+			If[ArrayQ[#], Association @ ArrayRules[#], <|{} -> #|>]
+		] & /@ hm;
 		Hypergraph[
 			Range[n],
-			Flatten[
-				KeyValueMap[
-					If[IntegerQ[#2] && #2 > 0, Table[vs[[#1]], #2], Nothing] &,
-					If[ArrayQ[#], Association @ ArrayRules[#], <|{} -> #|>]
-				] & /@ hm,
-				2
-			]
+			Flatten[edges, 2],
+			"EdgeSymmetry" -> Catenate @ MapThread[Thread[Rule[Catenate[#1], #2], List, {1}] &, {edges, keys[[All, 2]]}]
 		]
 	) /; Equal @@ Prepend[Catenate[dims], n]
 ]
 
-HyperMatrixGraph[hm_List] := With[{dims = Catenate[Dimensions /@ hm]},
-	HyperMatrixGraph[Range[First[dims]], hm] /; Equal @@ dims
+HyperMatrixGraph[hm_Association] := With[{dims = Catenate[Dimensions /@ hm]},
+	HyperMatrixGraph[Range[First[dims]], Values[hm], Keys[hm]] /; Equal @@ dims
 ]
 
-HyperMatrixGraph[hm_HyperMatrix ? HyperMatrixQ] := HyperMatrixGraph[hm["Arrays"]]
+HyperMatrixGraph[hm_HyperMatrix ? HyperMatrixQ] := HyperMatrixGraph[hm["Association"]]
 
 
 
