@@ -339,18 +339,3 @@ HoldPattern[HypergraphRule[_, output_]]["Output"] := output
         ]
     ]
 
-HypergraphRule /: MakeBoxes[hr : HoldPattern[HypergraphRule[input_, output_]] ? HypergraphRuleQ, form_] := With[{
-    boxes = ToBoxes[
-        GraphicsRow[{
-            SimpleHypergraphPlot[input, $HypergraphRulePlotOptions],
-            Graphics[{GrayLevel[0.65], $arrow}, ImageSize -> Scaled[0.01]],
-            SimpleHypergraphPlot[output, $HypergraphRulePlotOptions]
-        },
-            PlotRangePadding -> 1
-        ],
-        form
-    ]
-},
-    InterpretationBox[boxes, hr]
-]
-

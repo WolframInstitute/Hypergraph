@@ -3,6 +3,8 @@ Package["WolframInstitute`Hypergraph`"]
 
 
 
+(* Hypergraph *)
+
 Hypergraph /: MakeBoxes[hg_Hypergraph /; HypergraphQ[Unevaluated[hg]], form : StandardForm] := With[{
 	boxes = Block[{BoxForm`$UseTextFormattingWhenConvertingInput = False},
         ToBoxes[
@@ -53,4 +55,28 @@ Scan[head |->
     {GraphicsBox, Graphics3DBox}
 ]
 Protect[GraphicsBox, Graphics3DBox]
+
+
+(* HypergraphRule *)
+
+HypergraphRule /: MakeBoxes[hr : HoldPattern[HypergraphRule[input_, output_]] /; HypergraphRuleQ[Unevaluated[hr]], form : StandardForm] := With[{
+    boxes = ToBoxes[
+        GraphicsRow[{
+            SimpleHypergraphPlot[input, $HypergraphRulePlotOptions],
+            Graphics[{GrayLevel[0.65], $arrow}, ImageSize -> Scaled[0.01]],
+            SimpleHypergraphPlot[output, $HypergraphRulePlotOptions]
+        },
+            PlotRangePadding -> 1
+        ],
+        form
+    ]
+},
+    InterpretationBox[boxes, hr]
+]
+
+HypergraphRule /: MakeBoxes[hr : HoldPattern[HypergraphRule[input_, output_]] /; HypergraphRuleQ[Unevaluated[hr]], form : TraditionalForm] := With[{
+    boxes = RowBox[{MakeBoxes[input, form], "->", MakeBoxes[output, form]}]
+},
+    InterpretationBox[boxes, hr]
+]
 
