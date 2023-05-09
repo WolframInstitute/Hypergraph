@@ -1,6 +1,9 @@
 
 Package["WolframInstitute`Hypergraph`"]
 
+PackageScope["$HypergraphRuleArrow"]
+PackageScope["$HypergraphRulePlotOptions"]
+
 
 
 (* Hypergraph *)
@@ -59,11 +62,27 @@ Protect[GraphicsBox, Graphics3DBox]
 
 (* HypergraphRule *)
 
+$HypergraphRuleArrow = FilledCurve[
+    {{{0, 2, 0}, {0, 1, 0}, {0, 1, 0}, {0, 1, 0}, {0, 1, 0}, {0, 1, 0}, {0, 1, 0}, {0, 1, 0}, {0, 1, 0}}},
+    {{{-1., 0.1848}, {0.2991, 0.1848}, {-0.1531, 0.6363}, {0.109, 0.8982}, {1., 0.0034},
+    {0.109, -0.8982}, {-0.1531, -0.6363}, {0.2991, -0.1848}, {-1., -0.1848}, {-1., 0.1848}}}
+]
+
+$HypergraphRulePlotOptions = {
+    VertexLabels -> Automatic,
+    Frame -> True,
+    FrameTicks -> None,
+    PlotRangePadding -> .2,
+    ImagePadding -> 3,
+    AspectRatio -> 1,
+    ImageSize -> Tiny
+};
+
 HypergraphRule /: MakeBoxes[hr : HoldPattern[HypergraphRule[input_, output_]] /; HypergraphRuleQ[Unevaluated[hr]], form : StandardForm] := With[{
     boxes = ToBoxes[
         GraphicsRow[{
             SimpleHypergraphPlot[input, $HypergraphRulePlotOptions],
-            Graphics[{GrayLevel[0.65], $arrow}, ImageSize -> Scaled[0.01]],
+            Graphics[{GrayLevel[0.65], $HypergraphRuleArrow}, ImageSize -> Scaled[0.01]],
             SimpleHypergraphPlot[output, $HypergraphRulePlotOptions]
         },
             PlotRangePadding -> 1

@@ -265,22 +265,6 @@ HypergraphRuleApply[input_, output_, hg_, opts : OptionsPattern[]] := Block[{
 ] /; HypergraphRuleQ[rule] = HypergraphRuleApply[input, output, hg, opts]
 
 
-$HypergraphRulePlotOptions = {
-    VertexLabels -> Automatic,
-    Frame -> True,
-    FrameTicks -> None,
-    PlotRangePadding -> .2,
-    ImagePadding -> 3,
-    AspectRatio -> 1,
-    ImageSize -> Tiny
-};
-
-
-$arrow = FilledCurve[
-    {{{0, 2, 0}, {0, 1, 0}, {0, 1, 0}, {0, 1, 0}, {0, 1, 0}, {0, 1, 0}, {0, 1, 0}, {0, 1, 0}, {0, 1, 0}}},
-    {{{-1., 0.1848}, {0.2991, 0.1848}, {-0.1531, 0.6363}, {0.109, 0.8982}, {1., 0.0034},
-    {0.109, -0.8982}, {-0.1531, -0.6363}, {0.2991, -0.1848}, {-1., -0.1848}, {-1., 0.1848}}}
-]
 
 Options[HighlightRule] := Join[Options[HypergraphRuleApply], Options[SimpleHypergraphPlot]]
 
@@ -302,7 +286,7 @@ HighlightRule[rule_ ? HypergraphRuleQ, hg_ ? HypergraphQ, opts : OptionsPattern[
                 VertexStyle -> Map[# -> Directive[PointSize[0.02], Red] &, #MatchVertices],
                 $HypergraphRulePlotOptions
             ],
-            Graphics[{GrayLevel[0.65], $arrow}, ImageSize -> Scaled[0.01]],
+            Graphics[{GrayLevel[0.65], $HypergraphRuleArrow}, ImageSize -> Scaled[0.01]],
             SimpleHypergraphPlot[
                 #Hypergraph,
                 opts,
