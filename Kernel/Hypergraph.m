@@ -7,6 +7,19 @@ PackageExport["Hyperedges"]
 PackageExport["Hypergraph"]
 PackageExport["Hypergraph3D"]
 
+PackageScope["$DefaultHypergraphAnnotations"]
+
+
+
+$DefaultHypergraphAnnotations = <|
+    VertexStyle -> {},
+    VertexLabels -> {"Name", None},
+    VertexLabelStyle -> {},
+    EdgeStyle -> Automatic,
+    EdgeLabels -> {"Name", None},
+    EdgeLabelStyle -> {},
+    "EdgeSymmetry" -> "Unordered"
+|>
 
 
 (* Hyperedges *)
@@ -67,9 +80,25 @@ HypergraphQ[___] := False
 
 (* Constructors *)
 
-Hypergraph[vs_List, edgeSpec : {(_List | _Rule) ...}, opts : OptionsPattern[]] := Hypergraph[vs, Hyperedges @@ edgeSpec, opts]
+$EdgePattern = _List | _Rule | Labeled[_List | _Rule, _] | Style[_List | _Rule, _] | Annotation[_List | _Rule, _]
 
-Hypergraph[edgeSpec : {(_List | _Rule) ...}, opts : OptionsPattern[]] := Hypergraph[Hyperedges @@ edgeSpec, opts]
+extractEdgeAnnotations[edgeSpec : {$EdgePattern ...}] :=  With[{
+	labels = Cases[edgeSpec, l_Labeled :> Rule @@ l],
+	styles = Cases[edgeSpec, s_Style :> Rule @@ s],
+	annotations = Cases[edgeSpec, Annotation[e_, data_] :> Map[#[[1]] -> ReplacePart[#, 1 -> e] &, Cases[Flatten[{data}], _Rule | _RuleDelayed]]],
+	edges = Replace[edgeSpec, (Labeled | Style | Annotation)[e_, _] :> e, {1}]
+},
+	{edges, {EdgeStyle -> styles, EdgeLabels -> labels, annotations}}
+]
+
+Hypergraph[vs_List, edgeSpec : {$EdgePattern ...}, opts : OptionsPattern[]] := Block[{edges, annotations},
+	{edges, annotations} = extractEdgeAnnotations[edgeSpec];
+	Hypergraph[vs, Hyperedges @@ edges, annotations, opts]
+]
+
+Hypergraph[edgeSpec : {$EdgePattern ...}, opts : OptionsPattern[]] := Hypergraph[{}, edgeSpec, opts]
+
+Hypergraph[vs_List, opts : OptionsPattern[]] := Hypergraph[vs, {}, opts]
 
 Hypergraph[] := Hypergraph[0]
 
@@ -84,8 +113,21 @@ hg : Hypergraph[vs_List, he_Hyperedges ? HyperedgesQ, opts : OptionsPattern[]] /
 	! ContainsAll[vs, he["VertexList"]] := Hypergraph[Join[vs, DeleteElements[he["VertexList"], vs]], he, opts]
 
 hg : Hypergraph[vs_List, he_Hyperedges ? HyperedgesQ, opts : OptionsPattern[]] /;
-	ContainsAll[vs, he["VertexList"]] && System`Private`HoldNotValidQ[hg] := System`Private`SetNoEntry[
-		System`Private`HoldSetValid[Hypergraph[vs, he, ##]] & @@ Sort @ DeleteDuplicatesBy[Flatten[{opts}], First]
+	ContainsAll[vs, he["VertexList"]] && System`Private`HoldNotValidQ[hg] := System`Private`SetNoEntry @ With[{
+		labels = Cases[vs, l_Labeled :> Rule @@ l],
+		styles = Cases[vs, s_Style :> Rule @@ s],
+		annotations = Cases[vs, Annotation[v_, data_] :> Map[#[[1]] -> ReplacePart[#, 1 -> v] &, Cases[Flatten[{data}], _Rule | _RuleDelayed]]],
+		vertices = Replace[vs, (Labeled | Style | Annotation)[v_, _] :> v, {1}]
+	},
+		System`Private`HoldSetValid[Hypergraph[vertices, he, ##]] & @@
+			Sort @ Normal @ GroupBy[
+				Flatten[{VertexStyle -> styles, VertexLabels -> labels, annotations, opts}], First,
+				If[
+					KeyExistsQ[$DefaultHypergraphAnnotations, #[[1, 1]]],
+					Replace[Flatten[Map[Last, #]], s : Except[_Rule | _RuleDelayed] :> _ -> s, {1}],
+					#[[-1, -1]]
+				] &
+			]
 	]
 
 

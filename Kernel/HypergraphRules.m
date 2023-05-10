@@ -250,7 +250,7 @@ HypergraphRuleApply[input_, output_, hg_, opts : OptionsPattern[]] := Block[{
                             ] &]
                         ],
                         VertexCoordinates -> embedding,
-                        PlotLabel -> (Lookup[output["Options"], PlotLabel, {}] /. bindingReplace),
+                        PlotLabel -> (Lookup[output["Options"], PlotLabel, None] /. bindingReplace),
                         FilterRules[hg["Options"],
                             Except[VertexStyle | VertexLabels | VertexLabelStyle | VertexCoordinates | EdgeStyle | EdgeLabels | EdgeLabelStyle | "EdgeSymmetry"]
                         ]

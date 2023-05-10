@@ -16,16 +16,6 @@ makeVertexLabel[vertex_, label_, style_, pos_] := Replace[label /. "Name" -> ver
 }]
 
 
-$defaultAnnotations = <|
-    VertexStyle -> {},
-    VertexLabels -> {"Name", None},
-    VertexLabelStyle -> {},
-    EdgeStyle -> Automatic,
-    EdgeLabels -> {"Name", None},
-    EdgeLabelStyle -> {},
-    "EdgeSymmetry" -> "Unordered"
-|>
-
 makeAnnotationRules[opts_List] := Association @ KeyValueMap[
     #1 -> Block[{automatic, default},
         If[ MatchQ[#2, {_, _}],
@@ -34,7 +24,7 @@ makeAnnotationRules[opts_List] := Association @ KeyValueMap[
         ];
         Append[Replace[Flatten[ReplaceList[#1, opts]], {Automatic -> _ -> automatic, s : Except[_Rule | _RuleDelayed] :> _ -> s}, {1}], _ -> default]
     ] &,
-    $defaultAnnotations
+    $DefaultHypergraphAnnotations
 ]
 
 Options[SimpleHypergraphPlot] := Join[Options[Hypergraph], Options[Graphics], Options[Graphics3D]];
