@@ -43,10 +43,7 @@ ToLabeledEdges[vertexLabels_Association, edges : {___List}, makePattern_ : False
 
 ToLabeledEdges[hg_ ? HypergraphQ, makePattern_ : False] := Block[{
     vs = VertexList[hg],
-    vertexLabelRules = Append[
-        Replace[Flatten[ReplaceList[VertexLabels, hg["Options"]]], {Automatic -> _ -> "Name", s : Except[_Rule] :> _ -> s}, {1}],
-        _ -> None
-    ],
+    vertexLabelRules = makeAnnotationRules[hg["Options"], VertexLabels],
     vertexLabels,
     edgeSymmetry = Values[EdgeSymmetry[hg]],
     edgeTags = EdgeTags[hg]

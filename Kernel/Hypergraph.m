@@ -88,7 +88,7 @@ extractEdgeAnnotations[edgeSpec : {$EdgePattern ...}] :=  With[{
 	annotations = Cases[edgeSpec, Annotation[e_, data_] :> Map[#[[1]] -> ReplacePart[#, 1 -> e] &, Cases[Flatten[{data}], _Rule | _RuleDelayed]]],
 	edges = Replace[edgeSpec, (Labeled | Style | Annotation)[e_, _] :> e, {1}]
 },
-	{edges, {EdgeStyle -> styles, EdgeLabels -> labels, annotations}}
+	{edges, {EdgeStyle -> Replace[styles, {} -> Automatic], EdgeLabels -> labels, annotations}}
 ]
 
 Hypergraph[vs_List, edgeSpec : {$EdgePattern ...}, opts : OptionsPattern[]] := Block[{edges, annotations},
@@ -199,7 +199,7 @@ HypergraphProp[hg_, "FullEdgeSymmetry"] := With[{symmFunc = Map[
 	]
 },
 	Catenate @ KeyValueMap[{edge, multiplicity} |->
-		edge -> findMinGenSet[#[edge]] & /@ PadRight[#, multiplicity, #] & @ ReplaceList[edge, symmFunc],
+		edge -> findMinGenSet[#[Replace[edge, (e_ -> _) :> e]]] & /@ PadRight[#, multiplicity, #] & @ ReplaceList[edge, symmFunc],
 		Counts[hg["EdgeListTagged"]]
 	]
 ]

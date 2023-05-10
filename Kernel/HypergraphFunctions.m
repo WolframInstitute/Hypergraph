@@ -42,14 +42,16 @@ mapEdgeOptions[f_, opt_] := Replace[Flatten[{opt}], {((edge_List -> tag_) -> v_)
 mapVertexOptions[f_, opt_] := Replace[Flatten[{opt}], (vertex_ -> v_) :> f[vertex] -> v, {1}]
 
 
-CanonicalHypergraph[hg_ ? HypergraphQ] := Block[{vs = VertexList[hg], edges = EdgeList[hg], newVertices, emptyEdges, newEdges, iso, perm},
+CanonicalHypergraph[hg_ ? HypergraphQ] := Block[{vs = VertexList[hg], edges = EdgeList[hg], nakedVertices, newVertices, emptyEdges, newEdges, iso, perm},
     emptyEdges = Cases[edges, {}];
     edges = DeleteCases[edges, {}];
     {perm, iso} = ResourceFunction["FindCanonicalHypergraphIsomorphism"][edges, "IncludePermutation" -> True];
     newEdges = Permute[edges /. iso, perm];
-    newVertices = Union[Values[iso], Max[iso] + Range[Length @ DeleteElements[vs, Keys[iso]]]];
+    nakedVertices = DeleteElements[vs, Keys[iso]];
+    newVertices = Max[iso] + Range[Length @ nakedVertices];
+    iso = <|iso, Thread[nakedVertices -> newVertices]|>;
     Hypergraph[
-        newVertices, Join[emptyEdges, newEdges],
+        Values[iso], Join[emptyEdges, newEdges],
         With[{keys = Keys[hg["Options"]]},
             KeySort @ Association @ hg["Options"] //
                 MapAt[
@@ -72,7 +74,7 @@ IsomorphicHypergraphQ[hg1_ ? HypergraphQ, hg2_ ? HypergraphQ] :=
     Through[{VertexList, EdgeList, EdgeSymmetry} @ CanonicalHypergraph[hg1]] === Through[{VertexList, EdgeList, EdgeSymmetry} @ CanonicalHypergraph[hg2]]
 
 
-VertexReplace[hg_Hypergraph, rules_] ^:= Hypergraph[
+Hypergraph /: VertexReplace[hg_Hypergraph, rules_] := Hypergraph[
     DeleteDuplicates @ Replace[VertexList[hg], rules, {1}],
     Hyperedges @@ (Replace[{(edge_ -> tag_) :> Replace[edge, rules, {1}] -> tag, edge_ :> Replace[edge, rules, {1}]}] /@ EdgeListTagged[hg]),
     Replace[
@@ -86,15 +88,15 @@ VertexReplace[hg_Hypergraph, rules_] ^:= Hypergraph[
     ]
 ]
 
-VertexReplace[rules_][hg_Hypergraph] ^:= VertexReplace[hg, rules]
+Hypergraph /: HoldPattern[VertexReplace[rules_][hg_Hypergraph]] := VertexReplace[hg, rules]
 
 
-VertexIndex[hg_Hypergraph, v : Except[_List]] ^:= First @ FirstPosition[VertexList[hg], v, {Missing[v]}, {1}, Heads -> False]
+Hypergraph /: VertexIndex[hg_Hypergraph, v : Except[_List]] := First @ FirstPosition[VertexList[hg], v, {Missing[v]}, {1}, Heads -> False]
 
-VertexIndex[hg_Hypergraph, vs_List] ^:= VertexIndex[hg, #] & /@ vs
+Hypergraph /: VertexIndex[hg_Hypergraph, vs_List] := VertexIndex[hg, #] & /@ vs
 
 
-EdgeIndex[hg_Hypergraph, e : Except[_List]] ^:= First @ FirstPosition[EdgeListTagged[hg], e, {Missing[e]}, {1}, Heads -> False]
+Hypergraph /: EdgeIndex[hg_Hypergraph, e : Except[_List]] := First @ FirstPosition[EdgeListTagged[hg], e, {Missing[e]}, {1}, Heads -> False]
 
-EdgeIndex[hg_Hypergraph, es_List] ^:= EdgeIndex[hg, #] & /@ es
+Hypergraph /: EdgeIndex[hg_Hypergraph, es_List] := EdgeIndex[hg, #] & /@ es
 

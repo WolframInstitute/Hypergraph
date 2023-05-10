@@ -11,12 +11,12 @@ PackageScope["makeAnnotationRules"]
 makeVertexLabel[vertex_, label_, style_, pos_] := Replace[label /. "Name" -> vertex, {
     None -> Nothing,
     Automatic :> Text[Style[vertex, style], pos, {1, 1}],
-    Placed[placedLabel_, offset_] :> Text[Style[placedLabel, style], pos, offset],
+    Placed[placedLabel_, offset_] :> If[offset === Tooltip, Tooltip[Text[" ", pos], Style[placedLabel, style]], Text[Style[placedLabel, style], pos, offset]],
     l_ :> Text[Style[l, style], pos, {1, 1}]
 }]
 
 
-makeAnnotationRules[opts_List] := Association @ KeyValueMap[
+makeAnnotationRules[opts_List, keys_ : All] := If[MatchQ[keys, _List | All], Association, #[[1, 2]] &] @ KeyValueMap[
     #1 -> Block[{automatic, default},
         If[ MatchQ[#2, {_, _}],
             {automatic, default} = #2,
@@ -24,7 +24,7 @@ makeAnnotationRules[opts_List] := Association @ KeyValueMap[
         ];
         Append[Replace[Flatten[ReplaceList[#1, opts]], {Automatic -> _ -> automatic, s : Except[_Rule | _RuleDelayed] :> _ -> s}, {1}], _ -> default]
     ] &,
-    $DefaultHypergraphAnnotations
+    If[keys === All, $DefaultHypergraphAnnotations, $DefaultHypergraphAnnotations[[ Key /@ Developer`ToList[keys] ]]]
 ]
 
 Options[SimpleHypergraphPlot] := Join[Options[Hypergraph], Options[Graphics], Options[Graphics3D]];
@@ -34,7 +34,7 @@ SimpleHypergraphPlot[h : {___List}, args___] := SimpleHypergraphPlot[Hypergraph[
 SimpleHypergraphPlot[h_Hypergraph, plotOpts : OptionsPattern[]] := Enclose @ Block[{
     graph,
     vertexEmbedding, edgeEmbedding,
-    vs = h["VertexList"], es = h["EdgeList"], edgeTags = h["EdgeTags"],
+    vs = VertexList[h], es = EdgeList[h], edgeTags = EdgeTags[h],
     nullEdges, longEdges, ws,
     colorFunction, edgeArrowsQ, edgeType,
     vertexStyle, vertexLabels, vertexLabelStyle,
@@ -48,7 +48,7 @@ SimpleHypergraphPlot[h_Hypergraph, plotOpts : OptionsPattern[]] := Enclose @ Blo
     edgeIndex = PositionIndex[es];
     colorFunction = OptionValue[SimpleHypergraphPlot, opts, ColorFunction];
     {vertexStyle, vertexLabels, vertexLabelStyle, edgeStyle, edgeLabels, edgeLabelStyle, edgeSymmetries} = Values @ makeAnnotationRules[opts];
-    edgeSymmetries = Replace[es, edgeSymmetries, {1}];
+    edgeSymmetries = Replace[Thread[es -> edgeTags], edgeSymmetries, {1}];
     edgeArrowsQ = TrueQ[OptionValue[SimpleHypergraphPlot, opts, "EdgeArrows"]];
     edgeType = OptionValue[SimpleHypergraphPlot, opts, "EdgeType"];
     dim = ConfirmMatch[OptionValue[SimpleHypergraphPlot, opts, "LayoutDimension"], 2 | 3];
@@ -108,7 +108,7 @@ SimpleHypergraphPlot[h_Hypergraph, plotOpts : OptionsPattern[]] := Enclose @ Blo
     },
         edgeTagged = If[tag === None, edge, edge -> tag];
         style = With[{defStyle = Directive[colorFunction[i], EdgeForm[Transparent]]},
-            If[Length[#] > 1, ResourceFunction["LookupPart"][#, j, defStyle], Replace[Last[#, defStyle], Automatic -> defStyle]] & @ ReplaceList[edgeTagged, edgeStyle]
+            Replace[If[Length[#] > 1, ResourceFunction["LookupPart"][#, j, defStyle], Last[#, defStyle]], Automatic -> defStyle] & @ ReplaceList[edgeTagged, edgeStyle]
         ];
         label = If[Length[#] > 1, ResourceFunction["LookupPart"][#, j, None], Last[#, None]] & @ ReplaceList[edgeTagged, edgeLabels];
         labelStyle = If[Length[#] > 1, ResourceFunction["LookupPart"][#, j, Last[#, {}]], Last[#, {}]] & @ ReplaceList[edgeTagged, edgeLabelStyle];
