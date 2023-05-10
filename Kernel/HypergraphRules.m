@@ -166,7 +166,7 @@ HypergraphRuleApply[input_, output_, hg_, opts : OptionsPattern[]] := Block[{
     ];
     {edgeAnnotations, outputEdgeAnnotations} = MapThread[{es, rules} |->
         Append[
-            Map[Thread[es -> Replace[es, #, {1}]] &, rules[[Key /@ {EdgeStyle, EdgeLabelStyle}]]],
+            Map[Thread[es -> Replace[es, #, {1}]] &, rules[[Key /@ {EdgeStyle, EdgeLabelStyle, "EdgeSymmetry"}]]],
             EdgeLabels -> Function[Null, Thread[es :> #], HoldAll] @@ Replace[Hold[es], rules[EdgeLabels], {2}]
         ],
         {{edges, outputEdges}, {annotationRules, outputAnnotationRules}}
@@ -197,6 +197,8 @@ HypergraphRuleApply[input_, output_, hg_, opts : OptionsPattern[]] := Block[{
         ],
         {{hg, output}, {edges, outputEdges}, {edgeAnnotations, outputEdgeAnnotations}}
     ];
+    outputEdgeAnnotations = MapAt["Ordered" &, outputEdgeAnnotations, {Key["EdgeSymmetry"], All, 2}];
+
     embedding = Thread[vertices -> HypergraphEmbedding[hg]];
 
     Catenate @ MapThread[{pos, bindings} |-> Block[{
@@ -249,7 +251,9 @@ HypergraphRuleApply[input_, output_, hg_, opts : OptionsPattern[]] := Block[{
                         ],
                         VertexCoordinates -> embedding,
                         PlotLabel -> (Lookup[output["Options"], PlotLabel, {}] /. bindingReplace),
-                        FilterRules[hg["Options"], Except[VertexStyle | VertexLabels | VertexLabelStyle | VertexCoordinates | EdgeStyle | EdgeLabels | EdgeLabelStyle]]
+                        FilterRules[hg["Options"],
+                            Except[VertexStyle | VertexLabels | VertexLabelStyle | VertexCoordinates | EdgeStyle | EdgeLabels | EdgeLabelStyle | "EdgeSymmetry"]
+                        ]
                     ],
                     "MatchVertices" -> Join[#, matchVertices],
                     "MatchEdges" -> matchEdges,

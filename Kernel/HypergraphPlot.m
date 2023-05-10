@@ -22,7 +22,8 @@ $defaultAnnotations = <|
     VertexLabelStyle -> {},
     EdgeStyle -> Automatic,
     EdgeLabels -> {"Name", None},
-    EdgeLabelStyle -> {}
+    EdgeLabelStyle -> {},
+    "EdgeSymmetry" -> "Unordered"
 |>
 
 makeAnnotationRules[opts_List] := Association @ KeyValueMap[
@@ -43,21 +44,21 @@ SimpleHypergraphPlot[h : {___List}, args___] := SimpleHypergraphPlot[Hypergraph[
 SimpleHypergraphPlot[h_Hypergraph, plotOpts : OptionsPattern[]] := Enclose @ Block[{
     graph,
     vertexEmbedding, edgeEmbedding,
-    vs = h["VertexList"], es = h["EdgeList"], edgeTags = h["EdgeTags"], edgeSymmetries,
+    vs = h["VertexList"], es = h["EdgeList"], edgeTags = h["EdgeTags"],
     nullEdges, longEdges, ws,
     colorFunction, edgeArrowsQ, edgeType,
     vertexStyle, vertexLabels, vertexLabelStyle,
-    edgeStyle, edgeLabels, edgeLabelStyle,
+    edgeStyle, edgeLabels, edgeLabelStyle, edgeSymmetries,
     vertexCoordinates,
     bounds, corner, size, dim,
     opts = FilterRules[{plotOpts, h["Options"]}, Options[SimpleHypergraphPlot]],
     edgeIndex,
     makeEdge
 },
-    edgeSymmetries = Replace[es, h["EdgeSymmetry"], {1}];
     edgeIndex = PositionIndex[es];
     colorFunction = OptionValue[SimpleHypergraphPlot, opts, ColorFunction];
-    {vertexStyle, vertexLabels, vertexLabelStyle, edgeStyle, edgeLabels, edgeLabelStyle} = Values @ makeAnnotationRules[opts];
+    {vertexStyle, vertexLabels, vertexLabelStyle, edgeStyle, edgeLabels, edgeLabelStyle, edgeSymmetries} = Values @ makeAnnotationRules[opts];
+    edgeSymmetries = Replace[es, edgeSymmetries, {1}];
     edgeArrowsQ = TrueQ[OptionValue[SimpleHypergraphPlot, opts, "EdgeArrows"]];
     edgeType = OptionValue[SimpleHypergraphPlot, opts, "EdgeType"];
     dim = ConfirmMatch[OptionValue[SimpleHypergraphPlot, opts, "LayoutDimension"], 2 | 3];
@@ -168,7 +169,11 @@ SimpleHypergraphPlot[h_Hypergraph, plotOpts : OptionsPattern[]] := Enclose @ Blo
                         (
                             Sow[position = edgeIndex[edge][[#2[[1]]]], "Position"];
                             Sow[primitive = #1[[1]], "Primitive"];
-                            makeEdge[edge, edgeTags[[ position ]], edgeSymmetries[[ position ]], i, #2[[1]], If[edgeArrowsQ, Arrow, Identity] @ primitive]
+                            With[{symm = edgeSymmetries[[ position ]]},
+                                makeEdge[edge, edgeTags[[ position ]], symm, i, #2[[1]],
+                                    If[edgeArrowsQ || MatchQ[symm, "Ordered" | "Directed" | {}], Arrow, Identity] @ primitive
+                                ]
+                            ]
                         ) &,
                         GraphComputation`GraphElementData["Line"][#, None] /. BezierCurve -> BSplineCurve & /@ Lookup[edgeEmbedding, DirectedEdge @@ edge]
                     ],
@@ -189,15 +194,17 @@ SimpleHypergraphPlot[h_Hypergraph, plotOpts : OptionsPattern[]] := Enclose @ Blo
                                         Sow[primitive = areaGradientDescent[region, .1, 20], "Primitive"]
                                     ]
                                 ];
-                                makeEdge[edge, edgeTags[[ position ]], edgeSymmetries[[ position ]], i, j,
-                                    If[ edgeArrowsQ,
-                                        With[{lengths = RegionMeasure @* DiscretizeGraphics /@ curves},
-                                            {   primitive,
-                                                Arrowheads[{Medium, #} & /@ ((Prepend[Accumulate[Most[lengths]], 0] + lengths / 2) / Total[lengths])],
-                                                Switch[dim, 2, Arrow @ JoinedCurve[curves], 3, Arrow /@ curves]
-                                            }
-                                        ],
-                                        primitive
+                                With[{symm = edgeSymmetries[[ position ]]},
+                                    makeEdge[edge, edgeTags[[ position ]], symm, i, j,
+                                        If[ edgeArrowsQ || MatchQ[symm, "Ordered" | "Directed" | {}],
+                                            With[{lengths = RegionMeasure @* DiscretizeGraphics /@ curves},
+                                                {   primitive,
+                                                    Arrowheads[{Medium, #} & /@ ((Prepend[Accumulate[Most[lengths]], 0] + lengths / 2) / Total[lengths])],
+                                                    Switch[dim, 2, Arrow @ JoinedCurve[curves], 3, Arrow /@ curves]
+                                                }
+                                            ],
+                                            primitive
+                                        ]
                                     ]
                                 ]
                             }],
