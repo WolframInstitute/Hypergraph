@@ -31,7 +31,7 @@ makeAnnotationRules[opts_List] := Association @ KeyValueMap[
             {automatic, default} = #2,
             automatic = default = #2
         ];
-        Append[Replace[Flatten[ReplaceList[#1, opts]], {Automatic -> _ -> automatic, s : Except[_Rule] :> _ -> s}, {1}], _ -> default]
+        Append[Replace[Flatten[ReplaceList[#1, opts]], {Automatic -> _ -> automatic, s : Except[_Rule | _RuleDelayed] :> _ -> s}, {1}], _ -> default]
     ] &,
     $defaultAnnotations
 ]

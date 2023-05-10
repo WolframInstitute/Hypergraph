@@ -158,11 +158,17 @@ HypergraphRuleApply[input_, output_, hg_, opts : OptionsPattern[]] := Block[{
     outputAnnotationRules = makeAnnotationRules[output["Options"]];
 
     {vertexAnnotations, outputVertexAnnotations} = MapThread[{vs, rules} |->
-        Map[Thread[vs -> Replace[vs, #, {1}]] &, rules[[Key /@ {VertexStyle, VertexLabels, VertexLabelStyle}]]],
+        Append[
+            Map[Thread[vs -> Replace[vs, #, {1}]] &, rules[[Key /@ {VertexStyle, VertexLabelStyle}]]],
+            VertexLabels -> Function[Null, Thread[vs :> #], HoldAll] @@ Replace[Hold[vs], rules[VertexLabels], {2}]
+        ],
         {{vertices, outputVertices}, {annotationRules, outputAnnotationRules}}
     ];
     {edgeAnnotations, outputEdgeAnnotations} = MapThread[{es, rules} |->
-        Map[Thread[es -> Replace[es, #, {1}]] &, rules[[Key /@ {EdgeStyle, EdgeLabels, EdgeLabelStyle}]]],
+        Append[
+            Map[Thread[es -> Replace[es, #, {1}]] &, rules[[Key /@ {EdgeStyle, EdgeLabelStyle}]]],
+            EdgeLabels -> Function[Null, Thread[es :> #], HoldAll] @@ Replace[Hold[es], rules[EdgeLabels], {2}]
+        ],
         {{edges, outputEdges}, {annotationRules, outputAnnotationRules}}
     ];
 
@@ -171,7 +177,7 @@ HypergraphRuleApply[input_, output_, hg_, opts : OptionsPattern[]] := Block[{
             Replace[
                 vs,
                 Append[
-                    Replace[Flatten[{OptionValue[SimpleHypergraphPlot, h["Options"], VertexStyle]}], {Automatic -> Nothing, s : Except[_Rule] :> _ -> s}, {1}],
+                    Replace[Flatten[{OptionValue[SimpleHypergraphPlot, h["Options"], VertexStyle]}], {Automatic -> Nothing, s : Except[_Rule | _RuleDelayed] :> _ -> s}, {1}],
                     _ -> Black
                 ],
                 {1}
@@ -206,12 +212,13 @@ HypergraphRuleApply[input_, output_, hg_, opts : OptionsPattern[]] := Block[{
                     Thread[inputFreeVertices -> #],
                     newVertexMap
                 ],
-                deleteOrigVertices, newEdges
+                deleteOrigVertices, newEdges,
+                bindingReplace = Normal @ KeyMap[Replace[Verbatim[Pattern][sym_Symbol, _] :> HoldPattern[sym]]] @ binding
             },
                 deleteOrigVertices = Replace[deleteVertices, origVertexMap, {1}];
                 newEdges = Replace[outputEdges, {
                         (edge_ -> tag_) :> Replace[edge, origVertexMap, {1}] ->
-                            (tag /. KeyMap[Replace[Verbatim[Pattern][sym_Symbol, _] :> sym]] @ binding),
+                            (tag /. bindingReplace),
                         edge_ :> Replace[edge, origVertexMap, {1}]
                     },
                     {1}
@@ -223,18 +230,17 @@ HypergraphRuleApply[input_, output_, hg_, opts : OptionsPattern[]] := Block[{
                             Splice @ newEdges,
                             Min[pos]
                         ],
-                        Normal @ Merge[{vertexAnnotations, outputVertexAnnotations},
+                        Normal @ MapAt[Function[Null, Unevaluated[#] /. bindingReplace, HoldAll], Key[VertexLabels]] @ Merge[{vertexAnnotations, outputVertexAnnotations},
                            Apply[Join[
-                                Replace[#2, (vertex_ -> style_) :> Replace[vertex, origVertexMap] -> style, {1}],
-                                DeleteCases[#1, Alternatives @@ deleteOrigVertices -> _]
+                                Replace[#2, (h : (Rule | RuleDelayed))[vertex_, annotation_] :> h[Replace[vertex, origVertexMap], annotation], {1}],
+                                DeleteCases[#1, (Rule | RuleDelayed)[Alternatives @@ deleteOrigVertices, _]]
                             ] &]
                         ],
-                        Normal @ Merge[{edgeAnnotations, outputEdgeAnnotations},
+                        Normal @ MapAt[Function[Null, Unevaluated[#] /. bindingReplace, HoldAll], Key[EdgeLabels]] @ Merge[{edgeAnnotations, outputEdgeAnnotations},
                            Apply[Join[
                                 Replace[#2, {
-                                    ((edge_List -> tag_) -> style_) :> Replace[edge, origVertexMap, {1}] ->
-                                        (tag /. KeyMap[Replace[Verbatim[Pattern][sym_Symbol, _] :> sym]] @ binding) -> style,
-                                    (edge_List -> style_) :> Replace[edge, origVertexMap, {1}] -> style
+                                    (h : (Rule | RuleDelayed))[edge_List -> tag_, annotation_] :> h[Replace[edge, origVertexMap, {1}] -> (tag /. bindingReplace), annotation],
+                                    (h : (Rule | RuleDelayed))[edge_List, annotation_] :> h[Replace[edge, origVertexMap, {1}], annotation]
                                 },
                                 {1}
                                 ],
@@ -242,6 +248,7 @@ HypergraphRuleApply[input_, output_, hg_, opts : OptionsPattern[]] := Block[{
                             ] &]
                         ],
                         VertexCoordinates -> embedding,
+                        PlotLabel -> (Lookup[output["Options"], PlotLabel, {}] /. bindingReplace),
                         FilterRules[hg["Options"], Except[VertexStyle | VertexLabels | VertexLabelStyle | VertexCoordinates | EdgeStyle | EdgeLabels | EdgeLabelStyle]]
                     ],
                     "MatchVertices" -> Join[#, matchVertices],
