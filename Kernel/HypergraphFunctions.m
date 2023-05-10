@@ -89,3 +89,12 @@ VertexReplace[hg_Hypergraph, rules_] ^:= Hypergraph[
 VertexReplace[rules_][hg_Hypergraph] ^:= VertexReplace[hg, rules]
 
 
+VertexIndex[hg_Hypergraph, v : Except[_List]] ^:= First @ FirstPosition[VertexList[hg], v, {Missing[v]}, {1}, Heads -> False]
+
+VertexIndex[hg_Hypergraph, vs_List] ^:= VertexIndex[hg, #] & /@ vs
+
+
+EdgeIndex[hg_Hypergraph, e : Except[_List]] ^:= First @ FirstPosition[EdgeListTagged[hg], e, {Missing[e]}, {1}, Heads -> False]
+
+EdgeIndex[hg_Hypergraph, es_List] ^:= EdgeIndex[hg, #] & /@ es
+
