@@ -69,7 +69,6 @@ $HypergraphRuleArrow = FilledCurve[
 ]
 
 $HypergraphRulePlotOptions = {
-    VertexLabels -> Automatic,
     Frame -> True,
     FrameTicks -> None,
     PlotRangePadding -> .2,

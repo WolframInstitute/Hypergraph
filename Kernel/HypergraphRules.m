@@ -285,6 +285,7 @@ HighlightRule[rule_ ? HypergraphRuleQ, hg_ ? HypergraphQ, opts : OptionsPattern[
                     #MatchEdges
                 ],
                 VertexStyle -> Map[# -> Directive[PointSize[0.02], Red] &, #MatchVertices],
+                AspectRatio -> Automatic,
                 $HypergraphRulePlotOptions
             ],
             Graphics[{GrayLevel[0.65], $HypergraphRuleArrow}, ImageSize -> Scaled[0.01]],
@@ -297,6 +298,7 @@ HighlightRule[rule_ ? HypergraphRuleQ, hg_ ? HypergraphQ, opts : OptionsPattern[
                     #NewEdges
                 ],
                 VertexStyle -> Map[# -> Directive[PointSize[0.02], Red] &, #NewVertices],
+                AspectRatio -> Automatic,
                 $HypergraphRulePlotOptions
             ]
         }, PlotRangePadding -> 1] &,

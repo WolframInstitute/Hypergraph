@@ -66,10 +66,11 @@ SimpleHypergraphPlot[h_Hypergraph, plotOpts : OptionsPattern[]] := Enclose @ Blo
     longEdges = Cases[es, {_, _, __}];
     ws = Join[vs, nullEdges, \[FormalE] /@ Range[Length[longEdges]]];
 
-    vertexCoordinates = OptionValue[SimpleHypergraphPlot, opts, VertexCoordinates];
-    If[ MatchQ[vertexCoordinates, {___Rule}],
-        vertexCoordinates = Join[vertexCoordinates, Thread[Complement[ws, vertexCoordinates[[All, 1]]]  -> Automatic]]
-    ];
+    vertexCoordinates = Replace[OptionValue[SimpleHypergraphPlot, opts, VertexCoordinates], Except[{___Rule}] -> {}];
+    vertexCoordinates = Join[vertexCoordinates, Thread[Complement[ws, vertexCoordinates[[All, 1]]] -> Automatic]];
+    vertexCoordinates = MapAt[Replace[coords_List :> PadRight[coords, dim]], vertexCoordinates, {All, 2}];
+    vertexCoordinates = Replace[vertexCoordinates, {(_ -> Automatic)...} -> Automatic];
+
 	graph = Switch[dim, 2, Graph, 3, Graph3D][
         ws,
         Join[

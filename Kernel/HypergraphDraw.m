@@ -275,8 +275,8 @@ HypergraphDraw[initHg : _Hypergraph ? HypergraphQ : Hypergraph[], opts : Options
         nullEdges = <||>;
         vertexStyles = Replace[Lookup[initHg["Options"], VertexStyle, Automatic], {
             rules : {___Rule} :> Association[rules],
-            Automatic :> AssociationThread[vertices, Array[ColorData[97], Length[vertices]]],
-            style_ :> AssociationThread[Range[Length[vertices]], style]
+            Automatic :> AssociationThread[vertices, Black],
+            style_ :> AssociationThread[vertices, style]
         }];
         edges = EdgeList[initHg];
         edgeStyles = Replace[Lookup[initHg["Options"], EdgeStyle, Automatic], {
