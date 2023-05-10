@@ -120,13 +120,14 @@ PatternRuleToMultiReplaceRule[rule : _[lhs_List | Verbatim[HoldPattern][lhs_List
 ]
 
 
-Options[HypergraphRuleApply] = {Method -> Automatic}
+Options[HypergraphRuleApply] = {"Bindings" -> Automatic, "Symmetry" -> Automatic}
 
 HypergraphRuleApply[input_, output_, hg_, opts : OptionsPattern[]] := Block[{
     vertices = VertexList[hg], edges = hg["EdgeListTagged"],
     inputVertices = VertexList[input], outputVertices = VertexList[output],
     inputEdges = EdgeList[input], outputEdges = output["EdgeListTagged"],
-    method = Replace[OptionValue[Method], {None | Automatic -> (Take[#, UpTo[1]] &), All -> Identity}],
+    bindingsMethod = Replace[OptionValue["Bindings"], {All -> Identity, _ -> (Take[#, UpTo[1]] &)}],
+    symmetryMethod = Replace[OptionValue["Symmetry"], {Automatic -> Identity, _ -> (_ &)}],
     annotationRules, outputAnnotationRules,
     vertexAnnotations, outputVertexAnnotations,
     edgeAnnotations, outputEdgeAnnotations,
@@ -138,7 +139,7 @@ HypergraphRuleApply[input_, output_, hg_, opts : OptionsPattern[]] := Block[{
         Reap[
             matches = Thread @ DeleteDuplicatesBy[Sort @* First] @ Keys @ ResourceFunction["MultiReplace"][
                 ToLabeledEdges[hg],
-                ToLabeledPatternEdges[input],
+                MapAt[symmetryMethod, ToLabeledPatternEdges[input], {1, All, 2, 1}],
                 {1},
                 "PatternSubstitutions" -> True,
                 "Mode" -> "OrderlessSubsets"
@@ -253,7 +254,7 @@ HypergraphRuleApply[input_, output_, hg_, opts : OptionsPattern[]] := Block[{
                 |>
             ] & /@ Catenate[Permutations /@ Subsets[Complement[vertices, matchVertices], {Length[inputFreeVertices]}]]
         ),
-            method @ bindings
+            bindingsMethod @ bindings
         ]
     ],
         matches
@@ -305,15 +306,16 @@ HighlightRule[rule_ ? HypergraphRuleQ, hg_ ? HypergraphQ, opts : OptionsPattern[
 
 
 
-HypergraphRuleQ[hr_HypergraphRule] := System`Private`HoldValidQ[hr]
+HypergraphRuleQ[hr_HypergraphRule] := System`Private`HoldValidQ[hr] ||
+    MatchQ[Unevaluated[hr], HoldPattern[HypergraphRule[input_, output_]] /; HypergraphQ[Unevaluated[input]] && HypergraphQ[Unevaluated[output]]]
 
 HypergraphRuleQ[___] := $Failed
 
 Options[HypergraphRule] := Options[Hypergraph]
 
-HoldPattern[HypergraphRule[input_, _]]["Input"] := input
+HoldPattern[HypergraphRule[input_, _] ? HypergraphRuleQ]["Input"] := input
 
-HoldPattern[HypergraphRule[_, output_]]["Output"] := output
+HoldPattern[HypergraphRule[_, output_] ? HypergraphRuleQ]["Output"] := output
 
 (hr : HoldPattern[HypergraphRule[input_, output_, opts : OptionsPattern[]]]) /; ! HypergraphRuleQ[Unevaluated[hr]] :=
     Enclose[

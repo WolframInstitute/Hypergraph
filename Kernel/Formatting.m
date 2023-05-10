@@ -78,24 +78,57 @@ $HypergraphRulePlotOptions = {
     ImageSize -> Tiny
 };
 
-HypergraphRule /: MakeBoxes[hr : HoldPattern[HypergraphRule[input_, output_]] /; HypergraphRuleQ[Unevaluated[hr]], form : StandardForm] := With[{
-    boxes = ToBoxes[
+HypergraphRule /: MakeBoxes[hr_HypergraphRule /; HypergraphRuleQ[Unevaluated[hr]], form : StandardForm] := With[{
+    boxes = Block[{BoxForm`$UseTextFormattingWhenConvertingInput = False}, ToBoxes[
         GraphicsRow[{
-            SimpleHypergraphPlot[input, $HypergraphRulePlotOptions],
+            SimpleHypergraphPlot[#["Input"], $HypergraphRulePlotOptions],
             Graphics[{GrayLevel[0.65], $HypergraphRuleArrow}, ImageSize -> Scaled[0.01]],
-            SimpleHypergraphPlot[output, $HypergraphRulePlotOptions]
+            SimpleHypergraphPlot[#["Output"], $HypergraphRulePlotOptions]
         },
-            PlotRangePadding -> 1
+            PlotRangePadding -> 1,
+            BaseStyle -> {GraphicsHighlightColor -> Blue}
         ],
         form
-    ]
+    ]]
 },
-    InterpretationBox[boxes, hr]
+    hypergraphRuleBox[boxes, #]
+] & @ hr
+
+HypergraphRule /: MakeBoxes[hr_HypergraphRule /; HypergraphRuleQ[Unevaluated[hr]], form : TraditionalForm] := With[{
+    boxes = RowBox[{ToBoxes[#["Input"], form], "->", ToBoxes[#["Output"], form]}]
+},
+    InterpretationBox[boxes, #]
+] & @ hr
+
+
+
+SetAttributes[hypergraphRuleBox, HoldAllComplete];
+hypergraphRuleBox[(head : (GraphicsBox | Graphics3DBox))[box_, opts___], hr_] := head[
+	NamespaceBox["HypergraphRule", DynamicModuleBox[{Typeset`hr = HoldComplete[hr]}, box]],
+	opts
 ]
 
-HypergraphRule /: MakeBoxes[hr : HoldPattern[HypergraphRule[input_, output_]] /; HypergraphRuleQ[Unevaluated[hr]], form : TraditionalForm] := With[{
-    boxes = RowBox[{MakeBoxes[input, form], "->", MakeBoxes[output, form]}]
-},
-    InterpretationBox[boxes, hr]
+hypergraphRuleBox[_, hr_] := ToBoxes[hr, TraditionalForm]
+
+
+PossibleHypergraphRuleBoxQ[HoldPattern[(GraphicsBox | Graphics3DBox)[NamespaceBox["HypergraphRule", _, ___], ___]]] := True
+
+PossibleHypergraphRuleBoxQ[___] := False
+
+
+FromGraphicsBox[HoldPattern[(GraphicsBox | Graphics3DBox)[NamespaceBox["HypergraphRule", DynamicModuleBox[vars_, ___], ___], ___]], _] := Module[vars, Typeset`hr]
+
+Unprotect[GraphicsBox, Graphics3DBox]
+Scan[head |->
+    With[{lhs = HoldPattern[MakeExpression[g_head ? PossibleHypergraphRuleBoxQ, fmt_]]},
+        If[	!KeyExistsQ[FormatValues[head], lhs],
+            PrependTo[
+                FormatValues[head],
+                lhs :> FromGraphicsBox[g, fmt]
+            ]
+        ]
+    ],
+    {GraphicsBox, Graphics3DBox}
 ]
+Protect[GraphicsBox, Graphics3DBox]
 

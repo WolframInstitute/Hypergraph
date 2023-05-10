@@ -123,7 +123,7 @@ HypergraphProp[Hypergraph[vertices_, ___], "VertexList"] := vertices
 
 HypergraphProp[Hypergraph[_, edges_, ___], "Edges"] := edges
 
-HypergraphProp[hg_, "EdgeSymmetry"] := Flatten[{Replace[Lookup[hg["Options"], "EdgeSymmetry", Nothing], Automatic -> Nothing], _ -> "Unordered"}]
+HypergraphProp[hg_, "EdgeSymmetry"] := Append[Replace[Flatten[ReplaceList["EdgeSymmetry", hg["Options"]]], {Automatic -> Nothing, s : Except[_Rule] -> _ -> s}, {1}], _ -> "Unordered"]
 
 HypergraphProp[hg_, "EdgeListTagged"] := hg["Edges"]["EdgeListTagged"]
 
