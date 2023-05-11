@@ -6,7 +6,7 @@ PackageExport["HypergraphDraw"]
 
 Options[HypergraphDraw] := Join[{"InitialColor" -> Automatic}, Options[Hypergraph]]
 
-HypergraphDraw[initHg : _Hypergraph ? HypergraphQ : Hypergraph[], opts : OptionsPattern[]] := DynamicModule[{
+HypergraphDraw[initHg : _Hypergraph ? HypergraphQ : Hypergraph[], opts : OptionsPattern[]] := Module[{
 	hg,
 	vertices, edges, nullEdges,
     vertexStyles, edgeStyles,
@@ -407,8 +407,7 @@ Press \[ReturnKey] or 'e' to create an edge
         Editable -> False,
         ContextMenu -> {},
         GeneratedCell -> True
-    ],
-    SaveDefinitions -> True
+    ]
 ]
 
 HypergraphDraw[arg___, opts : OptionsPattern[]] := HypergraphDraw[Hypergraph[arg], opts]
