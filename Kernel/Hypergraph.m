@@ -88,7 +88,7 @@ extractEdgeAnnotations[edgeSpec : {$EdgePattern ...}] :=  With[{
 	annotations = Cases[edgeSpec, Annotation[e_, data_] :> Map[#[[1]] -> ReplacePart[#, 1 -> e] &, Cases[Flatten[{data}], _Rule | _RuleDelayed]]],
 	edges = Replace[edgeSpec, (Labeled | Style | Annotation)[e_, _] :> e, {1}]
 },
-	{edges, {EdgeStyle -> Replace[styles, {} -> Automatic], EdgeLabels -> labels, annotations}}
+	{edges, {If[styles === {}, Nothing, EdgeStyle -> styles], If[labels === {}, Nothing, EdgeLabels -> labels], annotations}}
 ]
 
 Hypergraph[vs_List, edgeSpec : {$EdgePattern ...}, opts : OptionsPattern[]] := Block[{edges, annotations},
@@ -121,7 +121,7 @@ hg : Hypergraph[vs_List, he_Hyperedges ? HyperedgesQ, opts : OptionsPattern[]] /
 	},
 		System`Private`HoldSetValid[Hypergraph[vertices, he, ##]] & @@
 			Sort @ Normal @ GroupBy[
-				Flatten[{VertexStyle -> styles, VertexLabels -> labels, annotations, opts}], First,
+				Flatten[{If[styles === {}, Nothing, VertexStyle -> styles], If[labels === {}, Nothing, VertexLabels -> labels], annotations, opts}], First,
 				If[
 					KeyExistsQ[$DefaultHypergraphAnnotations, #[[1, 1]]],
 					Replace[Flatten[Map[Last, #]], s : Except[_Rule | _RuleDelayed] :> _ -> s, {1}],
