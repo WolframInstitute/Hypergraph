@@ -115,7 +115,7 @@ SimpleHypergraphPlot[h_Hypergraph, plotOpts : OptionsPattern[]] := Enclose @ Blo
         labelPrimitive = Replace[label /. {"Name" -> edge, "EdgeTag" -> tag, "EdgeSymmetry" -> symm}, {
             None -> Nothing,
             Automatic :> Text[edge, pos],
-            Placed[placedLabel_, offset_] :> Text[placedLabel, pos, offset],
+            Placed[placedLabel_, offset_] :> Text[Replace[placedLabel, None -> ""], pos, offset],
             label_ :> Text[label, pos]
         }];
         primitive = initPrimitive /. _EmptyRegion -> {};
