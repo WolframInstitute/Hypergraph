@@ -149,6 +149,7 @@ HypergraphRuleApply[input_, output_, hg_, opts : OptionsPattern[]] := Block[{
     ][[2]];
     lhsVertices = Union @@ inputEdges;
     inputFreeVertices = Complement[inputVertices, lhsVertices];
+    labelPatterns = Extract[labelPatterns, Lookup[PositionIndex[inputVertices], inputFreeVertices]];
     newVertices = Complement[outputVertices, inputVertices];
     deleteVertices = Complement[inputVertices, outputVertices];
     newVertexMap = Block[{$ModuleNumber = 1}, # -> Unique["\[FormalV]"] & /@ newVertices];
@@ -233,7 +234,7 @@ HypergraphRuleApply[input_, output_, hg_, opts : OptionsPattern[]] := Block[{
                         AssociationThread[
                             labelPatterns,
                             With[{labelRules = Lookup[vertexAnnotations, VertexLabels, {}]},
-                                Replace[Replace[#, labelRules], Automatic | "Name" -> #] & /@ Replace[inputVertices, origVertexMap, {1}]
+                                Replace[Replace[#, labelRules], Automatic | "Name" -> #] & /@ Replace[inputFreeVertices, origVertexMap, {1}]
                             ]
                         ]
                     ]
