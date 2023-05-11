@@ -6,6 +6,8 @@ PackageExport["IsomorphicHypergraphQ"]
 PackageExport["EdgeSymmetry"]
 PackageExport["EdgeListTagged"]
 
+PackageScope["CanonicalEdge"]
+
 
 
 EdgeList[hg_Hypergraph ? HypergraphQ] ^:= hg["EdgeList"]
@@ -42,20 +44,29 @@ mapEdgeOptions[f_, opt_] := Replace[Flatten[{opt}], {((edge_List -> tag_) -> v_)
 mapVertexOptions[f_, opt_] := Replace[Flatten[{opt}], (vertex_ -> v_) :> f[vertex] -> v, {1}]
 
 
-CanonicalHypergraph[hg_ ? HypergraphQ] := Block[{vs = VertexList[hg], edges = EdgeList[hg], nakedVertices, newVertices, emptyEdges, newEdges, iso, perm},
+CanonicalEdge[edge_List, symm : {___Cycles}] := First[Sort[Permute[edge, #] & /@ GroupElements[PermutationGroup[symm]]]]
+
+CanonicalEdge[edge_List -> _, symm : {___Cycles}] := CanonicalEdge[edge, symm]
+
+
+CanonicalHypergraph[hg_ ? HypergraphQ] := Block[{
+    vs = VertexList[hg], edges = EdgeListTagged[hg], edgeSymmetry = EdgeSymmetry[hg],
+    nakedVertices, newVertices, emptyEdges, newEdges, iso, perm
+},
+    edges = CanonicalEdge[#, Lookup[edgeSymmetry, Key[#], {}]] & /@ edges;
     emptyEdges = Cases[edges, {}];
     edges = DeleteCases[edges, {}];
     {perm, iso} = ResourceFunction["FindCanonicalHypergraphIsomorphism"][edges, "IncludePermutation" -> True];
-    newEdges = Permute[edges /. iso, perm];
+    newEdges = Permute[Map[Replace[iso], edges, {2}], perm];
     nakedVertices = DeleteElements[vs, Keys[iso]];
     newVertices = Max[iso] + Range[Length @ nakedVertices];
     iso = <|iso, Thread[nakedVertices -> newVertices]|>;
     Hypergraph[
-        Values[iso], Join[emptyEdges, newEdges],
+        Values[iso], Join[emptyEdges, MapThread[CanonicalEdge[#2, Lookup[edgeSymmetry, Key[#1], {}]] &, {edges, newEdges}]],
         With[{keys = Keys[hg["Options"]]},
             KeySort @ Association @ hg["Options"] //
                 MapAt[
-                    Sort @ mapEdgeOptions[Replace[#, iso, {1}] &, #] &,
+                    Sort @ mapEdgeOptions[CanonicalEdge[Replace[#, iso, {1}], Lookup[edgeSymmetry, Key[#], {}]] &, #] &,
                     {Key[#]} & /@ Intersection[{EdgeStyle, EdgeLabels, EdgeLabelStyle, "EdgeSymmetry"}, keys]
                 ] //
                 MapAt[
