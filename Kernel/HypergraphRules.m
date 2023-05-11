@@ -20,18 +20,18 @@ makeVertexLabelPattern[vertex_, label_, makePattern_ : False] := Replace[label, 
 }]
 
 ToLabeledEdges[vertexLabels_Association, edges : {___List}, makePattern_ : False] := Block[{labels, patterns, varSymbols, labeledEdges},
-    {labels, patterns} = Reap[
+    {patterns, labels} = Reap[
         varSymbols = KeyValueMap[#1 ->
             If[ TrueQ[makePattern],
                 Labeled[
                     Sow[Pattern[#, _] & @ Symbol["\[FormalV]" <> StringDelete[ToString[#1], Except[WordCharacter]]], "VertexPattern"],
-                    Sow[#2, "Label"]
+                    Sow[#2, "LabelPattern"]
                 ],
                 Labeled[#1, #2]
             ] &, vertexLabels],
-        {"Label", "VertexPattern"}
+        {"VertexPattern", "LabelPattern"}
     ][[2]];
-    Scan[Sow[#, "Label"] &, First[labels, {}]];
+    Scan[Sow[#, "LabelPattern"] &, First[labels, {}]];
     Scan[Sow[#, "VertexPattern"] &, First[patterns, {}]];
     labeledEdges = Replace[edges, varSymbols, {2}];
     If[ TrueQ[makePattern],
@@ -137,19 +137,16 @@ HypergraphRuleApply[input_, output_, hg_, opts : OptionsPattern[]] := Block[{
     matches,
     lhsVertices, inputFreeVertices, newVertices, deleteVertices, newVertexMap
 },
-    patterns = First[
-        Reap[
-            matches = Thread @ DeleteDuplicatesBy[Sort @* First] @ Keys @ ResourceFunction["MultiReplace"][
-                ToLabeledEdges[hg],
-                MapAt[symmetryMethod, ToLabeledPatternEdges[input], {1, All, 2, 1}],
-                {1},
-                "PatternSubstitutions" -> True,
-                "Mode" -> "OrderlessSubsets"
-            ],
-            "VertexPattern"
-        ][[2]],
-        {}
-    ];
+    {patterns, labelPatterns} = First[#, {}] & /@ Reap[
+        matches = Thread @ DeleteDuplicatesBy[Sort @* First] @ Keys @ ResourceFunction["MultiReplace"][
+            ToLabeledEdges[hg],
+            MapAt[symmetryMethod, ToLabeledPatternEdges[input], {1, All, 2, 1}],
+            {1},
+            "PatternSubstitutions" -> True,
+            "Mode" -> "OrderlessSubsets"
+        ],
+        {"VertexPattern", "LabelPattern"}
+    ][[2]];
     lhsVertices = Union @@ inputEdges;
     inputFreeVertices = Complement[inputVertices, lhsVertices];
     newVertices = Complement[outputVertices, inputVertices];
@@ -204,7 +201,7 @@ HypergraphRuleApply[input_, output_, hg_, opts : OptionsPattern[]] := Block[{
 
     canonicalizeMethod @ Catenate @ MapThread[{pos, bindings} |-> Block[{
         matchEdges = Replace[Extract[edges, pos], (edge_ -> _) :> edge, {1}],
-        matchVertices, matchVertexMap
+        matchVertices, matchVertexMap, inputLabels
     },
         matchVertices = Union @@ matchEdges;
         Catenate @ Map[initBinding |-> (
@@ -218,11 +215,15 @@ HypergraphRuleApply[input_, output_, hg_, opts : OptionsPattern[]] := Block[{
                 bindingRules
             },
                 matchVertexMap = Thread[inputVertices -> (patterns /. binding)];
-                bindingRules = Normal @ KeyMap[Replace[Verbatim[Pattern][sym_Symbol, _] :> HoldPattern[sym]]] @ binding;
                 origVertexMap = Join[
                     matchVertexMap,
                     newVertexMap
                 ];
+                binding = Association[
+                    binding,
+                    Thread[labelPatterns -> Replace[Replace[inputVertices, origVertexMap, {1}], Lookup[vertexAnnotations, VertexLabels, {}], {1}]]
+                ];
+                bindingRules = Normal @ KeyMap[Replace[Verbatim[Pattern][sym_Symbol, _] :> HoldPattern[sym]]] @ binding;
                 deleteOrigVertices = Replace[deleteVertices, origVertexMap, {1}];
                 newEdges = Replace[outputEdges, {
                     e : (edge_ -> tag_) :> CanonicalEdge[Replace[edge, origVertexMap, {1}], Lookup[outputSymmetry, Key[e], {}]] -> (tag /. bindingRules),
