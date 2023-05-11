@@ -219,10 +219,26 @@ HypergraphRuleApply[input_, output_, hg_, opts : OptionsPattern[]] := Block[{
                     matchVertexMap,
                     newVertexMap
                 ];
-                binding = Association[
+                binding = Enclose @ Association[
                     binding,
-                    Thread[labelPatterns -> Replace[Replace[inputVertices, origVertexMap, {1}], Lookup[vertexAnnotations, VertexLabels, {}], {1}]]
+                    KeyValueMap[{patt, label} |->
+                        With[{varPatts = Union[Cases[patt, Verbatim[Pattern][sym_, _], All]]},
+                            AssociationThread[
+                                varPatts,
+                                Confirm @ With[{vars = Extract[varPatts, {All, 1}, Hold]},
+                                    Replace[label, Function[Null, {patt :> #, _ -> $Failed}, HoldAll] @@ vars]
+                                ]
+                            ]
+                        ],
+                        AssociationThread[
+                            labelPatterns,
+                            With[{labelRules = Lookup[vertexAnnotations, VertexLabels, {}]},
+                                Replace[Replace[#, labelRules], Automatic | "Name" -> #] & /@ Replace[inputVertices, origVertexMap, {1}]
+                            ]
+                        ]
+                    ]
                 ];
+                If[FailureQ[binding], Return[Nothing, Block]];
                 bindingRules = Normal @ KeyMap[Replace[Verbatim[Pattern][sym_Symbol, _] :> HoldPattern[sym]]] @ binding;
                 deleteOrigVertices = Replace[deleteVertices, origVertexMap, {1}];
                 newEdges = Replace[outputEdges, {
