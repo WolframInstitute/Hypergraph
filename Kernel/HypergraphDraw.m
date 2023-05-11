@@ -16,7 +16,7 @@ HypergraphDraw[initHg : _Hypergraph ? HypergraphQ : Hypergraph[], opts : Options
     vertexLabel = Null, edgeLabel = Null,
 	edge = {}, tmpEdge = {}, vertexId, edgeId = Missing[], oldVertices = <||>, oldNullEdges = <||>,
 	getVertex, down, move, up,
-    do, undo, reset, update, addEdge,
+    do, undo, reset, update, addVertices, addEdge,
     vertexName, vertexRename,
     mousePosition,
 	color,
