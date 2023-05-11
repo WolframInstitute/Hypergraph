@@ -241,8 +241,8 @@ HypergraphRuleApply[input_, output_, hg_, opts : OptionsPattern[]] := Block[{
                         Normal @ MapAt[Function[Null, Unevaluated[#] /. bindingRules, HoldAll], Key[EdgeLabels]] @ Merge[{edgeAnnotations, outputEdgeAnnotations},
                            Apply[Join[
                                 Replace[#2, {
-                                    (h : (Rule | RuleDelayed))[edge_List -> tag_, annotation_] :>
-                                        h[CanonicalEdge[Replace[edge, origVertexMap, {1}], Lookup[outputSymmetry, Key[edge], {}]] -> (tag /. bindingRules), annotation],
+                                    (h : (Rule | RuleDelayed))[e : (edge_List -> tag_), annotation_] :>
+                                        h[CanonicalEdge[Replace[edge, origVertexMap, {1}], Lookup[outputSymmetry, Key[e], {}]] -> (tag /. bindingRules), annotation],
                                     (h : (Rule | RuleDelayed))[edge_List, annotation_] :>
                                         h[CanonicalEdge[Replace[edge, origVertexMap, {1}], Lookup[outputSymmetry, Key[edge], {}]], annotation]
                                 },
