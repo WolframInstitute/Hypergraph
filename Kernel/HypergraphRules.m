@@ -24,7 +24,7 @@ ToLabeledEdges[vertexLabels_Association, edges : {___List}, makePattern_ : False
         varSymbols = KeyValueMap[#1 ->
             If[ TrueQ[makePattern],
                 Labeled[
-                    Sow[Pattern[#, _] & @ Symbol["\[FormalX]" <> StringDelete[ToString[#1], Except[WordCharacter]]], "VertexPattern"],
+                    Sow[Pattern[#, _] & @ Symbol["\[FormalV]" <> StringDelete[ToString[#1], Except[WordCharacter]]], "VertexPattern"],
                     Sow[#2, "Label"]
                 ],
                 Labeled[#1, #2]
@@ -87,7 +87,7 @@ ToLabeledPatternEdges[hg_ ? HypergraphQ] := Block[{
 
 
 ToPatternRules[lhs : {___List}, rhs : {___List}] := Block[{vs = Union @@ lhs, ws = Union @@ rhs, varSymbols, newVars},
-    varSymbols = Association @ MapIndexed[#1 -> Symbol["\[FormalX]" <> ToString[#2[[1]]]] &, Union[vs, ws]];
+    varSymbols = Association @ MapIndexed[#1 -> Symbol["\[FormalV]" <> ToString[#2[[1]]]] &, Union[vs, ws]];
     newVars = Replace[Complement[ws, vs], varSymbols, {2}];
     Replace[lhs, Pattern[#, _] & /@ varSymbols, {2}] :> Module[##] & [Replace[newVars, varSymbols, {1}], Replace[rhs, varSymbols, {2}]]
 ]
@@ -154,7 +154,7 @@ HypergraphRuleApply[input_, output_, hg_, opts : OptionsPattern[]] := Block[{
     inputFreeVertices = Complement[inputVertices, lhsVertices];
     newVertices = Complement[outputVertices, inputVertices];
     deleteVertices = Complement[inputVertices, outputVertices];
-    newVertexMap = Block[{$ModuleNumber = 1}, # -> Unique["\[FormalX]"] & /@ newVertices];
+    newVertexMap = Block[{$ModuleNumber = 1}, # -> Unique["\[FormalV]"] & /@ newVertices];
 
     annotationRules = makeAnnotationRules[hg["Options"]];
     outputAnnotationRules = makeAnnotationRules[output["Options"]];
@@ -206,22 +206,27 @@ HypergraphRuleApply[input_, output_, hg_, opts : OptionsPattern[]] := Block[{
         matchEdges = Replace[Extract[edges, pos], (edge_ -> _) :> edge, {1}],
         matchVertices, matchVertexMap
     },
-        Catenate @ Map[binding |-> (
-            matchVertices = Union @@ matchEdges;
-            matchVertexMap = Thread[inputVertices -> (patterns /. binding)];
-            Block[{
+        matchVertices = Union @@ matchEdges;
+        Catenate @ Map[initBinding |-> (
+            Map[matchFreeVertices |-> Block[{
+                binding = Association[
+                    initBinding,
+                    Thread[Pattern[Evaluate @ Symbol["\[FormalV]" <> ToString[#]], _] & /@ (Length[initBinding] + Range[Length[inputFreeVertices]]) -> matchFreeVertices]
+                ],
+                origVertexMap,
+                deleteOrigVertices, newEdges,
+                bindingRules
+            },
+                matchVertexMap = Thread[inputVertices -> (patterns /. binding)];
+                bindingRules = Normal @ KeyMap[Replace[Verbatim[Pattern][sym_Symbol, _] :> HoldPattern[sym]]] @ binding;
                 origVertexMap = Join[
                     matchVertexMap,
-                    Thread[inputFreeVertices -> #],
                     newVertexMap
-                ],
-                deleteOrigVertices, newEdges,
-                bindingRules = Normal @ KeyMap[Replace[Verbatim[Pattern][sym_Symbol, _] :> HoldPattern[sym]]] @ binding
-            },
+                ];
                 deleteOrigVertices = Replace[deleteVertices, origVertexMap, {1}];
                 newEdges = Replace[outputEdges, {
                     e : (edge_ -> tag_) :> CanonicalEdge[Replace[edge, origVertexMap, {1}], Lookup[outputSymmetry, Key[e], {}]] -> (tag /. bindingRules),
-                    edge_ :> CanonicalEdge[Replace[edge, origVertexMap, {1}],  Lookup[outputSymmetry, Key[edge], {}]]
+                    edge_ :> CanonicalEdge[Replace[edge, origVertexMap, {1}], Lookup[outputSymmetry, Key[edge], {}]]
                 },
                     {1}
                 ];
@@ -230,7 +235,7 @@ HypergraphRuleApply[input_, output_, hg_, opts : OptionsPattern[]] := Block[{
                         Insert[
                             Replace[Delete[edges, pos], {(edge_ -> tag_) :> DeleteElements[edge, deleteOrigVertices] -> tag, edge_ :> DeleteElements[edge, deleteOrigVertices]}, {1}],
                             Splice @ newEdges,
-                            Min[pos]
+                            Min[pos, Length[edges] + 1]
                         ],
                         Normal @ MapAt[Function[Null, Unevaluated[#] /. bindingRules, HoldAll], Key[VertexLabels]] @ Merge[{vertexAnnotations, outputVertexAnnotations},
                            Apply[Join[
@@ -257,7 +262,7 @@ HypergraphRuleApply[input_, output_, hg_, opts : OptionsPattern[]] := Block[{
                             Except[VertexStyle | VertexLabels | VertexLabelStyle | VertexCoordinates | EdgeStyle | EdgeLabels | EdgeLabelStyle | "EdgeSymmetry"]
                         ]
                     ],
-                    "MatchVertices" -> Join[#, matchVertices],
+                    "MatchVertices" -> Join[matchFreeVertices, matchVertices],
                     "MatchEdges" -> matchEdges,
                     "MatchEdgePositions" -> pos,
                     "NewVertices" -> Values[newVertexMap],
@@ -265,7 +270,9 @@ HypergraphRuleApply[input_, output_, hg_, opts : OptionsPattern[]] := Block[{
                     "DeletedVertices" -> deleteOrigVertices,
                     "RuleVertexMap" -> origVertexMap
                 |>
-            ] & /@ Catenate[Permutations /@ Subsets[Complement[vertices, matchVertices], {Length[inputFreeVertices]}]]
+            ],
+                Catenate[Permutations /@ Subsets[Complement[vertices, matchVertices], {Length[inputFreeVertices]}]]
+            ]
         ),
             bindingsMethod @ bindings
         ]
