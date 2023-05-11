@@ -372,11 +372,11 @@ Press \[ReturnKey] or 'e' to create an edge
 🖱️(left-click) on `1` to drag it
 \[AltKey]/\[CommandKey] + 🖱️(left-click) on `2` to drag it
 🖱️(right-click) to remove `1`
-\[AltKey]/\[CommandKey] + ️🖱(right-click) to remove `2`
+\[AltKey]/\[CommandKey] + 🖱(right-click) to remove `2`
 \[ShiftKey] applies current color selection
 
 "] @@ If[vertexMode, Identity, Reverse] @ {"a vertex", "an edge"},
-            FontFamily -> "Courier", FontSize -> 8
+            FontFamily -> "Source Sans Pro", FontSize -> 10
         ],
         ImageSize -> Scaled[.4], Alignment -> Center
     ]},
