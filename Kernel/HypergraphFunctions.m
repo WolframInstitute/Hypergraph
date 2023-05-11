@@ -51,18 +51,20 @@ CanonicalEdge[edge_List -> _, symm : {___Cycles}] := CanonicalEdge[edge, symm]
 
 CanonicalHypergraph[hg_ ? HypergraphQ] := Block[{
     vs = VertexList[hg], edges = EdgeListTagged[hg], edgeSymmetry = EdgeSymmetry[hg],
-    nakedVertices, newVertices, emptyEdges, newEdges, iso, perm
+    freeVertices, newVertices, emptyEdges, newEdges, iso, perm
 },
     edges = CanonicalEdge[#, Lookup[edgeSymmetry, Key[#], {}]] & /@ edges;
     emptyEdges = Cases[edges, {}];
     edges = DeleteCases[edges, {}];
     {perm, iso} = ResourceFunction["FindCanonicalHypergraphIsomorphism"][edges, "IncludePermutation" -> True];
-    newEdges = Permute[Map[Replace[iso], edges, {2}], perm];
-    nakedVertices = DeleteElements[vs, Keys[iso]];
-    newVertices = Max[iso] + Range[Length @ nakedVertices];
-    iso = <|iso, Thread[nakedVertices -> newVertices]|>;
+    newEdges = Map[Replace[iso], edges, {2}];
+    newEdges = MapThread[CanonicalEdge[#1, Lookup[edgeSymmetry, Key[#2], {}]] &, {newEdges, edges}];
+    newEdges = Permute[newEdges, perm];
+    freeVertices = DeleteElements[vs, Keys[iso]];
+    newVertices = Max[iso] + Range[Length @ freeVertices];
+    iso = <|iso, Thread[freeVertices -> newVertices]|>;
     Hypergraph[
-        Values[iso], Join[emptyEdges, MapThread[CanonicalEdge[#2, Lookup[edgeSymmetry, Key[#1], {}]] &, {edges, newEdges}]],
+        Values[iso], Join[emptyEdges, newEdges],
         With[{keys = Keys[hg["Options"]]},
             KeySort @ Association @ hg["Options"] //
                 MapAt[
