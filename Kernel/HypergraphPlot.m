@@ -135,7 +135,7 @@ SimpleHypergraphPlot[h_Hypergraph, plotOpts : OptionsPattern[]] := Enclose @ Blo
         }
     ];
 
-    renderEdge[{edge_List, mult_Integer}, {i_Integer}] := Block[{
+    renderEdge[edge_List -> {mult_Integer, total_Integer : 0}, {i_Integer}] := Block[{
         emb = Replace[edge, vertexEmbedding, {1}],
         position, primitive
     },
@@ -158,7 +158,7 @@ SimpleHypergraphPlot[h_Hypergraph, plotOpts : OptionsPattern[]] := Enclose @ Blo
             2, MapIndexed[
                 (
                     Sow[position = edgeIndex[edge][[#2[[1]]]], "Position"];
-                    Sow[primitive = If[edgeMethod === "ConcavePolygon" && mult == 1, MapAt[#[[{1, -1}]] &, #1[[1]], {1}], #1[[1]]], "Primitive"];
+                    Sow[primitive = If[edgeMethod === "ConcavePolygon" && DuplicateFreeQ[edge] && mult == total == 1, MapAt[#[[{1, -1}]] &, #1[[1]], {1}], #1[[1]]], "Primitive"];
                     With[{symm = edgeSymmetries[[ position ]]},
                         makeEdge[edge, edgeTags[[ position ]], symm, i, #2[[1]],
                             If[edgeArrowsQ || MatchQ[symm, "Ordered" | "Directed" | {}], Arrow, Identity] @ primitive
@@ -171,7 +171,7 @@ SimpleHypergraphPlot[h_Hypergraph, plotOpts : OptionsPattern[]] := Enclose @ Blo
                 Table[
                     Sow[position = edgeIndex[edge][[j]], "Position"];
                     With[{curves = If[
-                        edgeMethod === "ConcavePolygon",
+                        edgeMethod === "ConcavePolygon" && DuplicateFreeQ[edge],
                         ConcavePolygon[coords, j],
                         points = With[{c = Lookup[counts, #, 0] + 1},
                             AppendTo[counts, # -> c];
@@ -212,7 +212,9 @@ SimpleHypergraphPlot[h_Hypergraph, plotOpts : OptionsPattern[]] := Enclose @ Blo
 		Opacity[.5],
 		Arrowheads[{{Medium, .5}}],
 		AbsoluteThickness[Medium],
-		MapIndexed[renderEdge, Tally[es]],
+		MapIndexed[renderEdge, With[{counts = Counts[es]},
+            Normal @ Merge[{counts, Counts[Select[Sort /@ Cases[es, {_, _}], MemberQ[es, #] &]]}, Identity]]
+        ],
         Opacity[1],
 		KeyValueMap[{Replace[#1, vertexStyle], Point[#2]} &, vertexEmbedding],
         KeyValueMap[With[{label = Replace[#1, vertexLabels], style = Replace[#1, vertexLabelStyle]},
