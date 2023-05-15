@@ -28,3 +28,18 @@ EnumerateHypergraphs[sig : {{_Integer, _Integer} ...}, {n_Integer}, opts___] :=
         CanonicalHypergraph
     ]
 
+EnumerateHypergraphs[sig : {{_Integer, _Integer} ...},
+    Optional[{s : _Integer ? Positive | Automatic : Automatic, type : All | None | Automatic : Automatic}, {Automatic, Automatic}],
+    opts : OptionsPattern[]
+] := With[{
+    parallelMap = Symbol[Information[ResourceFunction["ParallelMapMonitored"], "SymbolName"]],
+    maxConnectedAtoms = Symbol[Information[ResourceFunction["EnumerateWolframModelRules"], "Context"] <> "maxConnectedAtoms"]
+},
+    Block[{parallelMap = ParallelMap[##, DistributedContexts -> Automatic] &},
+        Hypergraph[First[#], opts] & /@ ResourceFunction["EnumerateWolframModelRules"][
+            sig -> {},
+            {Replace[s, Automatic :> maxConnectedAtoms[sig, type]], type}
+        ]
+    ]
+]
+
