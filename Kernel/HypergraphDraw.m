@@ -434,7 +434,7 @@ Press \[ReturnKey] or 'e' to create an edge
             PassEventsDown :> ! graphicsSelectedQ,
             PassEventsUp -> False
         },
-        ShowSelection -> False,
+        ShowSelection -> True,
         Selectable -> False,
         Editable -> False,
         ContextMenu -> {},
