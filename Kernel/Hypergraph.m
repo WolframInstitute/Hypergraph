@@ -142,6 +142,7 @@ Options[Hypergraph] := Join[{
 	"LayoutDimension" -> 2,
     "EdgeArrows" -> False,
     "EdgeType" -> "Cyclic",
+	"EdgeMethod" -> Automatic,
 	"EdgeSymmetry" -> Automatic
 },
 	Options[Graph]

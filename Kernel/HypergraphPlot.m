@@ -27,6 +27,11 @@ makeAnnotationRules[opts_List, keys_ : All] := If[MatchQ[keys, _List | All], Ass
     If[keys === All, $DefaultHypergraphAnnotations, $DefaultHypergraphAnnotations[[ Key /@ Developer`ToList[keys] ]]]
 ]
 
+ConcavePolygon[points_, n_ : 1] := Block[{polygon = ConvexHullRegion[points], center},
+	center = RegionCentroid[polygon];
+	BSplineCurve[With[{from = #[[1]], diff = #[[2]] - #[[1]]}, MapAt[Mean[{#, center}] &, from + # diff & /@ Range[0, 1, 1 / (n + 1)], {2 ;; -2}]]] & @@@ MeshPrimitives[polygon, 1]
+]
+
 Options[SimpleHypergraphPlot] := Join[Options[Hypergraph], Options[Graphics], Options[Graphics3D]];
 
 SimpleHypergraphPlot[h : {___List}, args___] := SimpleHypergraphPlot[Hypergraph[h], args]
@@ -36,7 +41,7 @@ SimpleHypergraphPlot[h_Hypergraph, plotOpts : OptionsPattern[]] := Enclose @ Blo
     vertexEmbedding, edgeEmbedding,
     vs = VertexList[h], es = EdgeList[h], edgeTags = EdgeTags[h],
     nullEdges, longEdges, ws,
-    colorFunction, edgeArrowsQ, edgeType,
+    colorFunction, edgeArrowsQ, edgeType, edgeMethod,
     vertexStyle, vertexLabels, vertexLabelStyle,
     edgeStyle, edgeLabels, edgeLabelStyle, edgeSymmetries,
     vertexCoordinates,
@@ -51,6 +56,7 @@ SimpleHypergraphPlot[h_Hypergraph, plotOpts : OptionsPattern[]] := Enclose @ Blo
     edgeSymmetries = Replace[EdgeListTagged[h], edgeSymmetries, {1}];
     edgeArrowsQ = TrueQ[OptionValue[SimpleHypergraphPlot, opts, "EdgeArrows"]];
     edgeType = OptionValue[SimpleHypergraphPlot, opts, "EdgeType"];
+    edgeMethod = OptionValue[SimpleHypergraphPlot, opts, "EdgeMethod"];
     dim = ConfirmMatch[OptionValue[SimpleHypergraphPlot, opts, "LayoutDimension"], 2 | 3];
 
     nullEdges = \[FormalN] /@ Range[Count[es, {}]];
@@ -167,21 +173,25 @@ SimpleHypergraphPlot[h_Hypergraph, plotOpts : OptionsPattern[]] := Enclose @ Blo
                         ) &,
                         GraphComputation`GraphElementData["Line"][#, None] /. BezierCurve -> BSplineCurve & /@ Lookup[edgeEmbedding, DirectedEdge @@ edge]
                     ],
-                    _, Block[{counts = <||>, points},
+                    _, Block[{counts = <||>, points, coords = Lookup[vertexEmbedding, #1[[1]]]},
                         Table[
                             Sow[position = edgeIndex[edge][[j]], "Position"];
-                            points = With[{c = Lookup[counts, #, 0] + 1},
-                                AppendTo[counts, # -> c];
-                                Lookup[edgeEmbedding, #][[c]]
-                            ] & /@ (DirectedEdge[##, edge] & @@@ Partition[#1[[1]], 2, 1, If[edgeType === "Cyclic", 1, None]]);
-                            With[{curves = Catenate[GraphComputation`GraphElementData["Line"][#, None] /. BezierCurve -> BSplineCurve & /@ points]}, {
+                            With[{curves = If[
+                                edgeMethod === "ConcavePolygon",
+                                ConcavePolygon[coords, j],
+                                points = With[{c = Lookup[counts, #, 0] + 1},
+                                    AppendTo[counts, # -> c];
+                                    Lookup[edgeEmbedding, #][[c]]
+                                ] & /@ (DirectedEdge[##, edge] & @@@ Partition[#1[[1]], 2, 1, If[edgeType === "Cyclic", 1, None]]);
+                                Catenate[GraphComputation`GraphElementData["Line"][#, None] /. BezierCurve -> BSplineCurve & /@ points]
+                            ]}, {
                                 Switch[dim,
                                     2, Sow[primitive = FilledCurve[curves], "Primitive"],
                                     3, Block[{pts, region},
                                         pts = MeshCoordinates @ DiscretizeGraphics @ curves;
                                         region = DiscretizeRegion[#, MaxCellMeasure -> {"Area" -> Area[#] / (Length[pts] + 1)}] & @
                                             Polygon[Prepend[First[pts]] /@ Partition[pts[[2 ;; -2]], 2, 1]];
-                                        Sow[primitive = areaGradientDescent[region, .1, 20], "Primitive"]
+                                        Sow[primitive = Quiet @ areaGradientDescent[region, .1, 20], "Primitive"]
                                     ]
                                 ];
                                 With[{symm = edgeSymmetries[[ position ]]},
