@@ -164,7 +164,7 @@ SimpleHypergraphPlot[h_Hypergraph, plotOpts : OptionsPattern[]] := Enclose @ Blo
                     2, MapIndexed[
                         (
                             Sow[position = edgeIndex[edge][[#2[[1]]]], "Position"];
-                            Sow[primitive = #1[[1]], "Primitive"];
+                            Sow[primitive = If[edgeMethod === "ConcavePolygon", MapAt[#[[{1, -1}]] &, #1[[1]], {1}], #1[[1]]], "Primitive"];
                             With[{symm = edgeSymmetries[[ position ]]},
                                 makeEdge[edge, edgeTags[[ position ]], symm, i, #2[[1]],
                                     If[edgeArrowsQ || MatchQ[symm, "Ordered" | "Directed" | {}], Arrow, Identity] @ primitive
