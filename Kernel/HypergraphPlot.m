@@ -48,7 +48,7 @@ SimpleHypergraphPlot[h_Hypergraph, plotOpts : OptionsPattern[]] := Enclose @ Blo
     bounds, corner, size, dim,
     opts = FilterRules[{plotOpts, h["Options"]}, Options[SimpleHypergraphPlot]],
     edgeIndex,
-    makeEdge
+    makeEdge, renderEdge
 },
     edgeIndex = PositionIndex[es];
     colorFunction = OptionValue[SimpleHypergraphPlot, opts, ColorFunction];
@@ -135,86 +135,84 @@ SimpleHypergraphPlot[h_Hypergraph, plotOpts : OptionsPattern[]] := Enclose @ Blo
         }
     ];
 
+    renderEdge[{edge_List, mult_Integer}, {i_Integer}] := Block[{
+        emb = Replace[edge, vertexEmbedding, {1}],
+        position, primitive
+    },
+        Switch[
+            Length[edge],
+            0, Table[
+                Sow[position = edgeIndex[edge][[j]], "Position"];
+                Sow[primitive = Switch[dim, 2, Circle, 3, Sphere][Lookup[edgeEmbedding, \[FormalN][j]], size 0.03], "Primitive"];
+                makeEdge[edge, edgeTags[[ position ]], edgeSymmetries[[ position ]], i, j, primitive],
+                {j, mult}
+            ],
+            1, Block[{r = size 0.03, dr = size 0.01},
+                Table[
+                    Sow[position = edgeIndex[edge][[j]], "Position"];
+                    Sow[primitive = Switch[dim, 2, Disk[First[emb], r += dr], 3, Sphere[First[emb], r += dr], _, Nothing], "Primitive"];
+                    makeEdge[edge, edgeTags[[ position ]], edgeSymmetries[[ position ]], i, j, primitive],
+                    {j, mult}
+                ]
+            ],
+            2, MapIndexed[
+                (
+                    Sow[position = edgeIndex[edge][[#2[[1]]]], "Position"];
+                    Sow[primitive = If[edgeMethod === "ConcavePolygon" && mult == 1, MapAt[#[[{1, -1}]] &, #1[[1]], {1}], #1[[1]]], "Primitive"];
+                    With[{symm = edgeSymmetries[[ position ]]},
+                        makeEdge[edge, edgeTags[[ position ]], symm, i, #2[[1]],
+                            If[edgeArrowsQ || MatchQ[symm, "Ordered" | "Directed" | {}], Arrow, Identity] @ primitive
+                        ]
+                    ]
+                ) &,
+                GraphComputation`GraphElementData["Line"][#, None] /. BezierCurve -> BSplineCurve & /@ Lookup[edgeEmbedding, DirectedEdge @@ edge]
+            ],
+            _, Block[{counts = <||>, points, coords = Lookup[vertexEmbedding, edge]},
+                Table[
+                    Sow[position = edgeIndex[edge][[j]], "Position"];
+                    With[{curves = If[
+                        edgeMethod === "ConcavePolygon",
+                        ConcavePolygon[coords, j],
+                        points = With[{c = Lookup[counts, #, 0] + 1},
+                            AppendTo[counts, # -> c];
+                            Lookup[edgeEmbedding, #][[c]]
+                        ] & /@ (DirectedEdge[##, edge] & @@@ Partition[edge, 2, 1, If[edgeType === "Cyclic", 1, None]]);
+                        Catenate[GraphComputation`GraphElementData["Line"][#, None] /. BezierCurve -> BSplineCurve & /@ points]
+                    ]}, {
+                        Switch[dim,
+                            2, Sow[primitive = FilledCurve[curves], "Primitive"],
+                            3, Block[{pts, region},
+                                pts = MeshCoordinates @ DiscretizeGraphics @ curves;
+                                region = DiscretizeRegion[#, MaxCellMeasure -> {"Area" -> Area[#] / (Length[pts] + 1)}] & @
+                                    Polygon[Prepend[First[pts]] /@ Partition[pts[[2 ;; -2]], 2, 1]];
+                                Sow[primitive = Quiet @ areaGradientDescent[region, .1, 20], "Primitive"]
+                            ]
+                        ];
+                        With[{symm = edgeSymmetries[[ position ]]},
+                            makeEdge[edge, edgeTags[[ position ]], symm, i, j,
+                                If[ edgeArrowsQ || MatchQ[symm, "Ordered" | "Directed" | {}],
+                                    With[{lengths = RegionMeasure @* DiscretizeGraphics /@ curves},
+                                        {   primitive,
+                                            Arrowheads[{Medium, #} & /@ ((Prepend[Accumulate[Most[lengths]], 0] + lengths / 2) / Total[lengths])],
+                                            Switch[dim, 2, Arrow @ JoinedCurve[curves], 3, Arrow /@ curves]
+                                        }
+                                    ],
+                                    primitive
+                                ]
+                            ]
+                        ]
+                    }],
+                    {j, mult}
+                ]
+            ]
+        ]
+    ];
+
 	Switch[dim, 2, Graphics, 3, Graphics3D][{
 		Opacity[.5],
 		Arrowheads[{{Medium, .5}}],
 		AbsoluteThickness[Medium],
-		MapIndexed[Block[{
-            edge = #1[[1]],
-            emb = Replace[#1[[1]], vertexEmbedding, {1}],
-            mult = #1[[2]], i = #2[[1]],
-            position, primitive
-        },
-            {
-                Switch[Length[emb],
-                    0, Table[
-                        Sow[position = edgeIndex[edge][[j]], "Position"];
-                        Sow[primitive = Switch[dim, 2, Circle, 3, Sphere][Lookup[edgeEmbedding, \[FormalN][j]], size 0.03], "Primitive"];
-                        makeEdge[edge, edgeTags[[ position ]], edgeSymmetries[[ position ]], i, j, primitive],
-                        {j, mult}
-                    ],
-                    1, Block[{r = size 0.03, dr = size 0.01},
-                        Table[
-                            Sow[position = edgeIndex[edge][[j]], "Position"];
-                            Sow[primitive = Switch[dim, 2, Disk[First[emb], r += dr], 3, Sphere[First[emb], r += dr], _, Nothing], "Primitive"];
-                            makeEdge[edge, edgeTags[[ position ]], edgeSymmetries[[ position ]], i, j, primitive],
-                            {j, mult}
-                        ]
-                    ],
-                    2, MapIndexed[
-                        (
-                            Sow[position = edgeIndex[edge][[#2[[1]]]], "Position"];
-                            Sow[primitive = If[edgeMethod === "ConcavePolygon", MapAt[#[[{1, -1}]] &, #1[[1]], {1}], #1[[1]]], "Primitive"];
-                            With[{symm = edgeSymmetries[[ position ]]},
-                                makeEdge[edge, edgeTags[[ position ]], symm, i, #2[[1]],
-                                    If[edgeArrowsQ || MatchQ[symm, "Ordered" | "Directed" | {}], Arrow, Identity] @ primitive
-                                ]
-                            ]
-                        ) &,
-                        GraphComputation`GraphElementData["Line"][#, None] /. BezierCurve -> BSplineCurve & /@ Lookup[edgeEmbedding, DirectedEdge @@ edge]
-                    ],
-                    _, Block[{counts = <||>, points, coords = Lookup[vertexEmbedding, #1[[1]]]},
-                        Table[
-                            Sow[position = edgeIndex[edge][[j]], "Position"];
-                            With[{curves = If[
-                                edgeMethod === "ConcavePolygon",
-                                ConcavePolygon[coords, j],
-                                points = With[{c = Lookup[counts, #, 0] + 1},
-                                    AppendTo[counts, # -> c];
-                                    Lookup[edgeEmbedding, #][[c]]
-                                ] & /@ (DirectedEdge[##, edge] & @@@ Partition[#1[[1]], 2, 1, If[edgeType === "Cyclic", 1, None]]);
-                                Catenate[GraphComputation`GraphElementData["Line"][#, None] /. BezierCurve -> BSplineCurve & /@ points]
-                            ]}, {
-                                Switch[dim,
-                                    2, Sow[primitive = FilledCurve[curves], "Primitive"],
-                                    3, Block[{pts, region},
-                                        pts = MeshCoordinates @ DiscretizeGraphics @ curves;
-                                        region = DiscretizeRegion[#, MaxCellMeasure -> {"Area" -> Area[#] / (Length[pts] + 1)}] & @
-                                            Polygon[Prepend[First[pts]] /@ Partition[pts[[2 ;; -2]], 2, 1]];
-                                        Sow[primitive = Quiet @ areaGradientDescent[region, .1, 20], "Primitive"]
-                                    ]
-                                ];
-                                With[{symm = edgeSymmetries[[ position ]]},
-                                    makeEdge[edge, edgeTags[[ position ]], symm, i, j,
-                                        If[ edgeArrowsQ || MatchQ[symm, "Ordered" | "Directed" | {}],
-                                            With[{lengths = RegionMeasure @* DiscretizeGraphics /@ curves},
-                                                {   primitive,
-                                                    Arrowheads[{Medium, #} & /@ ((Prepend[Accumulate[Most[lengths]], 0] + lengths / 2) / Total[lengths])],
-                                                    Switch[dim, 2, Arrow @ JoinedCurve[curves], 3, Arrow /@ curves]
-                                                }
-                                            ],
-                                            primitive
-                                        ]
-                                    ]
-                                ]
-                            }],
-                            {j, mult}
-                        ]
-                    ]
-                ]
-            }] &,
-            Tally[es]
-        ],
+		MapIndexed[renderEdge, Tally[es]],
         Opacity[1],
 		KeyValueMap[{Replace[#1, vertexStyle], Point[#2]} &, vertexEmbedding],
         KeyValueMap[With[{label = Replace[#1, vertexLabels], style = Replace[#1, vertexLabelStyle]},
