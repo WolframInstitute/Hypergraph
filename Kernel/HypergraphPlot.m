@@ -109,7 +109,7 @@ SimpleHypergraphPlot[h_Hypergraph, plotOpts : OptionsPattern[]] := Enclose @ Blo
 
     makeEdge[edge_, tag_, symm_, i_, j_, initPrimitive_] := Block[{
         primitive,
-        pos = Replace[RegionCentroid[BoundingRegion @ If[RegionQ[initPrimitive], Identity, DiscretizeGraphics] @ initPrimitive], {} -> corner],
+        pos = Replace[RegionCentroid[If[MatchQ[#, _EmptyRegion], Identity, BoundingRegion] & @ If[RegionQ[initPrimitive], Identity, DiscretizeGraphics] @ initPrimitive], {} -> corner],
         edgeTagged, style, label, labelStyle, labelPrimitive
     },
         edgeTagged = If[tag === None, edge, edge -> tag];
