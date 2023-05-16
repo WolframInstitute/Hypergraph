@@ -6,6 +6,7 @@ PackageExport["IsomorphicHypergraphQ"]
 PackageExport["ToOrderedHypergraph"]
 PackageExport["EdgeSymmetry"]
 PackageExport["EdgeListTagged"]
+PackageExport["SimpleHypergraph"]
 
 PackageScope["CanonicalEdge"]
 
@@ -108,9 +109,10 @@ ToOrderedHypergraph[hg_ ? HypergraphQ] := Hypergraph[
 ]
 
 
-Hypergraph /: VertexReplace[hg_Hypergraph, rules_] := Hypergraph[
+Hypergraph /: VertexReplace[hg_Hypergraph, rules_, opts : OptionsPattern[]] := Hypergraph[
     DeleteDuplicates @ Replace[VertexList[hg], rules, {1}],
     Hyperedges @@ (Replace[{(edge_ -> tag_) :> Replace[edge, rules, {1}] -> tag, edge_ :> Replace[edge, rules, {1}]}] /@ EdgeListTagged[hg]),
+    opts,
     Replace[
         hg["Options"], {
             (opt : (VertexStyle | VertexLabels | VertexLabelStyle | VertexCoordinates) -> annotation_List) :>
@@ -123,6 +125,21 @@ Hypergraph /: VertexReplace[hg_Hypergraph, rules_] := Hypergraph[
 ]
 
 Hypergraph /: HoldPattern[VertexReplace[rules_][hg_Hypergraph]] := VertexReplace[hg, rules]
+
+
+SimpleHypergraph[hg_ ? HypergraphQ, opts : OptionsPattern[]] := Hypergraph[
+    VertexList[hg],
+    DeleteDuplicates @ Select[DuplicateFreeQ] @ Replace[EdgeListTagged[hg], (edge_ -> _) :> edge, {1}],
+    opts,
+    Replace[
+        Options[hg],
+        (opt : (EdgeStyle | EdgeLabels | EdgeLabelStyle | "EdgeSymmetry") -> annotation_List) :>
+                opt -> DeleteDuplicatesBy[First] @ Replace[annotation, ((edge_ -> _) | edge_ -> a_) :> If[DuplicateFreeQ[edge], edge -> a, Nothing], {1}],
+        {1}
+    ]
+]
+
+SimpleHypergraph[args___, opts : OptionsPattern[]] := SimpleHypergraph[Hypergraph[args], opts]
 
 
 Hypergraph /: VertexIndex[hg_Hypergraph, v : Except[_List]] := First @ FirstPosition[VertexList[hg], v, {Missing[v]}, {1}, Heads -> False]
