@@ -18,17 +18,17 @@ EnumerateOrderedHypergraphs[sig : {{_Integer, _Integer} ...}, {n_Integer}, opts_
 
 
 EnumerateOrderedHypergraphs[sig : {{_Integer, _Integer} ...},
-    Optional[{s : _Integer ? Positive | Automatic : Automatic, type : True | False | None | Automatic : Automatic}, {Automatic, Automatic}],
+    Optional[{s : _Integer ? Positive | Automatic : Automatic, connectedQ : True | False : True, simpleQ : True | False : True}, {Automatic, Automatic}],
     opts : OptionsPattern[]
 ] := With[{
     parallelMap = Symbol[Information[ResourceFunction["ParallelMapMonitored"], "SymbolName"]],
     maxConnectedAtoms = Symbol[Information[ResourceFunction["EnumerateWolframModelRules"], "Context"] <> "maxConnectedAtoms"],
-    ruleType = Replace[type, {True -> Automatic, False -> None}]
+    connType = Replace[connectedQ, {True -> Automatic, False -> None}]
 },
     Block[{parallelMap = ParallelMap[##, DistributedContexts -> Automatic] &},
-        Hypergraph[First[#], opts, "EdgeSymmetry" -> "Ordered"] & /@ ResourceFunction["EnumerateWolframModelRules"][
+        If[simpleQ, SimpleHypergraph, Hypergraph][First[#], opts, "EdgeSymmetry" -> "Ordered"] & /@ ResourceFunction["EnumerateWolframModelRules"][
             sig -> {},
-            {Replace[s, Automatic :> maxConnectedAtoms[sig, ruleType]], ruleType}
+            {Replace[s, Automatic :> maxConnectedAtoms[sig, connType]], connType}
         ]
     ]
 ]
