@@ -151,6 +151,7 @@ HypergraphDraw[initHg : _Hypergraph ? HypergraphQ : Hypergraph[], opts : Options
                 ];
             ),
             "VertexRelabel"[vertices_List, newVertexLabel_, _] :> (
+                addAction["ResetSelect"[tmpEdge], False];
                 vertexLabels = ReplacePart[vertexLabels, Thread[vertices -> newVertexLabel, List, 1]]
             )
         }];

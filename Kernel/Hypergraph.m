@@ -142,7 +142,7 @@ Options[Hypergraph] := Join[{
 	"LayoutDimension" -> 2,
     "EdgeArrows" -> False,
     "EdgeType" -> "Cyclic",
-	"EdgeMethod" -> Automatic,
+	"EdgeMethod" -> "ConcavePolygon",
 	"EdgeSymmetry" -> Automatic
 },
 	Options[Graph]
@@ -161,7 +161,7 @@ Hypergraph3D[hg_Hypergraph, opts : OptionsPattern[]] := Hypergraph3D[hg["VertexL
 Hypergraph[hg_Hypergraph, opts : OptionsPattern[]] := Hypergraph[hg["VertexList"], hg["EdgeListTagged"], opts, "LayoutDimension" -> 2, hg["Options"]]
 
 HypergraphProp[Hypergraph[_, _, opts___], "Options"] :=
-	MapAt[Replace[rules : {(_Rule | _RuleDelayed) ...} :> DeleteDuplicatesBy[rules, Replace[(Verbatim[_] -> _) :> _]]], Flatten[{opts}], {All, 2}]
+	MapAt[Replace[rules : {(_Rule | _RuleDelayed) ...} :> DeleteDuplicatesBy[rules, Replace[{(Verbatim[_] -> _) :> _, _ :> Unique[]}]]], Flatten[{opts}], {All, 2}]
 
 HypergraphProp[Hypergraph[vertices_, ___], "VertexList"] := vertices
 

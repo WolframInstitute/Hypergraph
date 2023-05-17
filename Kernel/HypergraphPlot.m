@@ -77,7 +77,7 @@ SimpleHypergraphPlot[h_Hypergraph, plotOpts : OptionsPattern[]] := Enclose @ Blo
                     With[{clickEdges = Catenate[{#, If[SameQ @@ #, Nothing, Reverse[#]]} & /@ #] & @ Subsets[edge, {2}], weight = Length[edge]},
                         Join[
                             Annotation[DirectedEdge[##, edge], EdgeWeight -> 1] & @@@ clickEdges,
-                            If[ DuplicateFreeQ @ edge,
+                            If[ edgeMethod =!= "ConcavePolygon" && DuplicateFreeQ @ edge,
                                 Annotation[DirectedEdge[#, \[FormalE] @@ i], EdgeWeight -> weight] & /@ edge,
                                 {}
                             ]
@@ -213,7 +213,7 @@ SimpleHypergraphPlot[h_Hypergraph, plotOpts : OptionsPattern[]] := Enclose @ Blo
 		Arrowheads[{{Medium, .5}}],
 		AbsoluteThickness[Medium],
 		MapIndexed[renderEdge, With[{counts = Counts[es]},
-            Normal @ Merge[{counts, Counts[Select[Sort /@ Cases[es, {_, _}], MemberQ[es, #] &]]}, Identity]]
+            Normal @ Merge[{counts, First[#] -> Length[#] & /@ GatherBy[Cases[es, {_, _}], Sort]}, Identity]]
         ],
         Opacity[1],
 		KeyValueMap[{Replace[#1, vertexStyle], Point[#2]} &, vertexEmbedding],
