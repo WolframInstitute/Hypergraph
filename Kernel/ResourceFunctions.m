@@ -5,6 +5,7 @@ PackageExport["RandomHypergraphRule"]
 PackageExport["EnumerateHypergraphRules"]
 
 PackageScope["EnumerateWolframModelRules"]
+PackageScope["maxConnectedAtoms"]
 
 
 
@@ -41,6 +42,7 @@ maxConnectedAtoms[rule_Rule, connectivity_] := maxConnectedAtoms[Catenate[List @
 maxConnectedAtoms[arg_, Automatic] := maxConnectedAtoms[arg, All]
 
 maxConnectedAtoms[arg_] := maxConnectedAtoms[arg, Automatic]
+
 
 (* Enumeration *)
 

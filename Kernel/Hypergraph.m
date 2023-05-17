@@ -160,13 +160,14 @@ Hypergraph3D[hg_Hypergraph, opts : OptionsPattern[]] := Hypergraph3D[hg["VertexL
 
 Hypergraph[hg_Hypergraph, opts : OptionsPattern[]] := Hypergraph[hg["VertexList"], hg["EdgeListTagged"], opts, "LayoutDimension" -> 2, hg["Options"]]
 
-HypergraphProp[Hypergraph[_, _, opts___], "Options"] := Flatten[{opts}]
+HypergraphProp[Hypergraph[_, _, opts___], "Options"] :=
+	MapAt[Replace[rules : {(_Rule | _RuleDelayed) ...} :> DeleteDuplicatesBy[rules, Replace[(Verbatim[_] -> _) :> _]]], Flatten[{opts}], {All, 2}]
 
 HypergraphProp[Hypergraph[vertices_, ___], "VertexList"] := vertices
 
 HypergraphProp[Hypergraph[_, edges_, ___], "Edges"] := edges
 
-HypergraphProp[hg_, "EdgeSymmetry"] := Append[Replace[Flatten[ReplaceList["EdgeSymmetry", hg["Options"]]], {Automatic -> Nothing, s : Except[_Rule] -> _ -> s}, {1}], _ -> "Unordered"]
+HypergraphProp[hg_, "EdgeSymmetry"] := Append[Replace[Flatten[ReplaceList["EdgeSymmetry", Options[hg]]], {Automatic -> Nothing, s : Except[_Rule] -> _ -> s}, {1}], _ -> "Unordered"]
 
 HypergraphProp[hg_, "EdgeListTagged"] := hg["Edges"]["EdgeListTagged"]
 
@@ -201,7 +202,7 @@ HypergraphProp[hg_, "FullEdgeSymmetry"] := With[{symmFunc = Map[
 },
 	Catenate @ KeyValueMap[{edge, multiplicity} |->
 		edge -> findMinGenSet[#[Replace[edge, (e_ -> _) :> e]]] & /@ PadRight[#, multiplicity, #] & @ ReplaceList[edge, symmFunc],
-		Counts[hg["EdgeListTagged"]]
+		Counts[EdgeListTagged[hg]]
 	]
 ]
 

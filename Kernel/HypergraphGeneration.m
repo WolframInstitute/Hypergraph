@@ -22,8 +22,13 @@ EnumerateOrderedHypergraphs[sig : {{_Integer, _Integer} ...},
     ]
 ]
 
-EnumerateOrderedHypergraphs[sig : {{_Integer, _Integer} ...}, s : _Integer ? Positive | Automatic, opts : OptionsPattern[]] :=
-    Catenate[EnumerateOrderedHypergraphs[sig, {#}, opts] & /@ Range[s]]
+EnumerateOrderedHypergraphs[sig : {{_Integer, _Integer} ...}, s : _Integer ? Positive | Automatic,
+    Optional[{connectedQ : True | False : True, simpleQ : True | False : True}, {True, True}],
+    opts : OptionsPattern[]
+] :=
+    Catenate[EnumerateOrderedHypergraphs[sig, Prepend[{connectedQ, simpleQ}, #], opts] & /@ Range[
+        Replace[s, Automatic :> maxConnectedAtoms[sig, Replace[connectedQ, {True -> Automatic, False -> None}]]]
+    ]]
 
 EnumerateHypergraphs[sig : {{_Integer, _Integer} ...}, args___, opts : OptionsPattern[]] :=
     EnumerateOrderedHypergraphs[sig, args, opts, "EdgeSymmetry" -> "Unordered"]
