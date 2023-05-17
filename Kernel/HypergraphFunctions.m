@@ -127,15 +127,22 @@ Hypergraph /: VertexReplace[hg_Hypergraph, rules_, opts : OptionsPattern[]] := H
 Hypergraph /: HoldPattern[VertexReplace[rules_][hg_Hypergraph]] := VertexReplace[hg, rules]
 
 
-SimpleHypergraph[hg_ ? HypergraphQ, opts : OptionsPattern[]] := Hypergraph[
-    VertexList[hg],
-    DeleteDuplicates @ Select[DuplicateFreeQ] @ Replace[EdgeListTagged[hg], (edge_ -> _) :> edge, {1}],
-    opts,
-    Replace[
-        Options[hg],
-        (opt : (EdgeStyle | EdgeLabels | EdgeLabelStyle | "EdgeSymmetry") -> annotation_List) :>
-                opt -> DeleteDuplicatesBy[First] @ Replace[annotation, ((edge_ -> _) | edge_ -> a_) :> If[DuplicateFreeQ[edge], edge -> a, Nothing], {1}],
-        {1}
+SimpleHypergraph[hg_ ? HypergraphQ, opts : OptionsPattern[]] := With[{symm = EdgeSymmetry[hg]},
+    Hypergraph[
+        VertexList[hg],
+        Select[DuplicateFreeQ] @ DeleteDuplicates @ MapThread[CanonicalEdge, {Replace[EdgeListTagged[hg], (edge_ -> _) :> edge, {1}], Values[symm]}],
+        opts,
+        Replace[
+            Options[hg],
+            (opt : (EdgeStyle | EdgeLabels | EdgeLabelStyle | "EdgeSymmetry") -> annotation_List) :>
+                    opt -> DeleteDuplicatesBy[First] @ Replace[
+                        annotation,
+                        ((edge_ -> _) | edge_ -> a_) /; EdgeQ[hg, Verbatim[edge]] :>
+                            If[DuplicateFreeQ[edge], CanonicalEdge[edge, Lookup[symm, Key[edge]]] -> a, Nothing],
+                        {1}
+                    ],
+            {1}
+        ]
     ]
 ]
 
@@ -162,4 +169,11 @@ Hypergraph /: EdgeAdd[hg_Hypergraph, edges : {(_List | _Rule) ...}, opts : Optio
     Hypergraph[VertexList[hg], Join[EdgeListTagged[hg], edges], opts, hg["Options"]]
 
 Hypergraph /: EdgeAdd[hg_Hypergraph, edge_, opts : OptionsPattern[]] := EdgeAdd[hg, {edge}, opts]
+
+
+Hypergraph /: VertexQ[hg_Hypergraph, vertex_] := MemberQ[VertexList[hg], vertex]
+
+Hypergraph /: EdgeQ[hg_Hypergraph, edge_List] := MemberQ[EdgeList[hg], edge]
+
+Hypergraph /: EdgeQ[hg_Hypergraph, edge_Rule] := MemberQ[EdgeListTagged[hg], edge]
 
