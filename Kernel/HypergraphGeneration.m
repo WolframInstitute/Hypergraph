@@ -6,7 +6,8 @@ PackageExport["EnumerateOrderedHypergraphs"]
 
 
 EnumerateOrderedHypergraphs[sig : {{_Integer, _Integer} ...},
-    Optional[{s : _Integer ? Positive | Automatic : Automatic, connectedQ : True | False : True, simpleQ : True | False : True}, {Automatic, True, True}],
+    {s : _Integer ? Positive | Automatic : Automatic},
+    Optional[{connectedQ : True | False : True, simpleQ : True | False : True}, {True, True}],
     opts : OptionsPattern[]
 ] := With[{
     connType = Replace[connectedQ, {True -> Automatic, False -> None}]
@@ -22,11 +23,12 @@ EnumerateOrderedHypergraphs[sig : {{_Integer, _Integer} ...},
     ]
 ]
 
-EnumerateOrderedHypergraphs[sig : {{_Integer, _Integer} ...}, s : _Integer ? Positive | Automatic,
+EnumerateOrderedHypergraphs[sig : {{_Integer, _Integer} ...},
+    s : _Integer ? Positive | Automatic : Automatic,
     Optional[{connectedQ : True | False : True, simpleQ : True | False : True}, {True, True}],
     opts : OptionsPattern[]
 ] :=
-    Catenate[EnumerateOrderedHypergraphs[sig, Prepend[{connectedQ, simpleQ}, #], opts] & /@ Range[
+    Catenate[EnumerateOrderedHypergraphs[sig, {#}, {connectedQ, simpleQ}, opts] & /@ Range[
         Replace[s, Automatic :> maxConnectedAtoms[sig, Replace[connectedQ, {True -> Automatic, False -> None}]]]
     ]]
 
