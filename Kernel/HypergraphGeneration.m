@@ -12,9 +12,11 @@ EnumerateOrderedHypergraphs[sig : {{_Integer, _Integer} ...},
     connType = Replace[connectedQ, {True -> Automatic, False -> None}]
 },
     DeleteDuplicatesBy[
-        If[simpleQ, SimpleHypergraph, Identity] @ Hypergraph[First[#], opts, "EdgeSymmetry" -> "Ordered"] & /@ EnumerateWolframModelRules[
-            sig -> {},
-            {s, connType}
+        If[simpleQ, Select[SimpleHypergraphQ], Identity][
+            Hypergraph[First[#], opts, "EdgeSymmetry" -> "Ordered"] & /@ EnumerateWolframModelRules[
+                sig -> {},
+                {s, connType}
+            ]
         ],
         CanonicalHypergraph
     ]

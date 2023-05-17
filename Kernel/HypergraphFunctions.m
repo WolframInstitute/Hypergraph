@@ -7,6 +7,7 @@ PackageExport["ToOrderedHypergraph"]
 PackageExport["EdgeSymmetry"]
 PackageExport["EdgeListTagged"]
 PackageExport["SimpleHypergraph"]
+PackageExport["SimpleHypergraphQ"]
 
 PackageScope["CanonicalEdge"]
 
@@ -147,6 +148,10 @@ SimpleHypergraph[hg_ ? HypergraphQ, opts : OptionsPattern[]] := With[{symm = Edg
 ]
 
 SimpleHypergraph[args___, opts : OptionsPattern[]] := SimpleHypergraph[Hypergraph[args], opts]
+
+SimpleHypergraphQ[hg_ ? HypergraphQ] := With[{edges = EdgeList[hg]},
+    DuplicateFreeQ[edges] && AllTrue[edges, DuplicateFreeQ]
+]
 
 
 Hypergraph /: VertexIndex[hg_Hypergraph, v : Except[_List]] := First @ FirstPosition[VertexList[hg], v, {Missing[v]}, {1}, Heads -> False]

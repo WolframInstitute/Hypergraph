@@ -44,8 +44,9 @@ maxConnectedAtoms[arg_] := maxConnectedAtoms[arg, Automatic]
 
 (* Enumeration *)
 
-BellMaskRadix[len_] := {Flatten[{1, Split[#[[1]]][[2]] /. 0 -> 1,
-    Drop[Split[#[[1]]], 2]}], #[[2]]} & /@ (
+BellMaskRadix[1] := {{{1}, {1}}}
+
+BellMaskRadix[len_] := {Flatten[{1, Split[#[[1]]][[2]] /. 0 -> 1, Drop[Split[#[[1]]], 2]}], #[[2]]} & /@ (
         {
             With[{
                 zer = ConstantArray[0, len],
