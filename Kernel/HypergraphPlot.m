@@ -48,7 +48,8 @@ SimpleHypergraphPlot[h_Hypergraph, plotOpts : OptionsPattern[]] := Enclose @ Blo
     bounds, corner, size, dim,
     opts = FilterRules[{plotOpts, h["Options"]}, Options[SimpleHypergraphPlot]],
     edgeIndex,
-    makeEdge, renderEdge
+    makeEdge, renderEdge,
+    totalCounts = <||>
 },
     edgeIndex = PositionIndex[es];
     colorFunction = OptionValue[SimpleHypergraphPlot, opts, ColorFunction];
@@ -172,7 +173,10 @@ SimpleHypergraphPlot[h_Hypergraph, plotOpts : OptionsPattern[]] := Enclose @ Blo
                     Sow[position = edgeIndex[edge][[j]], "Position"];
                     With[{curves = If[
                         edgeMethod === "ConcavePolygon" && DuplicateFreeQ[edge],
-                        ConcavePolygon[coords, j],
+                        With[{c = Lookup[totalCounts, Key[#], 0] + 1},
+                            AppendTo[totalCounts, # -> c];
+                            ConcavePolygon[coords, c]
+                        ] & @ Sort[edge],
                         points = With[{c = Lookup[counts, #, 0] + 1},
                             AppendTo[counts, # -> c];
                             Lookup[edgeEmbedding, #][[c]]
@@ -213,7 +217,7 @@ SimpleHypergraphPlot[h_Hypergraph, plotOpts : OptionsPattern[]] := Enclose @ Blo
 		Arrowheads[{{Medium, .5}}],
 		AbsoluteThickness[Medium],
 		MapIndexed[renderEdge, With[{counts = Counts[es]},
-            Normal @ Merge[{counts, First[#] -> Length[#] & /@ GatherBy[Cases[es, {_, _}], Sort]}, Identity]]
+            Normal @ Merge[{counts, First[#] -> Length[#] & /@ GatherBy[es, Sort]}, Identity]]
         ],
         Opacity[1],
 		KeyValueMap[{Replace[#1, vertexStyle], Point[#2]} &, vertexEmbedding],
