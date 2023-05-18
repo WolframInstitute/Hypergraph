@@ -123,7 +123,12 @@ HypergraphDraw[initHg : _Hypergraph ? HypergraphQ : Hypergraph[], opts : Options
         {edgePositions, edgePrimitives} = First[#, {}] & /@ Reap[
             SimpleHypergraphPlot[
                 edges[[edgeIds]],
-                VertexCoordinates -> Normal[Join[vertices, nullEdges]]
+                VertexCoordinates -> Join[
+                    Normal @ vertices,
+                    With[{nullKeys = \[FormalN] /@ DeleteMissing[Lookup[PositionIndex[PositionIndex[edges][{}]], edgeIds]][[All, 1]]},
+                        Thread[\[FormalN] /@ Range[Length[nullKeys]] -> Lookup[nullEdges, nullKeys]]
+                    ]
+                ]
             ],
             {"Position", "Primitive"}
         ][[2]];
