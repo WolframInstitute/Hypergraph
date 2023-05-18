@@ -14,7 +14,7 @@ EnumerateOrderedHypergraphs[sig : {{_Integer, _Integer} ...},
 },
     DeleteDuplicatesBy[
         If[simpleQ, Select[SimpleHypergraphQ], Identity][
-            Hypergraph[First[#], opts, "EdgeSymmetry" -> "Ordered"] & /@ EnumerateWolframModelRules[
+            Hypergraph[First[#], opts, "EdgeSymmetry" -> "Ordered", ImageSize -> Small] & /@ EnumerateWolframModelRules[
                 sig -> {},
                 {s, connType}
             ]
