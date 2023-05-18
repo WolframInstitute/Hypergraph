@@ -4,6 +4,7 @@ PackageExport["SimpleHypergraphPlot"]
 PackageExport["SimpleHypergraphPlot3D"]
 PackageExport["HypergraphEmbedding"]
 
+PackageScope["makeVertexLabel"]
 PackageScope["makeAnnotationRules"]
 
 
@@ -144,7 +145,7 @@ SimpleHypergraphPlot[h_Hypergraph, plotOpts : OptionsPattern[]] := Enclose @ Blo
             Length[edge],
             0, Table[
                 Sow[position = edgeIndex[edge][[j]], "Position"];
-                Sow[primitive = Switch[dim, 2, Circle, 3, Sphere][Lookup[edgeEmbedding, \[FormalN][j]], size 0.03], "Primitive"];
+                Sow[primitive = Switch[dim, 2, Circle, 3, Sphere][Sow[Lookup[edgeEmbedding, \[FormalN][j]], "NullEdge"], size 0.03], "Primitive"];
                 makeEdge[edge, edgeTags[[ position ]], edgeSymmetries[[ position ]], i, j, primitive],
                 {j, mult}
             ],
@@ -220,7 +221,7 @@ SimpleHypergraphPlot[h_Hypergraph, plotOpts : OptionsPattern[]] := Enclose @ Blo
             Normal @ Merge[{counts, First[#] -> Length[#] & /@ GatherBy[es, Sort]}, Identity]]
         ],
         Opacity[1],
-		KeyValueMap[{Replace[#1, vertexStyle], Point[#2]} &, vertexEmbedding],
+		KeyValueMap[{Replace[#1, vertexStyle], Point[Sow[#2, "Vertex"]]} &, vertexEmbedding],
         KeyValueMap[With[{label = Replace[#1, vertexLabels], style = Replace[#1, vertexLabelStyle]},
             makeVertexLabel[#1, label, style, #2]
         ] &,

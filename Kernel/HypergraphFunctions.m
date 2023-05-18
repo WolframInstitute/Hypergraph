@@ -23,7 +23,7 @@ EdgeListTagged[hg_Hypergraph ? HypergraphQ] := hg["EdgeListTagged"]
 
 EdgeListTagged[hg_Hypergraph ? HypergraphQ, patt_] := Cases[hg["EdgeListTagged"], patt]
 
-EdgeCount[hg_Hypergraph ? HypergraphQ] ^:= Length @ EdgeList[hg]
+EdgeCount[hg_Hypergraph ? HypergraphQ, args___] ^:= Length @ EdgeList[hg, args]
 
 EdgeTags[hg_Hypergraph ? HypergraphQ] ^:= hg["EdgeTags"]
 
@@ -33,7 +33,7 @@ VertexList[hg_Hypergraph ? HypergraphQ] ^:= hg["VertexList"]
 
 VertexList[hg_Hypergraph ? HypergraphQ, patt_] ^:= Cases[hg["VertexList"], patt]
 
-VertexCount[hg_Hypergraph ? HypergraphQ] ^:= Length @ VertexList[hg]
+VertexCount[hg_Hypergraph ? HypergraphQ, args___] ^:= Length @ VertexList[hg, args]
 
 
 HypergraphIncidence[hg_ ? HypergraphQ] := Merge[(u |-> AssociationMap[u &, u]) /@ EdgeList[hg], Identity][[Key /@ VertexList[hg]]]
