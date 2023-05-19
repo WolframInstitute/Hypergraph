@@ -121,11 +121,12 @@ hg : Hypergraph[vs_List, he_Hyperedges ? HyperedgesQ, opts : OptionsPattern[]] /
 	},
 		System`Private`HoldSetValid[Hypergraph[vertices, he, ##]] & @@
 			Sort @ Normal @ GroupBy[
-				Flatten[{If[styles === {}, Nothing, VertexStyle -> styles], If[labels === {}, Nothing, VertexLabels -> labels], annotations, opts}], First,
+				Flatten[{If[styles === {}, Nothing, VertexStyle -> styles], If[labels === {}, Nothing, VertexLabels -> labels], annotations, opts}],
+				First,
 				If[
 					KeyExistsQ[$DefaultHypergraphAnnotations, #[[1, 1]]],
-					Replace[Flatten[Map[Last, #]], s : Except[_Rule | _RuleDelayed] :> _ -> s, {1}],
-					#[[-1, -1]]
+					Replace[Flatten[Map[#[[2]] &, #]], s : Except[_Rule | _RuleDelayed] :> _ -> s, {1}],
+					#[[1, 2]]
 				] &
 			]
 	]
@@ -158,7 +159,7 @@ Hypergraph3D[hg_Hypergraph, opts : OptionsPattern[]] := Hypergraph3D[hg["VertexL
 	FilterRules[hg["Options"], Except["LayoutDimension" | VertexCoordinates]]
 ]
 
-Hypergraph[hg_Hypergraph, opts : OptionsPattern[]] := Hypergraph[hg["VertexList"], hg["EdgeListTagged"], opts, "LayoutDimension" -> 2, hg["Options"]]
+Hypergraph[hg_Hypergraph, opts : OptionsPattern[]] := Hypergraph[VertexList[hg], EdgeListTagged[hg], opts, "LayoutDimension" -> 2, Options[hg]]
 
 HypergraphProp[Hypergraph[_, _, opts___], "Options"] :=
 	MapAt[Replace[rules : {(_Rule | _RuleDelayed) ...} :> DeleteDuplicatesBy[rules, Replace[{(Verbatim[_] -> _) :> _, _ :> Unique[]}]]], Flatten[{opts}], {All, 2}]
