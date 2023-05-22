@@ -253,7 +253,8 @@ HypergraphDraw[initHg : _Hypergraph ? HypergraphQ : Hypergraph[], opts : Options
                     vertices = KeyMap[Replace[repl], ReverseSortBy[vertices, # === newVertexId &]];
                     vertexStyles = KeyMap[Replace[repl], ReverseSortBy[vertexStyles, # === newVertexId &]];
                     vertexLabels = KeyMap[Replace[repl], ReverseSortBy[vertexLabels, # === newVertexId &]];
-                    edges = Replace[edges, repl, {2}]
+                    edges = Replace[edges, repl, {2}];
+                    renderLocalEdges[{newVertexId}]
                 ];
             ),
             "VertexRelabel"[vertices_List, newVertexLabel_, _] :> (
@@ -329,7 +330,8 @@ HypergraphDraw[initHg : _Hypergraph ? HypergraphQ : Hypergraph[], opts : Options
                 vertices = <|Delete[vertices, Key[newVertexId]], oldVertices|>;
                 vertexStyles = <|Delete[vertexStyles, Key[newVertexId]], oldVertexStyles|>;
                 vertexLabels = <|Delete[vertexLabels, Key[newVertexId]], oldVertexLabels|>;
-                edges = oldEdges
+                edges = oldEdges;
+                renderLocalEdges[Keys[oldVertices]]
             ),
             "VertexRelabel"[vertices_List, _, oldVertexLabels_] :> (
                 vertexLabels = ReplacePart[vertexLabels, Thread[vertices -> Lookup[oldVertexLabels, vertices]]]
