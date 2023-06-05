@@ -30,7 +30,7 @@ makeAnnotationRules[opts_List, keys_ : All] := If[MatchQ[keys, _List | All], Ass
 
 ConcavePolygon[points_, n_ : 1] := Block[{polygon = ConvexHullRegion[points], center},
 	center = RegionCentroid[polygon];
-	BSplineCurve[With[{from = #[[1]], diff = #[[2]] - #[[1]]}, MapAt[Mean[{#, center}] &, from + # diff & /@ Range[0, 1, 1 / (n + 1)], {2 ;; -2}]]] & @@@ MeshPrimitives[polygon, 1]
+	BSplineCurve[With[{from = #1, diff = #2 - #1}, MapAt[Mean[{#, center}] &, from + # diff & /@ Range[0, 1, 1 / (n + 1)], {2 ;; -2}]]] & @@@ Partition[points, 2, 1, 1]
 ]
 
 Options[SimpleHypergraphPlot] := Join[Options[Hypergraph], Options[Graphics], Options[Graphics3D]];
@@ -167,7 +167,10 @@ SimpleHypergraphPlot[h_Hypergraph, plotOpts : OptionsPattern[]] := Enclose @ Blo
                             ],
                             "Primitive"
                         ];
-                        makeEdge[edge, edgeTags[[ position ]], symm, i, #2[[1]], primitive]
+                        {   Opacity[1],
+                            Arrowheads[{{0.02, .5}}],
+                            makeEdge[edge, edgeTags[[ position ]], symm, i, #2[[1]], primitive]
+                        }
                     ]
                 ) &,
                 GraphComputation`GraphElementData["Line"][#, None] /. BezierCurve -> BSplineCurve & /@ Lookup[edgeEmbedding, DirectedEdge @@ edge]
@@ -192,10 +195,11 @@ SimpleHypergraphPlot[h_Hypergraph, plotOpts : OptionsPattern[]] := Enclose @ Blo
                     }, {
                         Switch[dim,
                             2, Sow[primitive = If[ edgeArrowsQ || MatchQ[symm, "Ordered" | "Directed" | {}],
-                                    With[{lengths = RegionMeasure @* DiscretizeGraphics /@ curves},
+                                    With[{lengths = RegionMeasure @* DiscretizeGraphics /@ Most[curves]},
                                         {   #,
-                                            Arrowheads[{Medium, #} & /@ ((Prepend[Accumulate[Most[lengths]], 0] + lengths / 2) / Total[lengths])],
-                                            Switch[dim, 2, Arrow @ JoinedCurve[curves], 3, Arrow /@ curves]
+                                            Opacity[1],
+                                            Arrowheads[MapIndexed[{0.02 (Log[#2[[1]]] + 1), #1} &, (Prepend[Accumulate[Most[lengths]], 0] + lengths / 2) / Total[lengths]]],
+                                            Switch[dim, 2, Arrow @ JoinedCurve[Most[curves]], 3, Arrow /@ Most[curves]]
                                         }
                                     ] &,
                                     Identity
