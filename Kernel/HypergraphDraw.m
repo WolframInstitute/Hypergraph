@@ -24,11 +24,12 @@ HypergraphDraw[initHg : _Hypergraph ? HypergraphQ : Hypergraph[], opts : Options
     mousePosition,
 	color,
 	actions = {}, actionId = None, addAction,
-    mousePos, startMousePos,
+    mousePos, startMousePos = None,
     grid,
     edgeRegions = {},
     graphicsSelectedQ = True,
-    flash = 0.2
+    flash = 0.2,
+    edgeIndex = 1
 },
     points = Catenate @ MapThread[Take, {First[#, {}] & /@ Reap[SimpleHypergraphPlot[initHg], {"Vertex", "NullEdge"}][[2]], {VertexCount[initHg], EdgeCount[initHg, {}]}}];
     mousePosition[] := Replace[MousePosition["Graphics"], {None -> mousePos, pos_ :> (mousePos = pos)}];
@@ -46,8 +47,12 @@ HypergraphDraw[initHg : _Hypergraph ? HypergraphQ : Hypergraph[], opts : Options
         do[updateQ]
     );
 	down[i_] := (
-        startMousePos = mousePosition[];
-        edgeId = First[MapIndexed[If[RegionDistance[Once[DiscretizeGraphics[#]], startMousePos] < 0.01, #2[[1]], Nothing] &, edgeRegions], Missing[]];
+        With[{tmpPos = mousePosition[]},
+            If[startMousePos =!= None && EuclideanDistance[tmpPos, startMousePos] < 0.01, edgeIndex++, edgeIndex = 1];
+            startMousePos = tmpPos
+        ];
+        edgeId = If[Length[#] == 0, Missing[], #[[ Mod[edgeIndex - 1, Length[#]] + 1 ]]] & @
+            MapIndexed[If[RegionDistance[Once[DiscretizeGraphics[#]], startMousePos] < 0.01, #2[[1]], Nothing] &, edgeRegions];
         vertexId = getVertex[startMousePos];
         If[! MissingQ[vertexId], vertexName = vertexId; vertexLabel = vertexLabels[vertexName]];
         oldVertices = vertices;
@@ -277,7 +282,10 @@ HypergraphDraw[initHg : _Hypergraph ? HypergraphQ : Hypergraph[], opts : Options
                 ]
             ),
 			"VertexAdd"[__] :>
-			    If[Length[vertices] > 0, vertices = Most[vertices]; vertexStyles = Most[vertexStyles]; vertexLabels = Most[vertexLabels]],
+			    If[ Length[vertices] > 0,
+                    vertexSelection = DeleteCases[vertexSelection, Last[Keys[vertices]] -> _];
+                    vertices = Most[vertices]; vertexStyles = Most[vertexStyles]; vertexLabels = Most[vertexLabels]
+                ],
             "VertexRecolor"[vertexId_, oldStyle_, _] :> (vertexStyles[vertexId] = oldStyle),
             "EdgeRecolor"[edgeId_, oldStyle_, _] :> (edgeStyles[[edgeId]] = oldStyle),
             "VertexDelete"[vs_, styles_, labels_, oldEdges_, oldNullEdges_, oldSelection_] :> (
