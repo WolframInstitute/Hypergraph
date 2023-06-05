@@ -390,20 +390,20 @@ HypergraphDraw[initHg : _Hypergraph ? HypergraphQ : Hypergraph[], opts : Options
 	    vertices = Association @ Lookup[Options[initHg], VertexCoordinates, <||>];
         nullEdges = <||>;
         vertexStyles = Replace[Lookup[Options[initHg], VertexStyle, Automatic], {
-            rules : {(Rule | RuleDelayed) ...} :> Association[rules],
+            rules : {(_Rule | _RuleDelayed) ...} :> Association[rules],
             Automatic :> AssociationThread[vertices, Black],
             style_ :> AssociationThread[vertices, style]
         }];
         vertexLabels = Replace[Lookup[Options[initHg], VertexLabels, Automatic],
             {
-                rules : {(Rule | RuleDelayed) ...} :> Association[rules],
+                rules : {(_Rule | _RuleDelayed) ...} :> Association[rules],
                 Automatic :> AssociationThread[vertices, vertices],
                 label_ :> AssociationThread[vertices, label]
             }
         ];
         edges = EdgeList[initHg];
         edgeStyles = Replace[Lookup[Options[initHg], EdgeStyle, Automatic], {
-            rules : {(Rule | RuleDelayed) ...} :> rules[[All, 2]],
+            rules : {(_Rule | _RuleDelayed) ...} :> rules[[All, 2]],
             Automatic :> Array[ColorData[97], Length[edges]],
             style_ :> ConstantArray[style, Length[edges]]
         }];
