@@ -6,8 +6,10 @@ PackageExport["IsomorphicHypergraphQ"]
 PackageExport["ToOrderedHypergraph"]
 PackageExport["EdgeSymmetry"]
 PackageExport["EdgeListTagged"]
+PackageExport["EdgeMultiplicity"]
 PackageExport["SimpleHypergraph"]
 PackageExport["SimpleHypergraphQ"]
+PackageExport["HypergraphArityReduce"]
 
 PackageScope["CanonicalEdge"]
 
@@ -38,6 +40,8 @@ VertexCount[hg_Hypergraph ? HypergraphQ, args___] ^:= Length @ VertexList[hg, ar
 
 HypergraphIncidence[hg_ ? HypergraphQ] := Merge[(u |-> AssociationMap[u &, u]) /@ EdgeList[hg], Identity][[Key /@ VertexList[hg]]]
 
+EdgeMultiplicity[hg_ ? HypergraphQ] := Counts[CanonicalEdgeTagged @@@ EdgeSymmetry[hg]]
+
 
 VertexDegree[hg_Hypergraph ? HypergraphQ] ^:= Values[Length /@ HypergraphIncidence[hg]]
 
@@ -49,9 +53,17 @@ mapEdgeOptions[f_, opt_] := Replace[Flatten[{opt}], {((edge_List -> tag_) -> v_)
 mapVertexOptions[f_, opt_] := Replace[Flatten[{opt}], (vertex_ -> v_) :> f[vertex] -> v, {1}]
 
 
-CanonicalEdge[edge_List, symm : {___Cycles}] := First[Sort[Permute[edge, #] & /@ GroupElements[PermutationGroup[symm]]]]
+CanonicalEdges[edge_List | (edge_List -> _), symm : {___Cycles}] := Sort[Permute[edge, #] & /@ GroupElements[PermutationGroup[symm]]]
 
-CanonicalEdge[edge_List -> _, symm : {___Cycles}] := CanonicalEdge[edge, symm]
+CanonicalEdgesTagged[edge_List, symm : {___Cycles}] := CanonicalEdges[edge, symm]
+
+CanonicalEdgesTagged[edge_List -> tag_, symm : {___Cycles}] := # -> tag & /@ CanonicalEdges[edge, symm]
+
+CanonicalEdge[(edge_List -> _) | edge_List, symm : {___Cycles}] := First[CanonicalEdges[edge, symm]]
+
+CanonicalEdgeTagged[edge_List, symm : {___Cycles}] := CanonicalEdge[edge, symm]
+
+CanonicalEdgeTagged[edge_List -> tag_, symm : {___Cycles}] := CanonicalEdge[edge, symm] -> tag
 
 
 CanonicalHypergraph[hg_ ? HypergraphQ] := Block[{
@@ -107,6 +119,27 @@ ToOrderedHypergraph[hg_ ? HypergraphQ] := Hypergraph[
 	],
 	"EdgeSymmetry" -> "Ordered",
 	Options[hg]
+]
+
+
+HypergraphArityReduce[hg_ ? HypergraphQ, arity_Integer ? Positive] := With[{
+    edgeMapping = MapThread[
+        {edge, tag} |-> With[{subsets = Subsets[edge, {arity}]},
+            If[tag === None, edge -> subsets, (edge -> tag) -> Thread[subsets -> tag, List, 1]]
+        ],
+        {EdgeList[hg], EdgeTags[hg]}
+    ]
+},
+    Hypergraph[
+        VertexList[hg],
+        Catenate @ Replace[EdgeListTagged[hg], edgeMapping, {1}],
+        Replace[
+            Options[hg],
+            (option : EdgeStyle | EdgeLabels | EdgeLabelStyle | "EdgeSymmetry" -> annotations_) :>
+                option -> Catenate @ Replace[Flatten[{annotations}], (edge_ -> annotation_) :> (# -> annotation & /@ Replace[edge, edgeMapping]), {1}],
+            {1}
+        ]
+    ]
 ]
 
 
