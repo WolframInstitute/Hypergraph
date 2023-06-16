@@ -15,9 +15,11 @@ $DefaultHypergraphAnnotations = <|
     VertexStyle -> {},
     VertexLabels -> {"Name", None},
     VertexLabelStyle -> {},
+	VertexSize -> Automatic,
     EdgeStyle -> Automatic,
     EdgeLabels -> {"Name", None},
     EdgeLabelStyle -> {},
+	"EdgeSize" -> Automatic,
     "EdgeSymmetry" -> "Unordered"
 |>
 
@@ -144,6 +146,7 @@ Options[Hypergraph] := Join[{
     "EdgeArrows" -> False,
     "EdgeType" -> "Cyclic",
 	"EdgeMethod" -> "ConcavePolygon",
+	"EdgeSize" -> Automatic,
 	"EdgeSymmetry" -> Automatic
 },
 	Options[Graph]
@@ -191,7 +194,7 @@ findSmallerGenSet[order_][{genSet_, len_}] := First[
 	{genSet, len}
 ]
 
-HypergraphProp[hg_, "FullEdgeSymmetry"] := With[{symmFunc = Map[
+HypergraphProp[hg_, "FullEdgeSymmetry"] := Block[{rules = Map[
 		Replace[#[[1]], All -> _] -> Replace[#[[2]], {
 			"Directed" | "Ordered" :> ({} &),
 			"Cyclic" :> ({Cycles[{Range[Length[#]]}]} &),
@@ -199,11 +202,13 @@ HypergraphProp[hg_, "FullEdgeSymmetry"] := With[{symmFunc = Map[
 			_ :> (Cycles[{#}] & /@ Subsets[Range[Length[#]], {2}] &)
 		}] &,
 		Replace[Flatten[{hg["EdgeSymmetry"]}], {Automatic -> _ -> "Unordered", s : Except[_Rule] :> _ -> s}, {1}]
-	]
+	],
+	edges = EdgeListTagged[hg], index
 },
-	Catenate @ KeyValueMap[{edge, multiplicity} |->
-		edge -> findMinGenSet[#[Replace[edge, (e_ -> _) :> e]]] & /@ PadRight[#, multiplicity, #] & @ ReplaceList[edge, symmFunc],
-		Counts[EdgeListTagged[hg]]
+	index = PositionIndex[edges];
+	Values @ SortBy[First] @ Catenate @ KeyValueMap[{edge, multiplicity} |->
+		Thread[index[edge] -> PadRight[#, multiplicity, #] & @ Map[findMinGenSet[#[Replace[edge, (e_ -> _) :> e]]] &, ReplaceList[edge, rules]]],
+		Counts[edges]
 	]
 ]
 

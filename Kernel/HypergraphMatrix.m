@@ -68,18 +68,18 @@ HyperMatrixQ[_HyperMatrix ? System`Private`HoldValidQ] := True
 HyperMatrixQ[___] := False
 
 
-HyperMatrix[vs_List, edges : {(_List | _Rule) ...}, symm : {___Rule}] := Block[{n, index},
+HyperMatrix[vs_List, edges : {(_List | _Rule) ...}, symm : {{___Cycles}...}] := Block[{n, index},
 	n = Length[vs];
 	index = First /@ PositionIndex[vs];
 	HyperMatrix @@ KeyValueMap[
-		#1 -> If[#1[[1]] == 0, Length[#2], SparseArray[Normal @ Counts[Partition[Lookup[index, Catenate[Replace[#2, (e_ -> tag_) :> e, {1}]]], #1[[1]]]], Table[n, #1[[1]]]]] &,
-		KeySort @ GroupBy[edges, Through @* {Length, Lookup[symm, Key[#]] &}]
+		#1 -> If[#1[[1]] == 0, Length[#2], SparseArray[Normal @ Counts[Partition[Lookup[index, Catenate[Replace[#2, (e_ -> _) :> e, {1}]]], #1[[1]]]], Table[n, #1[[1]]]]] &,
+		KeySort @ GroupBy[Thread[{edges, symm}], {Length[Replace[#[[1]], (edge_ -> _) :> edge]], #[[2]]} &, Map[First]]
 	]
 ]
 
 HyperMatrix[hg : {___List}] := HyperMatrix[Union @@ hg, hg]
 
-HyperMatrix[hg_Hypergraph] := HyperMatrix[VertexList[hg], hg["EdgeListTagged"], EdgeSymmetry[hg]]
+HyperMatrix[hg_Hypergraph] := HyperMatrix[VertexList[hg], EdgeListTagged[hg], EdgeSymmetry[hg]]
 
 hm : HyperMatrix[rules : ({_Integer, {___Cycles}} -> _Integer | _SparseArray) ...] /;
 	System`Private`HoldNotValidQ[hm] && Equal @@ Catenate[Dimensions /@ {rules}[[All, 2]]] :=

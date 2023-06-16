@@ -40,7 +40,7 @@ VertexCount[hg_Hypergraph ? HypergraphQ, args___] ^:= Length @ VertexList[hg, ar
 
 HypergraphIncidence[hg_ ? HypergraphQ] := Merge[(u |-> AssociationMap[u &, u]) /@ EdgeList[hg], Identity][[Key /@ VertexList[hg]]]
 
-EdgeMultiplicity[hg_ ? HypergraphQ] := Counts[CanonicalEdgeTagged @@@ EdgeSymmetry[hg]]
+EdgeMultiplicity[hg_ ? HypergraphQ] := Counts[CanonicalEdgeTagged @@@ Thread[EdgeList[hg] -> EdgeSymmetry[hg]]]
 
 
 VertexDegree[hg_Hypergraph ? HypergraphQ] ^:= Values[Length /@ HypergraphIncidence[hg]]
@@ -73,7 +73,7 @@ CanonicalHypergraph[hg_ ? HypergraphQ] := Block[{
 },
 	orderedEdges = MapThread[
 		{edge, symm} |-> (Permute[edge, #] & /@ GroupElements[PermutationGroup[symm]]),
-		{edges, Values @ EdgeSymmetry[hg]}
+		{edges, EdgeSymmetry[hg]}
 	];
     counts = Length /@ orderedEdges;
     orderedEdges = Catenate @ orderedEdges;
@@ -115,7 +115,7 @@ ToOrderedHypergraph[hg_ ? HypergraphQ] := Hypergraph[
 	VertexList[hg],
 	Catenate @ MapThread[
 		{edge, tag, symm} |-> (If[tag === None, #, # -> tag] & @ Permute[edge, #] & /@ GroupElements[PermutationGroup[symm]]),
-		{EdgeList[hg], EdgeTags[hg], Values @ EdgeSymmetry[hg]}
+		{EdgeList[hg], EdgeTags[hg], EdgeSymmetry[hg]}
 	],
 	"EdgeSymmetry" -> "Ordered",
 	Options[hg]
@@ -161,7 +161,7 @@ Hypergraph /: VertexReplace[hg_Hypergraph, rules_, opts : OptionsPattern[]] := H
 Hypergraph /: HoldPattern[VertexReplace[rules_][hg_Hypergraph]] := VertexReplace[hg, rules]
 
 
-SimpleHypergraph[hg_ ? HypergraphQ, opts : OptionsPattern[]] := With[{symm = EdgeSymmetry[hg]},
+SimpleHypergraph[hg_ ? HypergraphQ, opts : OptionsPattern[]] := With[{symm = Thread[EdgeList[hg] -> EdgeSymmetry[hg]]},
     Hypergraph[
         VertexList[hg],
         Select[DuplicateFreeQ] @ DeleteDuplicates @ MapThread[CanonicalEdge, {Replace[EdgeListTagged[hg], (edge_ -> _) :> edge, {1}], Values[symm]}],

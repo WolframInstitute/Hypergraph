@@ -182,7 +182,7 @@ HypergraphDraw[initHg : _Hypergraph ? HypergraphQ : Hypergraph[], opts : Options
         actionId += 1;
 		Replace[actions[[actionId]], {
 			"EdgeAdd"[edge_, edgeStyle_, edgeSymmetry_] :> (
-                AppendTo[edges, edge]; AppendTo[edgeStyles, edgeStyle]; AppendTo[edgeLabels, None];
+                AppendTo[edges, edge]; AppendTo[edgeStyles, edgeStyle]; AppendTo[edgeLabels, edgeLabel];
                 AppendTo[edgeSymmetries, edgeSymmetry];
                 If[edge === {}, AppendTo[nullEdges, \[FormalN][Length[nullEdges] + 1] -> mousePos]; renderEdges[{Length[edges]}], renderLocalEdges[edge]];
                 If[ CurrentValue["OptionKey"],
@@ -414,10 +414,11 @@ HypergraphDraw[initHg : _Hypergraph ? HypergraphQ : Hypergraph[], opts : Options
             Automatic :> AssociationThread[vertices, Black],
             style_ :> AssociationThread[vertices, style]
         }];
-        vertexLabels = Replace[Lookup[Options[initHg], VertexLabels, Automatic],
+        vertexLabels = Replace[Lookup[Options[initHg], VertexLabels, None],
             {
                 rules : {(_Rule | _RuleDelayed) ...} :> Association[rules],
                 Automatic :> AssociationThread[vertices, vertices],
+                None :> AssociationThread[vertices, None],
                 label_ :> AssociationThread[vertices, label]
             }
         ];
@@ -427,9 +428,10 @@ HypergraphDraw[initHg : _Hypergraph ? HypergraphQ : Hypergraph[], opts : Options
             Automatic :> Array[ColorData[97], Length[edges]],
             style_ :> ConstantArray[style, Length[edges]]
         }];
-        edgeLabels = Replace[Lookup[Options[initHg], EdgeLabels, Automatic], {
+        edgeLabels = Replace[Lookup[Options[initHg], EdgeLabels, None], {
             rules : {(_Rule | _RuleDelayed) ...} :> rules[[All, 2]],
             Automatic :> edges,
+            None :> ConstantArray[None, Length[edges]],
             label_ :> ConstantArray[label, Length[edges]]
         }];
         edgeSymmetries = Replace[Replace[edges, initHg["EdgeSymmetry"], {1}], Except["Unordered" | "Cyclic" | "Ordered"] -> "Unordered", {1}];
@@ -453,6 +455,7 @@ HypergraphDraw[initHg : _Hypergraph ? HypergraphQ : Hypergraph[], opts : Options
             ];
             vertexStyles = AssociationThread[Keys[vertices], color];
             vertexLabels = AssociationThread[Keys[vertices], Keys[vertices]];
+            edgeLabels = PadRight[edgeLabels, Length[edges], None];
             edgeStyles = PadRight[edgeStyles, Length[edges], color];
             edgeSymmetries = PadRight[edgeSymmetries, Length[edges], "Unordered"];
         ];
