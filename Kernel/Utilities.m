@@ -68,7 +68,7 @@ areaGradientDescent[R_MeshRegion, stepsize_ : 1., steps_ : 10, reassemble_ : Fal
     Do[
       A = LaplaceBeltrami[pts, flist, pat];
       If[reassemble || i == 1, solver = LinearSolve[A[[intvertices, intvertices]], Method -> method]];
-      pts[[intvertices]] -= stepsize (solver[(A . pts)[[intvertices]]]);, {i, 1, steps}];
+      pts[[intvertices]] -= stepsize * (solver[(A . pts)[[intvertices]]]);, {i, 1, steps}];
    S = MeshRegion[pts, MeshCells[R, 2], PlotTheme -> "LargeMesh"];
    S
 ]

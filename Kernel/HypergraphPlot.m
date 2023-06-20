@@ -184,7 +184,7 @@ SimpleHypergraphPlot[h_Hypergraph, plotOpts : OptionsPattern[]] := Enclose @ Blo
                         "Primitive"
                     ];
                     {   Opacity[1],
-                        Arrowheads[{{0.02, .5}}],
+                        Arrowheads[{{Small, .5}}],
                         makeEdge[edge, tag, symm, i, #2[[1]], primitive]
                     }
                 ] &,

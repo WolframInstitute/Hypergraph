@@ -85,7 +85,8 @@ HypergraphRule /: MakeBoxes[hr_HypergraphRule /; HypergraphRuleQ[Unevaluated[hr]
             SimpleHypergraphPlot[#["Output"], $HypergraphRulePlotOptions]
         },
             PlotRangePadding -> 1,
-            BaseStyle -> {GraphicsHighlightColor -> Blue}
+            BaseStyle -> {GraphicsHighlightColor -> Blue},
+            ImageSize -> Small
         ],
         form
     ]]

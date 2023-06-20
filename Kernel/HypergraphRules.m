@@ -13,8 +13,8 @@ PackageExport["HighlightRule"]
 
 makeVertexLabelPattern[vertex_, label_, makePattern_ : False] := Replace[label, {
     None :> If[TrueQ[makePattern], _, vertex],
-    Automatic | "Name" :> If[TrueQ[makePattern], Pattern[#, _] & @ Symbol["\[FormalL]" <> StringDelete[ToString[vertex, InputForm], Except[WordCharacter]]], vertex],
-    Placed[Automatic | "Name", _] :> vertex,
+    Automatic | Placed[Automatic, _] :> If[TrueQ[makePattern], Pattern[#, _] & @ Symbol["\[FormalL]" <> StringDelete[ToString[vertex, InputForm], Except[WordCharacter]]], vertex],
+    "Name" | Placed["Name", _] :> vertex,
     Placed[placedLabel_, _] :> placedLabel,
     _ :> label
 }]
@@ -45,7 +45,7 @@ ToLabeledEdges[hg_ ? HypergraphQ, makePattern_ : False] := Block[{
     vs = VertexList[hg],
     vertexLabelRules = makeAnnotationRules[hg["Options"], VertexLabels],
     vertexLabels,
-    edgeSymmetry = Values[EdgeSymmetry[hg]],
+    edgeSymmetry = EdgeSymmetry[hg],
     edgeTags = EdgeTags[hg]
 },
     vertexLabels = AssociationMap[makeVertexLabelPattern[#, Replace[#, vertexLabelRules], makePattern] &, vs];
@@ -62,14 +62,14 @@ ToLabeledPatternEdges[hg_ ? HypergraphQ] := Block[{
     edges = EdgeList[hg],
     simpleEdgeSymmetry
 },
-    simpleEdgeSymmetry = Replace[edges, Replace[Flatten[{hg["EdgeSymmetry"]}], {Automatic -> _ -> "Unordered", s : Except[_Rule] :> _ -> s}, {1}], {1}];
+    simpleEdgeSymmetry = Replace[edges, Replace[Flatten[{EdgeSymmetry[hg]}], {Automatic -> _ -> "Unordered", s : Except[_Rule] :> _ -> s}, {1}], {1}];
     Which[
         AllTrue[simpleEdgeSymmetry, MatchQ["Unordered" | "Undirected"]],
         MapAt[{OrderlessPatternSequence @@ #} &, #, {1, All, 1}],
         AllTrue[simpleEdgeSymmetry, MatchQ["Ordered" | "Directed"]],
         #,
         True,
-        With[{edgeSymmetry = Values[EdgeSymmetry[hg]]},
+        With[{edgeSymmetry = EdgeSymmetry[hg]},
             MapAt[
                 SubsetMap[
                     MapIndexed[With[{edge = #1, symm = Flatten[edgeSymmetry[[#2]]]}, Replace[
@@ -122,7 +122,7 @@ Options[HypergraphRuleApply] = {"Bindings" -> Automatic, "Symmetry" -> Automatic
 HypergraphRuleApply[input_, output_, hg_, opts : OptionsPattern[]] := Block[{
     vertices = VertexList[hg], edges = hg["EdgeListTagged"],
     inputVertices = VertexList[input], outputVertices = VertexList[output],
-    inputEdges = EdgeList[input], outputEdges = output["EdgeListTagged"],
+    inputEdges = EdgeList[input], outputEdges = EdgeListTagged[output],
     bindingsMethod = Replace[OptionValue["Bindings"], {First -> (Take[#, UpTo[1]] &), _ -> Identity}],
     symmetryMethod = Replace[OptionValue["Symmetry"], {Automatic -> (_ &), _ -> Identity}],
     canonicalizeMethod = Replace[OptionValue["Canonicalize"], {
@@ -132,7 +132,7 @@ HypergraphRuleApply[input_, output_, hg_, opts : OptionsPattern[]] := Block[{
     annotationRules, outputAnnotationRules,
     vertexAnnotations, outputVertexAnnotations,
     edgeAnnotations, outputEdgeAnnotations,
-    outputSymmetry = EdgeSymmetry[output],
+    outputSymmetry = Thread[outputEdges -> EdgeSymmetry[output]],
     embedding,
     matches,
     lhsVertices, inputFreeVertices, newVertices, deleteVertices, newVertexMap
