@@ -43,17 +43,36 @@ ToLabeledEdges[vertexLabels_Association, edges : {___List}, makePattern_ : False
 
 ToLabeledEdges[hg_ ? HypergraphQ, makePattern_ : False] := Block[{
     vs = VertexList[hg],
-    vertexLabelRules = makeAnnotationRules[hg["Options"], VertexLabels],
+    edges = EdgeList[hg],
+    vertexLabelRules = makeAnnotationRules[Options[hg], VertexLabels],
     vertexLabels,
     edgeSymmetry = EdgeSymmetry[hg],
-    edgeTags = EdgeTags[hg]
+    edgeTags = EdgeTags[hg],
+    edgeLabels
 },
     vertexLabels = AssociationMap[makeVertexLabelPattern[#, Replace[#, vertexLabelRules], makePattern] &, vs];
+    edgeLabels = With[{rules = makeAnnotationRules[Options[hg], EdgeLabels], index = PositionIndex[edges]},
+        Values @ SortBy[First] @ Catenate @ KeyValueMap[{edge, multiplicity} |->
+            Thread[index[edge] -> (PadRight[#, multiplicity, #] & @ ReplaceList[edge, rules])],
+            Counts[edges]
+        ]
+    ];
     MapAt[
-        MapIndexed[With[{edge = #1, symm = edgeSymmetry[[#2[[1]]]], tag = edgeTags[[#2[[1]]]]},
-            Labeled[edge, {symm, If[makePattern, Replace[tag, None -> _], tag]}]] &
+        MapIndexed[
+            With[{edge = #1, symm = edgeSymmetry[[#2[[1]]]], tag = edgeTags[[#2[[1]]]], label = edgeLabels[[#2[[1]]]]},
+                Labeled[edge,
+                    {
+                        symm,
+                        If[makePattern, Replace[tag, None -> _], tag],
+                        Replace[
+                            If[makePattern, Replace[label, None -> _], label],
+                            {"EdgeTag" -> tag, "EdgeSymmetry" -> symm, Automatic | "Name" -> edge}
+                        ]
+                    }
+                ]
+            ] &
         ],
-        ToLabeledEdges[vertexLabels, hg["EdgeList"], makePattern],
+        ToLabeledEdges[vertexLabels, edges, makePattern],
         If[makePattern, {1}, {{}}]
     ]
 ]
@@ -308,7 +327,7 @@ HypergraphRuleApply[input_, output_, hg_, opts : OptionsPattern[]] := Block[{
 Options[HighlightRule] := Join[Options[HypergraphRuleApply], Options[SimpleHypergraphPlot]]
 
 HighlightRule[rule_ ? HypergraphRuleQ, hg_ ? HypergraphQ, opts : OptionsPattern[]] := Block[{
-    vs = VertexList[hg], edges = EdgeList[hg],
+    vs = VertexList[hg], edges = EdgeListTagged[hg],
     matches
 },
     matches = rule[hg, FilterRules[{opts}, Options[HypergraphRuleApply]]];
@@ -320,7 +339,7 @@ HighlightRule[rule_ ? HypergraphRuleQ, hg_ ? HypergraphQ, opts : OptionsPattern[
                 opts,
                 EdgeStyle -> Map[
                     # -> Directive[Thick, Dashed, Red, EdgeForm[Directive[Dashed, Red, Thick]]] &,
-                    #MatchEdges
+                    Extract[edges, #MatchEdgePositions]
                 ],
                 VertexStyle -> Map[# -> Directive[PointSize[0.02], Red] &, #MatchVertices],
                 AspectRatio -> Automatic,
