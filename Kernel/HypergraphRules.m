@@ -44,6 +44,7 @@ ToLabeledEdges[vertexLabels_Association, edges : {___List}, makePattern_ : False
 ToLabeledEdges[hg_ ? HypergraphQ, makePattern_ : False] := Block[{
     vs = VertexList[hg],
     edges = EdgeList[hg],
+    taggedEdges = EdgeListTagged[hg],
     vertexLabelRules = makeAnnotationRules[Options[hg], VertexLabels],
     vertexLabels,
     edgeSymmetry = EdgeSymmetry[hg],
@@ -51,10 +52,10 @@ ToLabeledEdges[hg_ ? HypergraphQ, makePattern_ : False] := Block[{
     edgeLabels
 },
     vertexLabels = AssociationMap[makeVertexLabelPattern[#, Replace[#, vertexLabelRules], makePattern] &, vs];
-    edgeLabels = With[{rules = makeAnnotationRules[Options[hg], EdgeLabels], index = PositionIndex[edges]},
+    edgeLabels = With[{rules = makeAnnotationRules[Options[hg], EdgeLabels], index = PositionIndex[taggedEdges]},
         Values @ SortBy[First] @ Catenate @ KeyValueMap[{edge, multiplicity} |->
             Thread[index[edge] -> (PadRight[#, multiplicity, #] & @ ReplaceList[edge, rules])],
-            Counts[edges]
+            Counts[taggedEdges]
         ]
     ];
     MapAt[
@@ -63,7 +64,6 @@ ToLabeledEdges[hg_ ? HypergraphQ, makePattern_ : False] := Block[{
                 Labeled[edge,
                     {
                         symm,
-                        If[makePattern, Replace[tag, None -> _], tag],
                         Replace[
                             If[makePattern, Replace[label, None -> _], label],
                             {"EdgeTag" -> tag, "EdgeSymmetry" -> symm, Automatic | "Name" -> edge}
