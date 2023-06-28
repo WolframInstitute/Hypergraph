@@ -284,7 +284,6 @@ HypergraphDraw[initHg : _Hypergraph ? HypergraphQ : Hypergraph[], opts : Options
                     edgeStyles = Most[edgeStyles];
                     edgeLabels = Most[edgeLabels];
                     edgeSymmetries = Most[edgeSymmetries];
-                    edgeLabels = Most[edgeLabels];
                     edgeRegions = Most[edgeRegions]
                 ]
             ),
