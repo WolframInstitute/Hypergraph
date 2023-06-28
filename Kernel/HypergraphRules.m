@@ -60,7 +60,9 @@ ToLabeledEdges[hg_ ? HypergraphQ, makePattern_ : False] := Block[{
     ];
     MapAt[
         MapIndexed[
-            With[{edge = #1, symm = edgeSymmetry[[#2[[1]]]], tag = edgeTags[[#2[[1]]]], label = edgeLabels[[#2[[1]]]]},
+            With[{edge = #1, symm = edgeSymmetry[[#2[[1]]]], tag = edgeTags[[#2[[1]]]],
+                label = Replace[edgeLabels[[#2[[1]]]], Placed[l_, _] :> l]
+            },
                 Labeled[edge,
                     {
                         symm,
