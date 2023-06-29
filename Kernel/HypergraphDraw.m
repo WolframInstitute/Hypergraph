@@ -58,35 +58,43 @@ HypergraphDraw[initHg : _Hypergraph ? HypergraphQ : Hypergraph[], opts : Options
         If[! MissingQ[vertexId], vertexName = vertexId; vertexLabel = vertexLabels[vertexName]];
         oldVertices = vertices;
         oldNullEdges = nullEdges;
+
 		Which[
-            i == 1 && ! MissingQ[edgeId] && MissingQ[vertexId] && CurrentValue["AltKey"],
-            With[{pos = FirstPosition[edgeSelection, edgeId, None, {1}, Heads -> False]},
-                If[pos =!= None, addAction["EdgeDeselect"[edgeId, First[pos]]]]
-            ],
-
             i == 1 && ! MissingQ[edgeId] && MissingQ[vertexId],
-            edgeSelect = True;
-            If[ ! CurrentValue["OptionKey"],
-                addAction["ResetEdgeSelect"[edgeSelection]]
-            ];
-            addAction["EdgeSelect"[edgeId, Length[edgeSelection] + 1]],
-
-            i == 1 && CurrentValue["OptionKey"],
-            If[ MissingQ[vertexId],
-                With[{v = getVertexName[]},
-                    addAction["VertexAdd"[v, mousePos, color, v]]
-                ],
-                With[{index = FirstPosition[vertexSelection, vertexId -> _, None, {1}, Heads -> False]},
-                    If[ index =!= None,
-                        addAction["VertexDeselect"[First[index], vertexSelection[[First[index]]]]],
-                        addAction["VertexSelect"[vertexId -> vertices[vertexId]]]
-                    ]
+            With[{pos = FirstPosition[edgeSelection, edgeId, None, {1}, Heads -> False]},
+                If[ pos =!= None,
+                    addAction["EdgeDeselect"[edgeId, First[pos]]],
+                    edgeSelect = True;
+                    If[ ! CurrentValue["OptionKey"],
+                        addAction["ResetEdgeSelect"[edgeSelection]]
+                    ];
+                    addAction["EdgeSelect"[edgeId, Length[edgeSelection] + 1]]
                 ]
             ],
 
+            i == 1 && MissingQ[vertexId] && CurrentValue["OptionKey"],
+            With[{v = getVertexName[]},
+                addAction["VertexAdd"[v, mousePos, color, v]]
+            ],
+
+            i == 1 && MissingQ[vertexId],
+            With[{v = getVertexName[]},
+                addAction["VertexAdd"[v, mousePos, color, v]];
+                addAction["VertexSelect"[v -> mousePos]]
+            ],
+
+            i == 1 && CurrentValue["OptionKey"],
+            vertexSelect = True;
+            addAction["VertexSelect"[vertexId -> vertices[vertexId]]],
+
             i == 1,
             vertexSelect = True;
-            addAction["VertexSelect"[vertexId -> mousePosition[]]]
+            With[{pos = FirstPosition[vertexSelection, vertexId -> _, None, {1}, Heads -> False]},
+                If[ pos =!= None,
+                    addAction["VertexDeselect"[First[pos], vertexSelection[[First[pos]]]]],
+                    addAction["VertexSelect"[vertexId -> vertices[vertexId]]]
+                ]
+            ]
 		];
 	);
     move[] := (
@@ -312,7 +320,7 @@ HypergraphDraw[initHg : _Hypergraph ? HypergraphQ : Hypergraph[], opts : Options
                 edgeRegions = Fold[Insert[#1, #2[[2]], #2[[1]]] &, edgeRegions, Thread[{edgeIds, primitives}][[order]]];
                 edgeSelection = edgeIds
             ],
-            "VertexSelect"[_] :> (vertexSelection = Most[vertexSelection]),
+            "VertexSelect"[_] :> If[vertexSelection =!= {}, vertexSelection = Most[vertexSelection]],
             "VertexDeselect"[index_, vertex_] :> (vertexSelection = Insert[vertexSelection, vertex, index]),
             "EdgeSelect"[_, index_] :> (
                 edgeSelection = Delete[edgeSelection, index];
