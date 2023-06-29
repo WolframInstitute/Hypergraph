@@ -2,6 +2,7 @@ Package["WolframInstitute`Hypergraph`"]
 
 PackageExport["HypergraphIncidence"]
 PackageExport["CanonicalHypergraph"]
+PackageExport["CanonicalHypergraphRule"]
 PackageExport["IsomorphicHypergraphQ"]
 PackageExport["ToOrderedHypergraph"]
 PackageExport["EdgeSymmetry"]
@@ -68,26 +69,25 @@ CanonicalEdgeTagged[edge_List -> tag_, symm : {___Cycles}] := CanonicalEdge[edge
 
 CanonicalHypergraph[hg_ ? HypergraphQ] := Block[{
 	vs = VertexList[hg], edges = EdgeList[hg], tags = EdgeTags[hg],
-	orderedEdges, counts, iso, emptyEdges, normalEdges, newEdges, ordering,
-	freeVertices, newVertices
+	orderedEdges, counts, iso, emptyEdges, newEdges, ordering,
+	freeVertices, newFreeVertices
 },
 	orderedEdges = MapThread[
-		{edge, symm} |-> (Permute[edge, #] & /@ GroupElements[PermutationGroup[symm]]),
+		{edge, symm} |-> If[edge === {}, Nothing, Permute[edge, #] & /@ GroupElements[PermutationGroup[symm]]],
 		{edges, EdgeSymmetry[hg]}
 	];
     counts = Length /@ orderedEdges;
     orderedEdges = Catenate @ orderedEdges;
-	emptyEdges = Cases[orderedEdges, {}];
-    normalEdges = DeleteCases[orderedEdges, {}];
-	iso = ResourceFunction["FindCanonicalHypergraphIsomorphism"][normalEdges];
-    newEdges = First @* Sort /@ TakeList[Map[Replace[iso], normalEdges, {2}], counts];
-	ordering = Ordering[newEdges];
+	emptyEdges = Cases[edges, {}];
+	iso = ResourceFunction["FindCanonicalHypergraphIsomorphism"][orderedEdges];
+    newEdges = First @* Sort /@ TakeList[Map[Replace[iso], orderedEdges, {2}], counts];
+    ordering = Ordering[newEdges];
 	newEdges = MapThread[If[#2 === None, #1, #1 -> #2] &, {newEdges[[ordering]], tags[[ordering]]}];
     freeVertices = DeleteElements[vs, Keys[iso]];
-    newVertices = Max[iso] + Range[Length @ freeVertices];
-    iso = <|iso, Thread[freeVertices -> newVertices]|>;
+    newFreeVertices = Max[iso] + Range[Length @ freeVertices];
+    iso = <|iso, Thread[freeVertices -> newFreeVertices]|>;
     Hypergraph[
-        Values[iso],
+        Sort[Values[iso]],
         Join[emptyEdges, newEdges],
         With[{keys = Keys[Options[hg]]},
             KeySort @ Association @ Options[hg] //
@@ -105,6 +105,84 @@ CanonicalHypergraph[hg_ ? HypergraphQ] := Block[{
 ]
 
 CanonicalHypergraph[args___] := CanonicalHypergraph[Hypergraph[args]]
+
+
+CanonicalHypergraphRule[HoldPattern[HypergraphRule[in_Hypergraph, out_Hypergraph]] ? HypergraphRuleQ] := Block[{
+	vsIn = VertexList[in], edgesIn = EdgeList[in], tagsIn = EdgeTags[in], symmIn = EdgeSymmetry[in],
+    vsOut = VertexList[out], edgesOut = EdgeList[out], tagsOut = EdgeTags[out], symmOut = EdgeSymmetry[out],
+    vs, edges, tags, symmetry,
+	orderedEdges, counts, iso,
+    emptyEdgesIn, emptyEdgesOut,
+    orderingIn, orderingOut,
+    newEdges, newEdgesIn, newEdgesOut,
+	freeVerticesIn, freeVerticesOut,
+    newFreeVerticesIn, newFreeVerticesOut
+},
+    vs = Join[vsIn, vsOut];
+    edges = Join[edgesIn, edgesOut];
+    tags = Join[tagsIn, tagsOut];
+    symmetry = Join[symmIn, symmOut];
+	orderedEdges = MapThread[
+		{edge, symm} |-> If[edge === {}, Nothing, Permute[edge, #] & /@ GroupElements[PermutationGroup[symm]]],
+		{edges, symmetry}
+	];
+    counts = Length /@ orderedEdges;
+    orderedEdges = Catenate @ orderedEdges;
+	emptyEdgesIn = Cases[edgesIn, {}];
+    emptyEdgesOut = Cases[edgesOut, {}];
+	iso = ResourceFunction["FindCanonicalHypergraphIsomorphism"][orderedEdges];
+    newEdges = First @* Sort /@ TakeList[Map[Replace[iso], orderedEdges, {2}], counts];
+    {newEdgesIn, newEdgesOut} = TakeDrop[newEdges, Length[edgesIn] - Length[emptyEdgesIn]];
+    orderingIn = Ordering[newEdgesIn];
+    orderingOut = Ordering[newEdgesOut];
+    newEdgesIn = MapThread[If[#2 === None, #1, #1 -> #2] &, {newEdgesIn[[orderingIn]], tagsIn[[orderingIn]]}];
+    newEdgesOut = MapThread[If[#2 === None, #1, #1 -> #2] &, {newEdgesOut[[orderingOut]], tagsOut[[orderingOut]]}];
+    freeVerticesIn = DeleteElements[vsIn, Keys[iso]];
+    freeVerticesOut = DeleteElements[vsOut, Keys[iso]];
+    newFreeVerticesIn = Max[iso] + Range[Length @ freeVerticesIn];
+    newFreeVerticesOut = Max[iso] + Length[freeVerticesIn] + Range[Length @ freeVerticesOut];
+    iso = <|iso, Thread[freeVerticesIn -> newFreeVerticesIn], Thread[freeVerticesOut -> newFreeVerticesOut]|>;
+    HypergraphRule[
+        Hypergraph[
+            Union[Values[KeySelect[iso, MemberQ[vsIn, #] &]], newFreeVerticesIn],
+            Join[emptyEdgesIn, newEdgesIn],
+            Block[{opts = KeySort @ Association @ Options[in], keys},
+                keys = Keys[opts];
+                opts //
+                    MapAt[
+                        Sort @ mapEdgeOptions[Replace[#, iso, {1}] &, #] &,
+                        {Key[#]} & /@ Intersection[{EdgeStyle, EdgeLabels, EdgeLabelStyle, "EdgeSymmetry"}, keys]
+                    ] //
+                    MapAt[
+                        Sort @ mapVertexOptions[Replace[#, iso] &, #] &,
+                        {Key[#]} & /@ Intersection[{VertexStyle, VertexLabels, VertexLabelStyle, VertexCoordinates}, keys]
+                    ] //
+                    Normal
+            ]
+        ],
+        Hypergraph[
+            Union[Values[KeySelect[iso, MemberQ[vsOut, #] &]], newFreeVerticesOut],
+            Join[emptyEdgesOut, newEdgesOut],
+            Block[{opts = KeySort @ Association @ Options[out], keys},
+                keys = Keys[opts];
+                opts //
+                    MapAt[
+                        Sort @ mapEdgeOptions[Replace[#, iso, {1}] &, #] &,
+                        {Key[#]} & /@ Intersection[{EdgeStyle, EdgeLabels, EdgeLabelStyle, "EdgeSymmetry"}, keys]
+                    ] //
+                    MapAt[
+                        Sort @ mapVertexOptions[Replace[#, iso] &, #] &,
+                        {Key[#]} & /@ Intersection[{VertexStyle, VertexLabels, VertexLabelStyle, VertexCoordinates}, keys]
+                    ] //
+                    Normal
+            ]
+        ]
+    ]
+]
+
+CanonicalHypergraphRule[in_, out_] := CanonicalHypergraphRule[HypergraphRule[in, out]]
+
+CanonicalHypergraphRule[in_ -> out_] := CanonicalHypergraphRule[HypergraphRule[in, out]]
 
 
 IsomorphicHypergraphQ[hg1_ ? HypergraphQ, hg2_ ? HypergraphQ] :=
