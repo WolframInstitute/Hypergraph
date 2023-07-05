@@ -13,7 +13,7 @@ HypergraphDraw[initHg : _Hypergraph ? HypergraphQ : Hypergraph[], opts : Options
     edgeStyles, edgeSymmetries, edgeLabels,
     vertexSelect = False, edgeSelect = False, vertexMove = False, edgeMove = False,
     edgeSymmetry, edgeLabel = None,
-    vertexName = Null, vertexLabel = Null,
+    vertexName = Null, vertexLabel = Automatic,
 	vertexSelection = {}, vertexId = Missing[], edgeSelection = {}, edgeId = Missing[],
     oldVertices = <||>, oldNullEdges = <||>,
 	getVertex, down, move, up,
@@ -74,12 +74,12 @@ HypergraphDraw[initHg : _Hypergraph ? HypergraphQ : Hypergraph[], opts : Options
 
             i == 1 && MissingQ[vertexId] && CurrentValue["OptionKey"],
             With[{v = getVertexName[]},
-                addAction["VertexAdd"[v, mousePos, color, v]]
+                addAction["VertexAdd"[v, mousePos, color, Automatic]]
             ],
 
             i == 1 && MissingQ[vertexId],
             With[{v = getVertexName[]},
-                addAction["VertexAdd"[v, mousePos, color, v]];
+                addAction["VertexAdd"[v, mousePos, color, Automatic]];
                 addAction["VertexSelect"[v -> mousePos]]
             ],
 
@@ -375,7 +375,7 @@ HypergraphDraw[initHg : _Hypergraph ? HypergraphQ : Hypergraph[], opts : Options
     addVertices[] := KeyValueMap[
         If[ MissingQ[#[[1]]],
             With[{v = getVertexName[]},
-                addAction["VertexAdd"[v, #[[2]], color, v]];
+                addAction["VertexAdd"[v, #[[2]], color, Automatic]];
                 vertexSelection = Replace[vertexSelection, # -> v -> #[[2]], {1}];
                 Splice @ Table[v, #2]
             ],
