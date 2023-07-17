@@ -21,13 +21,13 @@ makeVertexLabelPattern[vertex_, label_, makePattern_ : False] := Replace[label, 
 
 ToLabeledEdges[vertexLabels_Association, edges : {___List}, makePattern_ : False] := Block[{labels, patterns, varSymbols, labeledEdges},
     {patterns, labels} = Reap[
-        varSymbols = KeyValueMap[#1 ->
+        varSymbols = Association @ KeyValueMap[#1 ->
             If[ TrueQ[makePattern],
                 Labeled[
                     Sow[Pattern[#, _] & @ Symbol["\[FormalV]" <> StringDelete[ToString[#1], Except[WordCharacter]]], "VertexPattern"],
                     Sow[#2, "LabelPattern"]
                 ],
-                Labeled[#1, #2]
+                Labeled[#1, Interpretation[#2, Evaluate @ Labeled[#2, Unique[]]]]
             ] &, vertexLabels],
         {"VertexPattern", "LabelPattern"}
     ][[2]];
@@ -36,7 +36,7 @@ ToLabeledEdges[vertexLabels_Association, edges : {___List}, makePattern_ : False
     labeledEdges = Replace[edges, varSymbols, {2}];
     If[ TrueQ[makePattern],
         Condition[labeledEdges, UnsameQ[##]] & @@
-            DeleteDuplicates @ Cases[First[labels, {}], Verbatim[Pattern][label_, _] :> label, All],
+            DeleteDuplicates[First[labels, {}] /. Verbatim[Pattern][label_, _] :> label],
         labeledEdges
     ]
 ]
@@ -147,8 +147,8 @@ HypergraphRuleApply[input_, output_, hg_, OptionsPattern[]] := Block[{
     bindingsMethod = Replace[OptionValue["Bindings"], {First -> (Take[#, UpTo[1]] &), _ -> Identity}],
     symmetryMethod = Replace[OptionValue["Symmetry"], {Automatic -> (_ &), _ -> Identity}],
     canonicalizeMethod = Replace[OptionValue["Canonicalize"], {
-        Automatic -> DeleteDuplicatesBy[#[[{"MatchVertices", "MatchEdgePositions", "NewVertices", "NewEdges", "DeletedVertices"}]] &],
-        _ -> Identity
+        Automatic -> Identity,
+        Full -> DeleteDuplicatesBy[#[[{"MatchVertices", "MatchEdgePositions", "NewVertices", "NewEdges", "DeletedVertices"}]] &]
     }],
     patterns, labelPatterns,
     annotationRules, outputAnnotationRules,
@@ -176,7 +176,7 @@ HypergraphRuleApply[input_, output_, hg_, OptionsPattern[]] := Block[{
     labelPatterns = Extract[labelPatterns, Lookup[PositionIndex[inputVertices], inputFreeVertices]];
     newVertices = Complement[outputVertices, inputVertices];
     deleteVertices = Complement[inputVertices, outputVertices];
-    newVertexMap = Block[{$ModuleNumber = 1}, # -> Unique["\[FormalV]"] & /@ newVertices];
+    newVertexMap = Block[{$ModuleNumber = 1}, Verbatim[#] -> Unique["\[FormalV]"] & /@ newVertices];
 
     annotationRules = makeAnnotationRules[hg["Options"]];
     outputAnnotationRules = makeAnnotationRules[output["Options"]];
