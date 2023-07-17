@@ -69,20 +69,28 @@ CanonicalEdgeTagged[edge_List -> tag_, symm : {___Cycles}] := CanonicalEdge[edge
 
 CanonicalHypergraph[hg_ ? HypergraphQ] := Block[{
 	vs = VertexList[hg], edges = EdgeList[hg], tags = EdgeTags[hg],
+    taggedEdgePositions, emptyEdgePositions,
 	orderedEdges, counts, iso, emptyEdges, newEdges, ordering,
-	freeVertices, newFreeVertices
+	tagVertices, freeVertices, newFreeVertices
 },
-	orderedEdges = MapThread[
-		{edge, symm} |-> If[edge === {}, Nothing, Permute[edge, #] & /@ GroupElements[PermutationGroup[symm]]],
-		{edges, EdgeSymmetry[hg]}
-	];
+	tagVertices = Catenate @ Reap[orderedEdges = MapThread[
+		{edge, tag, symm} |-> With[{tagVertex = If[tag === None, None, Sow[Unique[]]]},
+            If[edge === {}, If[tag === None, Nothing, {{tagVertex}}], If[tag === None, Identity, Append[tagVertex]] @ Permute[edge, #] & /@ GroupElements[PermutationGroup[symm]]]
+        ],
+		{edges, tags, EdgeSymmetry[hg]}
+	]][[2]];
     counts = Length /@ orderedEdges;
     orderedEdges = Catenate @ orderedEdges;
+    taggedEdgePositions = Position[tags, Except[None], {1}, Heads -> False];
+    emptyEdgePositions = Position[edges, {}, {1}, Heads -> False];
+    edges = Delete[edges, taggedEdgePositions];
+    tags = Delete[tags, Complement[emptyEdgePositions, taggedEdgePositions]];
 	emptyEdges = Cases[edges, {}];
 	iso = ResourceFunction["FindCanonicalHypergraphIsomorphism"][orderedEdges];
+    iso = KeySelect[iso, ! MemberQ[tagVertices, #] &];
     newEdges = First @* Sort /@ TakeList[Map[Replace[iso], orderedEdges, {2}], counts];
     ordering = Ordering[newEdges];
-	newEdges = MapThread[If[#2 === None, #1, #1 -> #2] &, {newEdges[[ordering]], tags[[ordering]]}];
+	newEdges = MapThread[If[#2 === None, #1, Most[#1] -> #2] &, {newEdges[[ordering]], tags[[ordering]]}];
     freeVertices = DeleteElements[vs, Keys[iso]];
     newFreeVertices = Max[iso] + Range[Length @ freeVertices];
     iso = <|iso, Thread[freeVertices -> newFreeVertices]|>;
@@ -111,32 +119,45 @@ CanonicalHypergraphRule[HoldPattern[HypergraphRule[in_Hypergraph, out_Hypergraph
 	vsIn = VertexList[in], edgesIn = EdgeList[in], tagsIn = EdgeTags[in], symmIn = EdgeSymmetry[in],
     vsOut = VertexList[out], edgesOut = EdgeList[out], tagsOut = EdgeTags[out], symmOut = EdgeSymmetry[out],
     vs, edges, tags, symmetry,
+    taggedEdgePositionsIn, emptyEdgePositionsIn, taggedEdgePositionsOut, emptyEdgePositionsOut,
 	orderedEdges, counts, iso,
     emptyEdgesIn, emptyEdgesOut,
     orderingIn, orderingOut,
     newEdges, newEdgesIn, newEdgesOut,
 	freeVerticesIn, freeVerticesOut,
-    newFreeVerticesIn, newFreeVerticesOut
+    newFreeVerticesIn, newFreeVerticesOut,
+    tagVertices
 },
     vs = Join[vsIn, vsOut];
     edges = Join[edgesIn, edgesOut];
     tags = Join[tagsIn, tagsOut];
     symmetry = Join[symmIn, symmOut];
-	orderedEdges = MapThread[
-		{edge, symm} |-> If[edge === {}, Nothing, Permute[edge, #] & /@ GroupElements[PermutationGroup[symm]]],
-		{edges, symmetry}
-	];
+	tagVertices = Catenate @ Reap[orderedEdges = MapThread[
+		{edge, tag, symm} |-> With[{tagVertex = If[tag === None, None, Sow[Unique[]]]},
+            If[edge === {}, If[tag === None, Nothing, {{tagVertex}}], If[tag === None, Identity, Append[tagVertex]] @ Permute[edge, #] & /@ GroupElements[PermutationGroup[symm]]]
+        ],
+		{edges, tags, symmetry}
+	]][[2]];
     counts = Length /@ orderedEdges;
     orderedEdges = Catenate @ orderedEdges;
+    taggedEdgePositionsIn = Position[tagsIn, Except[None], {1}, Heads -> False];
+    emptyEdgePositionsIn = Position[edgesIn, {}, {1}, Heads -> False];
+    taggedEdgePositionsOut = Position[tagsOut, Except[None], {1}, Heads -> False];
+    emptyEdgePositionsOut = Position[edgesOut, {}, {1}, Heads -> False];
+    edgesIn = Delete[edgesIn, taggedEdgePositionsIn];
+    tagsIn = Delete[tagsIn, Complement[taggedEdgePositionsIn, taggedEdgePositionsIn]];
+    edgesOut = Delete[edgesOut, taggedEdgePositionsOut];
+    tagsOut = Delete[tagsOut, Complement[taggedEdgePositionsOut, taggedEdgePositionsOut]];
 	emptyEdgesIn = Cases[edgesIn, {}];
     emptyEdgesOut = Cases[edgesOut, {}];
 	iso = ResourceFunction["FindCanonicalHypergraphIsomorphism"][orderedEdges];
+    iso = KeySelect[iso, ! MemberQ[tagVertices, #] &];
     newEdges = First @* Sort /@ TakeList[Map[Replace[iso], orderedEdges, {2}], counts];
-    {newEdgesIn, newEdgesOut} = TakeDrop[newEdges, Length[edgesIn] - Length[emptyEdgesIn]];
+    {newEdgesIn, newEdgesOut} = TakeDrop[newEdges, Length[edgesIn] + Length[taggedEdgePositionsIn] - Length[emptyEdgesIn]];
     orderingIn = Ordering[newEdgesIn];
     orderingOut = Ordering[newEdgesOut];
-    newEdgesIn = MapThread[If[#2 === None, #1, #1 -> #2] &, {newEdgesIn[[orderingIn]], tagsIn[[orderingIn]]}];
-    newEdgesOut = MapThread[If[#2 === None, #1, #1 -> #2] &, {newEdgesOut[[orderingOut]], tagsOut[[orderingOut]]}];
+    newEdgesIn = MapThread[If[#2 === None, #1, Most[#1] -> #2] &, {newEdgesIn[[orderingIn]], tagsIn[[orderingIn]]}];
+    newEdgesOut = MapThread[If[#2 === None, #1, Most[#1] -> #2] &, {newEdgesOut[[orderingOut]], tagsOut[[orderingOut]]}];
     freeVerticesIn = DeleteElements[vsIn, Keys[iso]];
     freeVerticesOut = DeleteElements[vsOut, Keys[iso]];
     newFreeVerticesIn = Max[iso] + Range[Length @ freeVerticesIn];
