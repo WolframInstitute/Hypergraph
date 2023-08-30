@@ -59,7 +59,7 @@ SimpleHypergraphPlot[h_Hypergraph, plotOpts : OptionsPattern[]] := Enclose @ Blo
     edgeIndex = PositionIndex[es];
     colorFunction = OptionValue[SimpleHypergraphPlot, opts, ColorFunction];
     {
-        vertexStyle, vertexLabels, vertexLabelStyle, vertexSize,
+        vertexStyle, vertexLabels, vertexLabelStyle, vertexSize, vertexCoordinates,
         edgeStyle, edgeLabels, edgeLabelStyle, edgeSize, edgeSymmetries
     } = Values @ makeAnnotationRules[opts];
     edgeArrowsQ = TrueQ[OptionValue[SimpleHypergraphPlot, opts, "EdgeArrows"]];
@@ -71,7 +71,7 @@ SimpleHypergraphPlot[h_Hypergraph, plotOpts : OptionsPattern[]] := Enclose @ Blo
     longEdges = Cases[es, {_, _, __}];
     ws = Join[vs, nullEdges, \[FormalE] /@ Range[Length[longEdges]]];
 
-    vertexCoordinates = Replace[OptionValue[SimpleHypergraphPlot, opts, VertexCoordinates], Except[{___Rule}] -> {}];
+    vertexCoordinates = Select[Replace[vertexCoordinates, Except[{___Rule}] -> {}], MemberQ[ws, Verbatim[#[[1]]]] &];
     vertexCoordinates = Join[vertexCoordinates, Thread[Complement[ws, vertexCoordinates[[All, 1]]] -> Automatic]];
     vertexCoordinates = MapAt[Replace[coords_List :> PadRight[coords, dim]], vertexCoordinates, {All, 2}];
     vertexCoordinates = Replace[vertexCoordinates, {(_ -> Automatic)...} -> Automatic];

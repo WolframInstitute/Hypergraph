@@ -8,6 +8,8 @@ PackageExport["Hypergraph"]
 PackageExport["Hypergraph3D"]
 
 PackageScope["$DefaultHypergraphAnnotations"]
+PackageScope["$VertexAnnotations"]
+PackageScope["$EdgeAnnotations"]
 
 
 
@@ -16,12 +18,17 @@ $DefaultHypergraphAnnotations = <|
     VertexLabels -> {"Name", None},
     VertexLabelStyle -> {},
 	VertexSize -> Automatic,
+	VertexCoordinates -> Automatic,
+
     EdgeStyle -> Automatic,
     EdgeLabels -> {"Name", None},
     EdgeLabelStyle -> {},
 	"EdgeSize" -> Automatic,
     "EdgeSymmetry" -> "Unordered"
 |>
+
+$VertexAnnotations = {VertexStyle, VertexLabels, VertexLabelStyle, VertexSize, VertexCoordinates};
+$EdgeAnnotations = {EdgeStyle, EdgeLabels, EdgeLabelStyle, "EdgeSize", "EdgeSymmetry"};
 
 
 (* Hyperedges *)
@@ -119,9 +126,10 @@ hg : Hypergraph[vs_List, he_Hyperedges ? HyperedgesQ, opts : OptionsPattern[]] /
 		labels = Cases[vs, l_Labeled :> Rule @@ l],
 		styles = Cases[vs, s_Style :> Rule @@ s],
 		annotations = Cases[vs, Annotation[v_, data_] :> Map[#[[1]] -> ReplacePart[#, 1 -> v] &, Cases[Flatten[{data}], _Rule | _RuleDelayed]]],
-		vertices = Replace[vs, (Labeled | Style | Annotation)[v_, _] :> v, {1}]
+		vertices = Replace[vs, (Labeled | Style | Annotation)[v_, _] :> v, {1}],
+		edges = he /. (Labeled | Style | Annotation)[v_, _] :> v
 	},
-		System`Private`HoldSetValid[Hypergraph[vertices, he, ##]] & @@
+		System`Private`HoldSetValid[Hypergraph[vertices, edges, ##]] & @@
 			Sort @ Normal @ GroupBy[
 				Flatten[{If[styles === {}, Nothing, VertexStyle -> styles], If[labels === {}, Nothing, VertexLabels -> labels], annotations, opts}],
 				First,

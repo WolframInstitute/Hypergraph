@@ -101,11 +101,11 @@ CanonicalHypergraph[hg_ ? HypergraphQ] := Block[{
             KeySort @ Association @ Options[hg] //
                 MapAt[
                     Sort @ mapEdgeOptions[Replace[#, iso, {1}] &, #] &,
-                    {Key[#]} & /@ Intersection[{EdgeStyle, EdgeLabels, EdgeLabelStyle, "EdgeSymmetry"}, keys]
+                    {Key[#]} & /@ Intersection[$EdgeAnnotations, keys]
                 ] //
                 MapAt[
                     Sort @ mapVertexOptions[Replace[#, iso] &, #] &,
-                    {Key[#]} & /@ Intersection[{VertexStyle, VertexLabels, VertexLabelStyle, VertexCoordinates}, keys]
+                    {Key[#]} & /@ Intersection[$VertexAnnotations, keys]
                 ] //
                 Normal
         ]
@@ -172,11 +172,11 @@ CanonicalHypergraphRule[HoldPattern[HypergraphRule[in_Hypergraph, out_Hypergraph
                 opts //
                     MapAt[
                         Sort @ mapEdgeOptions[Replace[#, iso, {1}] &, #] &,
-                        {Key[#]} & /@ Intersection[{EdgeStyle, EdgeLabels, EdgeLabelStyle, "EdgeSymmetry"}, keys]
+                        {Key[#]} & /@ Intersection[$EdgeAnnotations, keys]
                     ] //
                     MapAt[
                         Sort @ mapVertexOptions[Replace[#, iso] &, #] &,
-                        {Key[#]} & /@ Intersection[{VertexStyle, VertexLabels, VertexLabelStyle, VertexCoordinates}, keys]
+                        {Key[#]} & /@ Intersection[$VertexAnnotations, keys]
                     ] //
                     Normal
             ]
@@ -189,11 +189,11 @@ CanonicalHypergraphRule[HoldPattern[HypergraphRule[in_Hypergraph, out_Hypergraph
                 opts //
                     MapAt[
                         Sort @ mapEdgeOptions[Replace[#, iso, {1}] &, #] &,
-                        {Key[#]} & /@ Intersection[{EdgeStyle, EdgeLabels, EdgeLabelStyle, "EdgeSymmetry"}, keys]
+                        {Key[#]} & /@ Intersection[$EdgeAnnotations, keys]
                     ] //
                     MapAt[
                         Sort @ mapVertexOptions[Replace[#, iso] &, #] &,
-                        {Key[#]} & /@ Intersection[{VertexStyle, VertexLabels, VertexLabelStyle, VertexCoordinates}, keys]
+                        {Key[#]} & /@ Intersection[$VertexAnnotations, keys]
                     ] //
                     Normal
             ]

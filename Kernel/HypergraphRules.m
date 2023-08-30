@@ -27,7 +27,7 @@ ToLabeledEdges[vertexLabels_Association, edges : {___List}, makePattern_ : False
                     Sow[Pattern[#, _] & @ Symbol["\[FormalV]" <> StringDelete[ToString[#1], Except[WordCharacter]]], "VertexPattern"],
                     Sow[#2, "LabelPattern"]
                 ],
-                Labeled[#1, Interpretation[#2, Evaluate @ Labeled[#2, Unique[]]]]
+                Labeled[#1, Labeled[#2, Unique[]]]
             ] &, vertexLabels],
         {"VertexPattern", "LabelPattern"}
     ][[2]];
@@ -232,7 +232,7 @@ HypergraphRuleApply[input_, output_, hg_, OptionsPattern[]] := Block[{
         Catenate @ Map[initBinding |-> (
             Map[matchFreeVertices |-> Block[{
                 binding = Association[
-                    initBinding,
+                    initBinding /. Labeled[expr_, _] :> expr,
                     Thread[Pattern[Evaluate @ Symbol["\[FormalV]" <> ToString[#]], _] & /@ (Length[initBinding] + Range[Length[inputFreeVertices]]) -> matchFreeVertices]
                 ],
                 origVertexMap,
