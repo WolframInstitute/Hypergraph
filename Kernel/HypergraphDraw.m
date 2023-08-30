@@ -488,7 +488,7 @@ HypergraphDraw[initHg : _Hypergraph ? HypergraphQ : Hypergraph[], opts : Options
                 Dynamic @ MapThread[
                     If[ #2 === None,
                         {},
-                        Text[#2, RegionCentroid[If[MatchQ[#, _EmptyRegion], #, BoundingRegion[#]] & @ If[RegionQ[#1], Identity, DiscretizeGraphics] @ #1]]
+                        Text[#2, RegionCentroid[If[RegionQ[#1], Identity, DiscretizeGraphics] @ #1]]
                     ] &, {edgeRegions, edgeLabels}
                 ],
                 Dynamic @ {

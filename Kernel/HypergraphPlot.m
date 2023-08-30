@@ -31,7 +31,8 @@ makeAnnotationRules[opts_List, keys_ : All] := If[MatchQ[keys, _List | All], Ass
 
 ConcavePolygon[points_, n_ : 1] := Block[{polygon = ConvexHullRegion[points], center},
 	center = RegionCentroid[polygon];
-	BSplineCurve[With[{from = #1, diff = #2 - #1}, MapAt[Mean[{#, center}] &, from + # diff & /@ Range[0, 1, 1 / (n + 1)], {2 ;; -2}]]] & @@@ Partition[points, 2, 1, 1]
+	BSplineCurve[With[{from = #1, diff = #2 - #1}, MapAt[Mean[{#, center}] &, from + # diff & /@ Range[0, 1, 1 / (n + 1)], {2 ;; -2}]]] & @@@ Partition[
+        If[MatchQ[Dimensions[points], {_, 2}], SortBy[points, ArcTan @@ (# - center) &], points], 2, 1, 1]
 ]
 
 applyIndexedRules[x_, rules_, index_Integer, default_ : None] :=
@@ -117,7 +118,7 @@ SimpleHypergraphPlot[h_Hypergraph, plotOpts : OptionsPattern[]] := Enclose @ Blo
 
     makeEdge[edge_, tag_, symm_, i_, j_, initPrimitive_] := Block[{
         primitive,
-        pos = Replace[RegionCentroid[If[MatchQ[#, _EmptyRegion], #, BoundingRegion[#]] & @ If[RegionQ[initPrimitive], Identity, DiscretizeGraphics] @ initPrimitive], {} -> corner],
+        pos = Replace[RegionCentroid[If[RegionQ[initPrimitive], Identity, DiscretizeGraphics] @ initPrimitive], {} -> corner],
         edgeTagged, style, label, labelStyle, labelPrimitive
     },
         edgeTagged = If[tag === None, edge, edge -> tag];

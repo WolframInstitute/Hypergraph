@@ -166,7 +166,7 @@ Hypergraph3D[args___, opts : OptionsPattern[]] := Hypergraph[args, Sequence @@ F
 
 Hypergraph3D[hg_Hypergraph, opts : OptionsPattern[]] := Hypergraph3D[hg["VertexList"], hg["EdgeListTagged"], opts,
 	"LayoutDimension" -> 3,
-	VertexCoordinates -> Replace[OptionValue[Hypergraph, hg["Options"], VertexCoordinates], rules : {___Rule} :> Replace[rules, {(v_ -> c_) :> v -> Append[c, Automatic], c_ :> Append[c, Automatic]}, {1}]],
+	(* VertexCoordinates -> Replace[OptionValue[Hypergraph, hg["Options"], VertexCoordinates], rules : {___Rule} :> Replace[rules, {(v_ -> c_) :> v -> Append[c, Automatic], c_ :> Append[c, Automatic]}, {1}]], *)
 	FilterRules[hg["Options"], Except["LayoutDimension" | VertexCoordinates]]
 ]
 
