@@ -81,12 +81,12 @@ HypergraphRule /: MakeBoxes[hr_HypergraphRule /; HypergraphRuleQ[Unevaluated[hr]
     boxes = Block[{BoxForm`$UseTextFormattingWhenConvertingInput = False}, ToBoxes[
         GraphicsRow[{
             SimpleHypergraphPlot[#["Input"], $HypergraphRulePlotOptions],
-            Graphics[{GrayLevel[0.65], $HypergraphRuleArrow}, ImageSize -> Scaled[0.01]],
+            Graphics[{GrayLevel[0.65], $HypergraphRuleArrow}, ImageSize -> 24],
             SimpleHypergraphPlot[#["Output"], $HypergraphRulePlotOptions]
         },
             PlotRangePadding -> 1,
             BaseStyle -> {GraphicsHighlightColor -> Blue},
-            ImageSize -> Small
+            ImageSize -> Medium
         ],
         form
     ]]

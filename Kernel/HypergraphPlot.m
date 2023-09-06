@@ -35,8 +35,10 @@ ConcavePolygon[points_, n_ : 1] := Block[{polygon = ConvexHullRegion[points], ce
         If[MatchQ[Dimensions[points], {_, 2}], SortBy[points, ArcTan @@ (# - center) &], points], 2, 1, 1]
 ]
 
-applyIndexedRules[x_, rules_, index_Integer, default_ : None] :=
-    If[Length[#] > 1, ResourceFunction["LookupPart"][#, index, Last[#, default]], Last[#, default]] & @ ReplaceList[x, rules]
+applyIndexedRules[x_, rules_, index_Integer, default_ : None] := Enclose[
+    GroupBy[rules, First, If[Length[#] >= index, Return[#[[index]], CompoundExpression], If[Length[#] > 0, Return[Last[#], CompoundExpression]]] & @ ReplaceList[x, #] &];
+    default
+]
 
 Options[SimpleHypergraphPlot] := Join[Options[Hypergraph], Options[Graphics], Options[Graphics3D]];
 
@@ -118,7 +120,7 @@ SimpleHypergraphPlot[h_Hypergraph, plotOpts : OptionsPattern[]] := Enclose @ Blo
 
     makeEdge[edge_, tag_, symm_, i_, j_, initPrimitive_] := Block[{
         primitive,
-        pos = Replace[RegionCentroid[If[RegionQ[initPrimitive], Identity, DiscretizeGraphics] @ initPrimitive], {} -> corner],
+        pos = Replace[RegionCentroid[If[RegionQ[initPrimitive], Identity, DiscretizeGraphics @* Replace[Arrow[l_] :> l]] @ initPrimitive], {} -> corner],
         edgeTagged, style, label, labelStyle, labelPrimitive
     },
         edgeTagged = If[tag === None, edge, edge -> tag];

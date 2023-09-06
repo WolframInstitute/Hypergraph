@@ -135,7 +135,7 @@ hg : Hypergraph[vs_List, he_Hyperedges ? HyperedgesQ, opts : OptionsPattern[]] /
 				First,
 				If[
 					KeyExistsQ[$DefaultHypergraphAnnotations, #[[1, 1]]],
-					Replace[Flatten[Map[#[[2]] &, #]], s : Except[_Rule | _RuleDelayed] :> _ -> s, {1}],
+					Take[#, UpTo[LengthWhile[#, #[[1]] =!= _ &] + 1]] & @ Replace[Flatten[#[[All, 2]]], s : Except[_Rule | _RuleDelayed] :> _ -> s, {1}],
 					#[[1, 2]]
 				] &
 			]
