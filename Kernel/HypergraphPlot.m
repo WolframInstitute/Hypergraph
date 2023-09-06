@@ -112,11 +112,12 @@ SimpleHypergraphPlot[h_Hypergraph, plotOpts : OptionsPattern[]] := Enclose @ Blo
         GraphLayout -> {"SpringEmbedding", "EdgeWeighted" -> True}
     ];
     {vertexEmbedding, edgeEmbedding} = First[#, {}] & /@ Reap[GraphPlot[graph], {"v", "e"}][[2]];
-	edgeEmbedding = Chop /@ Join[Merge[edgeEmbedding, Identity], Association[vertexEmbedding][[Key /@ nullEdges]]];
-    vertexEmbedding = Chop /@ Association[vertexEmbedding][[Key /@ vs]];
+	edgeEmbedding = Join[Merge[edgeEmbedding, Identity], Association[vertexEmbedding][[Key /@ nullEdges]]];
+    vertexEmbedding = Association[vertexEmbedding][[Key /@ vs]];
     bounds = CoordinateBounds[Values[vertexEmbedding]];
     corner = bounds[[All, 1]];
-    size = Max[1, #2 - #1 & @@@ bounds];
+    size = Max[#2 - #1 & @@@ bounds];
+    If[size == 0, size = 1];
 
     makeEdge[edge_, tag_, symm_, i_, j_, initPrimitive_] := Block[{
         primitive,
@@ -225,11 +226,10 @@ SimpleHypergraphPlot[h_Hypergraph, plotOpts : OptionsPattern[]] := Enclose @ Blo
                     makeEdge[edge, tag, symm, i, j, primitive]
                 ]
             ]
-        ]
             ,
             {j, mult}
-    ]
-];
+        ]
+    ];
 
 	Switch[dim, 2, Graphics, 3, Graphics3D][{
 		Opacity[.5],
