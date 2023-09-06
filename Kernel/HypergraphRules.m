@@ -138,9 +138,12 @@ PatternRuleToMultiReplaceRule[rule : _[lhs_List | Verbatim[HoldPattern][lhs_List
 ]
 
 
-Options[HypergraphRuleApply] = {"Bindings" -> Automatic, "Symmetry" -> Automatic, "Canonicalize" -> Automatic}
+Options[HypergraphRuleApply] = Join[
+    {"Bindings" -> Automatic, "Symmetry" -> Automatic, "Canonicalize" -> Automatic},
+    Options[ResourceFunction["MultiReplace"]]
+]
 
-HypergraphRuleApply[input_, output_, hg_, OptionsPattern[]] := Block[{
+HypergraphRuleApply[input_, output_, hg_, opts : OptionsPattern[]] := Block[{
     vertices = VertexList[hg], edges = hg["EdgeListTagged"],
     inputVertices = VertexList[input], outputVertices = VertexList[output],
     inputEdges = EdgeList[input], outputEdges = EdgeListTagged[output],
@@ -162,10 +165,11 @@ HypergraphRuleApply[input_, output_, hg_, OptionsPattern[]] := Block[{
 },
     outputSymmetry = Thread[outputEdges -> EdgeSymmetry[output]];
     {patterns, labelPatterns} = First[#, {}] & /@ Reap[
-        matches = Thread @ DeleteDuplicatesBy[Sort @* First] @ Keys @ ResourceFunction["MultiReplace"][
+        matches = Thread @ Keys @ ResourceFunction["MultiReplace"][
             ToLabeledEdges[hg],
             MapAt[symmetryMethod, ToLabeledPatternEdges[input], {1, All, 2, 1}],
             {1},
+            FilterRules[{opts}, Options[ResourceFunction["MultiReplace"]]],
             "PatternSubstitutions" -> True,
             "Mode" -> "OrderlessSubsets"
         ],
@@ -279,13 +283,13 @@ HypergraphRuleApply[input_, output_, hg_, OptionsPattern[]] := Block[{
                             Splice @ newEdges,
                             Min[pos, Length[edges] + 1]
                         ],
-                        Normal @ MapAt[Function[Null, Unevaluated[#] /. bindingRules, HoldAll], Key[VertexLabels]] @ Merge[{vertexAnnotations, outputVertexAnnotations},
+                        Normal @ Map[DeleteDuplicates] @ MapAt[Function[Null, Unevaluated[#] /. bindingRules, HoldAll], Key[VertexLabels]] @ Merge[{vertexAnnotations, outputVertexAnnotations},
                            Apply[Join[
                                 Replace[#2, (h : (Rule | RuleDelayed))[vertex_, annotation_] :> h[Replace[vertex, origVertexMap], annotation], {1}],
                                 DeleteCases[#1, (Rule | RuleDelayed)[Alternatives @@ deleteOrigVertices, _]]
                             ] &]
                         ],
-                        Normal @ MapAt[Function[Null, Unevaluated[#] /. bindingRules, HoldAll], Key[EdgeLabels]] @ Merge[{edgeAnnotations, outputEdgeAnnotations},
+                        Normal @ Map[DeleteDuplicates] @ MapAt[Function[Null, Unevaluated[#] /. bindingRules, HoldAll], Key[EdgeLabels]] @ Merge[{edgeAnnotations, outputEdgeAnnotations},
                            Apply[Join[
                                 Replace[#2, {
                                     (h : (Rule | RuleDelayed))[e : (edge_List -> tag_), annotation_] :>
