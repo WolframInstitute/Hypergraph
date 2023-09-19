@@ -79,7 +79,7 @@ SimpleHypergraphPlot[h_Hypergraph, plotOpts : OptionsPattern[]] := Enclose @ Blo
     vertexCoordinates = MapAt[Replace[coords_List :> PadRight[coords, dim]], vertexCoordinates, {All, 2}];
     vertexCoordinates = Replace[vertexCoordinates, {(_ -> Automatic)...} -> Automatic];
 
-	graph = Switch[dim, 2, Graph, 3, Graph3D][
+	graph = ConfirmBy[Switch[dim, 2, Graph, 3, Graph3D][
         ws,
         Join[
             Annotation[DirectedEdge[##], EdgeWeight -> 1] & @@@ Cases[es, {_, _}],
@@ -110,7 +110,7 @@ SimpleHypergraphPlot[h_Hypergraph, plotOpts : OptionsPattern[]] := Enclose @ Blo
             Options[Graph]
         ],
         GraphLayout -> {"SpringEmbedding", "EdgeWeighted" -> True}
-    ];
+    ], GraphQ];
     {vertexEmbedding, edgeEmbedding} = First[#, {}] & /@ Reap[GraphPlot[graph], {"v", "e"}][[2]];
 	edgeEmbedding = Join[Merge[edgeEmbedding, Identity], Association[vertexEmbedding][[Key /@ nullEdges]]];
     vertexEmbedding = Association[vertexEmbedding][[Key /@ vs]];
@@ -121,7 +121,7 @@ SimpleHypergraphPlot[h_Hypergraph, plotOpts : OptionsPattern[]] := Enclose @ Blo
 
     makeEdge[edge_, tag_, symm_, i_, j_, initPrimitive_] := Block[{
         primitive,
-        pos = Replace[RegionCentroid[If[RegionQ[initPrimitive], Identity, DiscretizeGraphics @* Replace[Arrow[l_] :> l]] @ initPrimitive], {} -> corner],
+        pos = Replace[RegionCentroid[If[RegionQ[initPrimitive], Identity, DiscretizeGraphics @* ReplaceAll[Arrow[l_] :> l]] @ initPrimitive], {} -> corner],
         edgeTagged, style, label, labelStyle, labelPrimitive
     },
         edgeTagged = If[tag === None, edge, edge -> tag];
@@ -149,7 +149,7 @@ SimpleHypergraphPlot[h_Hypergraph, plotOpts : OptionsPattern[]] := Enclose @ Blo
 
     renderEdge[{edge_List, tag_} -> {mult_Integer, total_Integer : 0}, {i_Integer}] := Block[{
         edgeTagged, emb = Replace[edge, vertexEmbedding, {1}],
-        position, primitive
+        position, primitive, arrowFunction
     },
         edgeTagged = If[tag === None, edge, edge -> tag];
         Table[
@@ -203,24 +203,29 @@ SimpleHypergraphPlot[h_Hypergraph, plotOpts : OptionsPattern[]] := Enclose @ Blo
                         Catenate[GraphComputation`GraphElementData["Line"][#, None] /. BezierCurve -> BSplineCurve & /@ points]
                     ];
                     symm = applyIndexedRules[edgeTagged, edgeSymmetries, j, {}];
-                    Switch[dim,
-                        2, Sow[primitive = If[ edgeArrowsQ || MatchQ[symm, "Ordered" | "Directed" | {}],
-                                With[{lengths = RegionMeasure @* DiscretizeGraphics /@ Most[curves]},
-                                    {   #,
-                                        Opacity[1],
+                    arrowFunction = If[ edgeArrowsQ || MatchQ[symm, "Ordered" | "Directed" | {}],
+                        With[{lengths = RegionMeasure @* DiscretizeGraphics /@ Most[curves]},
+                            {   #,
+                                Opacity[1],
+                                Switch[
+                                    dim,
+                                    2, {
                                         Arrowheads[MapIndexed[{0.02 (Log[#2[[1]]] + 1), #1} &, (Prepend[Accumulate[Most[lengths]], 0] + lengths / 2) / Total[lengths]]],
-                                        Switch[dim, 2, Arrow @ JoinedCurve[Most[curves]], 3, Arrow /@ Most[curves]]
-                                    }
-                                ] &,
-                                Identity
-                            ] @ FilledCurve[curves],
-                            "Primitive"
-                        ],
+                                        Arrow @ JoinedCurve[Most[curves]]
+                                    },
+                                    3, MapIndexed[{Arrowheads[{{0.015 (Log[#2[[1]]] + 1), .5}}], Arrow[#1]} &, Most[curves]]
+                                ]
+                            }
+                        ] &,
+                        Identity
+                    ];
+                    Switch[dim,
+                        2, Sow[primitive = arrowFunction @ FilledCurve[curves], "Primitive"],
                         3, Block[{pts, region},
                             pts = MeshCoordinates @ DiscretizeGraphics @ curves;
                             region = DiscretizeRegion[#, MaxCellMeasure -> {"Area" -> Area[#] / (Length[pts] + 1)}] & @
                                 Polygon[Prepend[First[pts]] /@ Partition[pts[[2 ;; -2]], 2, 1]];
-                            Sow[primitive = Quiet @ areaGradientDescent[region, .1, 20], "Primitive"]
+                            Sow[primitive = arrowFunction @ Quiet @ areaGradientDescent[region, .1, 20], "Primitive"]
                         ]
                     ];
                     makeEdge[edge, tag, symm, i, j, primitive]
