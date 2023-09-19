@@ -81,8 +81,9 @@ SimpleHypergraphPlot[h_Hypergraph, plotOpts : OptionsPattern[]] := Enclose @ Blo
     bounds, corner, size, dim,
     opts = FilterRules[{
         plotOpts,
-        Lookup[$HypergraphPlotThemes, OptionValue[SimpleHypergraphPlot, #, PlotTheme], {}],
-        #} & @ Options[h], Options[SimpleHypergraphPlot]],
+        #,
+        Lookup[$HypergraphPlotThemes, OptionValue[SimpleHypergraphPlot, Join[#, {plotOpts}], PlotTheme], {}]
+    } & @ Options[h], Options[SimpleHypergraphPlot]],
     edgeIndex,
     makeEdge, renderEdge,
     totalCounts = <||>

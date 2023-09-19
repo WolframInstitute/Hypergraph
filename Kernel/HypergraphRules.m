@@ -344,13 +344,13 @@ HighlightRule[rule_ ? HypergraphRuleQ, hg_ ? HypergraphQ, opts : OptionsPattern[
     HighlightRule[rule[hg, FilterRules[{opts}, Options[HypergraphRuleApply]]], hg]
 
 HighlightRule[matches : {___Association}, hg_ ? HypergraphQ, opts : OptionsPattern[]] := Block[{
-    edges = EdgeListTagged[hg]
+    edges = EdgeListTagged[hg], plotOpts = FilterRules[{opts}, Options[SimpleHypergraphPlot]]
 },
     Map[
         GraphicsRow[{
             SimpleHypergraphPlot[
                 hg,
-                opts,
+                plotOpts,
                 EdgeStyle -> Map[
                     # -> OptionValue["HighlightLeftEdgeStyle"] &,
                     Extract[edges, #MatchEdgePositions]
@@ -361,7 +361,7 @@ HighlightRule[matches : {___Association}, hg_ ? HypergraphQ, opts : OptionsPatte
             Graphics[{GrayLevel[0.65], $HypergraphRuleArrow}, ImageSize -> 24],
             SimpleHypergraphPlot[
                 #Hypergraph,
-                opts,
+                plotOpts,
                 EdgeStyle -> Map[
                     # -> OptionValue["HighlightRightEdgeStyle"] &,
                     (* output edges always getting spliced at the first position *)
