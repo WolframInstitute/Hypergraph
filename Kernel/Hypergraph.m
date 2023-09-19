@@ -19,16 +19,18 @@ $DefaultHypergraphAnnotations = <|
     VertexLabelStyle -> {},
 	VertexSize -> Automatic,
 	VertexCoordinates -> Automatic,
+	VertexShapeFunction -> Function[{AbsolutePointSize[Replace[#3, Automatic -> 3]], Point[#1]}],
 
     EdgeStyle -> Automatic,
+	"EdgeLineStyle" -> Automatic,
     EdgeLabels -> {"Name", None},
     EdgeLabelStyle -> {},
 	"EdgeSize" -> Automatic,
     "EdgeSymmetry" -> "Unordered"
 |>
 
-$VertexAnnotations = {VertexStyle, VertexLabels, VertexLabelStyle, VertexSize, VertexCoordinates};
-$EdgeAnnotations = {EdgeStyle, EdgeLabels, EdgeLabelStyle, "EdgeSize", "EdgeSymmetry"};
+$VertexAnnotations = {VertexStyle, VertexLabels, VertexLabelStyle, VertexSize, VertexCoordinates, VertexShapeFunction};
+$EdgeAnnotations = {EdgeStyle, "EdgeLineStyle", EdgeLabels, EdgeLabelStyle, "EdgeSize", "EdgeSymmetry"};
 
 
 (* Hyperedges *)
@@ -154,8 +156,10 @@ Options[Hypergraph] := Join[{
     "EdgeArrows" -> False,
     "EdgeType" -> "Cyclic",
 	"EdgeMethod" -> "ConcavePolygon",
+	"EdgeLineStyle" -> Automatic,
 	"EdgeSize" -> Automatic,
-	"EdgeSymmetry" -> Automatic
+	"EdgeSymmetry" -> Automatic,
+	PlotTheme -> Automatic
 },
 	Options[Graph]
 ]

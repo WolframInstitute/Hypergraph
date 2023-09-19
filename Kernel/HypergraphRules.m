@@ -6,8 +6,8 @@ PackageExport["HypergraphRule"]
 PackageExport["ToLabeledEdges"]
 PackageExport["ToLabeledPatternEdges"]
 PackageExport["ToPatternRules"]
-PackageExport["PatternRuleToMultiReplaceRule"]
 PackageExport["HighlightRule"]
+PackageScope["PatternRuleToMultiReplaceRule"]
 
 
 
@@ -333,38 +333,41 @@ HypergraphRuleApply[input_, output_, hg_, opts : OptionsPattern[]] := Block[{
 
 
 
-Options[HighlightRule] := Join[Options[HypergraphRuleApply], Options[SimpleHypergraphPlot]]
+Options[HighlightRule] := Join[{
+    "HighlightLeftVertexStyle" -> Directive[PointSize[0.02], Red],
+    "HighlightRightVertexStyle" -> Directive[PointSize[0.02], Red],
+    "HighlightLeftEdgeStyle" -> Directive[Thick, Red, EdgeForm[Directive[Red, Thick]]],
+    "HighlightRightEdgeStyle" -> Directive[Thick, Red, EdgeForm[Directive[Red, Thick]]]
+}, Options[HypergraphRuleApply], Options[SimpleHypergraphPlot]]
 
-HighlightRule[rule_ ? HypergraphRuleQ, hg_ ? HypergraphQ, opts : OptionsPattern[]] := Block[{
-    vs = VertexList[hg], edges = EdgeListTagged[hg],
-    matches
+HighlightRule[rule_ ? HypergraphRuleQ, hg_ ? HypergraphQ, opts : OptionsPattern[]] :=
+    HighlightRule[rule[hg, FilterRules[{opts}, Options[HypergraphRuleApply]]], hg]
+
+HighlightRule[matches : {___Association}, hg_ ? HypergraphQ, opts : OptionsPattern[]] := Block[{
+    edges = EdgeListTagged[hg]
 },
-    matches = rule[hg, FilterRules[{opts}, Options[HypergraphRuleApply]]];
-
     Map[
         GraphicsRow[{
             SimpleHypergraphPlot[
                 hg,
                 opts,
                 EdgeStyle -> Map[
-                    # -> Directive[Thick, Dashed, Red, EdgeForm[Directive[Dashed, Red, Thick]]] &,
+                    # -> OptionValue["HighlightLeftEdgeStyle"] &,
                     Extract[edges, #MatchEdgePositions]
                 ],
-                VertexStyle -> Map[# -> Directive[PointSize[0.02], Red] &, #MatchVertices],
-                AspectRatio -> Automatic,
+                VertexStyle -> Map[# -> OptionValue["HighlightLeftVertexStyle"] &, #MatchVertices],
                 $HypergraphRulePlotOptions
             ],
-            Graphics[{GrayLevel[0.65], $HypergraphRuleArrow}, ImageSize -> Scaled[0.01]],
+            Graphics[{GrayLevel[0.65], $HypergraphRuleArrow}, ImageSize -> 24],
             SimpleHypergraphPlot[
                 #Hypergraph,
                 opts,
                 EdgeStyle -> Map[
-                    # -> Directive[Thick, Dashed, Red, EdgeForm[Directive[Dashed, Red, Thick]]] &,
+                    # -> OptionValue["HighlightRightEdgeStyle"] &,
                     (* output edges always getting spliced at the first position *)
                     #NewEdges
                 ],
-                VertexStyle -> Map[# -> Directive[PointSize[0.02], Red] &, #NewVertices],
-                AspectRatio -> Automatic,
+                VertexStyle -> Map[# -> OptionValue["HighlightRightVertexStyle"] &, #NewVertices],
                 $HypergraphRulePlotOptions
             ]
         }, PlotRangePadding -> 1] &,

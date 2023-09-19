@@ -9,6 +9,27 @@ PackageScope["makeAnnotationRules"]
 
 
 
+$HypergraphPlotThemes = <|
+    Automatic -> {},
+    "WolframModel" -> {
+        EdgeStyle -> {
+            {_, _} -> Directive[Arrowheads[{{0.04, .5}}], Opacity[.7], Hue[0.63, 0.7, 0.5]],
+            _ -> Directive[Opacity[0.1], Hue[0.63, 0.66, 0.81]]
+        },
+        "EdgeLineStyle" -> Directive[Opacity[.7], Hue[0.63, 0.7, 0.5]],
+        VertexStyle -> Directive[Hue[0.63, 0.26, 0.89], EdgeForm[Directive[Hue[0.63, 0.7, 0.33], Opacity[0.95]]]],
+        VertexSize -> 0.01,
+        VertexShapeFunction -> Function[If[Length[#1] == 3, Sphere, Disk][#1, #3]]
+    },
+    "Dark" -> {
+        VertexStyle -> White,
+        EdgeStyle -> White,
+        "EdgeLineStyle" -> White,
+        Background -> Black,
+        VertexLabelStyle -> White
+    }
+|>
+
 makeVertexLabel[vertex_, label_, style_, pos_] := Replace[label /. "Name" -> vertex, {
     None -> Nothing,
     Automatic :> Text[Style[vertex, style], pos, {1, 1}],
@@ -55,10 +76,13 @@ SimpleHypergraphPlot[h_Hypergraph, plotOpts : OptionsPattern[]] := Enclose @ Blo
     nullEdges, longEdges, ws,
     colorFunction, edgeArrowsQ, edgeType, edgeMethod,
     vertexStyle, vertexLabels, vertexLabelStyle, vertexSize,
-    edgeStyle, edgeLabels, edgeLabelStyle, edgeSize, edgeSymmetries,
-    vertexCoordinates,
+    edgeStyle, edgeLineStyle, edgeLabels, edgeLabelStyle, edgeSize, edgeSymmetries,
+    vertexCoordinates, vertexShapeFunction,
     bounds, corner, size, dim,
-    opts = FilterRules[{plotOpts, h["Options"]}, Options[SimpleHypergraphPlot]],
+    opts = FilterRules[{
+        plotOpts,
+        Lookup[$HypergraphPlotThemes, OptionValue[SimpleHypergraphPlot, #, PlotTheme], {}],
+        #} & @ Options[h], Options[SimpleHypergraphPlot]],
     edgeIndex,
     makeEdge, renderEdge,
     totalCounts = <||>
@@ -66,8 +90,8 @@ SimpleHypergraphPlot[h_Hypergraph, plotOpts : OptionsPattern[]] := Enclose @ Blo
     edgeIndex = PositionIndex[taggedEdges];
     colorFunction = OptionValue[SimpleHypergraphPlot, opts, ColorFunction];
     {
-        vertexStyle, vertexLabels, vertexLabelStyle, vertexSize, vertexCoordinates,
-        edgeStyle, edgeLabels, edgeLabelStyle, edgeSize, edgeSymmetries
+        vertexStyle, vertexLabels, vertexLabelStyle, vertexSize, vertexCoordinates, vertexShapeFunction,
+        edgeStyle, edgeLineStyle, edgeLabels, edgeLabelStyle, edgeSize, edgeSymmetries
     } = Values @ makeAnnotationRules[opts];
     edgeArrowsQ = TrueQ[OptionValue[SimpleHypergraphPlot, opts, "EdgeArrows"]];
     edgeType = OptionValue[SimpleHypergraphPlot, opts, "EdgeType"];
@@ -172,11 +196,14 @@ SimpleHypergraphPlot[h_Hypergraph, plotOpts : OptionsPattern[]] := Enclose @ Blo
 
     renderEdge[{edge_List, tag_} -> {mult_Integer, total_Integer : 0}, {i_Integer}] := Block[{
         edgeTagged, emb = Replace[edge, vertexEmbedding, {1}],
-        position, primitive, addArrows
+        position, primitive, addArrows, lineStyle
     },
         edgeTagged = If[tag === None, edge, edge -> tag];
         Table[
             Sow[position = edgeIndex[edgeTagged][[j]], "Position"];
+            lineStyle = With[{defStyle = Directive[colorFunction[i], EdgeForm[Transparent]]},
+                Replace[applyIndexedRules[edgeTagged, edgeLineStyle, j, defStyle], Automatic -> defStyle]
+            ];
             Switch[
                 Length[edge],
                 0 | 1, Block[{s, r, dr = size 0.01, symm},
@@ -239,7 +266,7 @@ SimpleHypergraphPlot[h_Hypergraph, plotOpts : OptionsPattern[]] := Enclose @ Blo
                     addArrows = If[ edgeArrowsQ || MatchQ[symm, "Ordered" | "Directed" | {}],
                         With[{lengths = RegionMeasure @* DiscretizeGraphics /@ lines},
                             {   #,
-                                Opacity[1],
+                                lineStyle,
                                 MapIndexed[{Arrowheads[{{Switch[dim, 3, 0.015, _, 0.02] (Log[#2[[1]]] + 1), .5}}], Arrow[#1]} &, lines]
                             }
                         ] &,
@@ -270,7 +297,7 @@ SimpleHypergraphPlot[h_Hypergraph, plotOpts : OptionsPattern[]] := Enclose @ Blo
             Normal @ Merge[{counts, First[#] -> Length[#] & /@ GatherBy[Thread[{es, edgeTags}], First /* Sort]}, Identity]]
         ],
         Opacity[1],
-		KeyValueMap[{Replace[#1, vertexStyle], {AbsolutePointSize[Replace[Replace[#1, vertexSize], Automatic -> 3]], Point[Sow[#2, "Vertex"]]}} &, vertexEmbedding],
+		KeyValueMap[{Replace[#1, vertexStyle], Replace[#2, vertexShapeFunction][#2, #1, Replace[#1, vertexSize]]} &, Sow[#, "Vertex"] & /@ vertexEmbedding],
         KeyValueMap[With[{label = Replace[#1, vertexLabels], style = Replace[#1, vertexLabelStyle]},
             makeVertexLabel[#1, label, style, #2]
         ] &,
