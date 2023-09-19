@@ -53,7 +53,7 @@ HypergraphDraw[initHg : _Hypergraph ? HypergraphQ : Hypergraph[], opts : Options
             startMousePos = tmpPos
         ];
         edgeId = If[Length[#] == 0, Missing[], #[[ Mod[edgeIndex - 1, Length[#]] + 1 ]]] & @
-            MapIndexed[If[RegionDistance[Once[DiscretizeGraphics[#]], startMousePos] < 0.01, #2[[1]], Nothing] &, edgeRegions];
+            MapIndexed[If[RegionDistance[DiscretizeGraphics[#], startMousePos] < 0.01, #2[[1]], Nothing] &, edgeRegions /. Arrow[a_] :> a];
         vertexId = getVertex[startMousePos];
         If[! MissingQ[vertexId], vertexName = vertexId; vertexLabel = vertexLabels[vertexName]];
         oldVertices = vertices;
@@ -488,7 +488,7 @@ HypergraphDraw[initHg : _Hypergraph ? HypergraphQ : Hypergraph[], opts : Options
                 Dynamic @ MapThread[
                     If[ #2 === None,
                         {},
-                        Text[#2, RegionCentroid[If[RegionQ[#1], Identity, DiscretizeGraphics] @ #1]]
+                        Text[#2, RegionCentroid[If[RegionQ[#1], Identity, DiscretizeGraphics][#1 /. Arrow[a_] :> a]]]
                     ] &, {edgeRegions, edgeLabels}
                 ],
                 Dynamic @ {
