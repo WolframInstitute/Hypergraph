@@ -13,7 +13,7 @@ $HypergraphPlotThemes = <|
     Automatic -> {},
     "WolframModel" -> {
         EdgeStyle -> {
-            {_, _} -> Directive[Arrowheads[{{0.04, .5}}], Opacity[.7], Hue[0.63, 0.7, 0.5]],
+            {_, _} -> Directive[Arrowheads[{{0.03, .5}}], Opacity[.7], Hue[0.63, 0.7, 0.5]],
             _ -> Directive[Opacity[0.1], Hue[0.63, 0.66, 0.81]]
         },
         "EdgeLineStyle" -> Directive[Opacity[.7], Hue[0.63, 0.7, 0.5]],
@@ -27,14 +27,25 @@ $HypergraphPlotThemes = <|
         "EdgeLineStyle" -> White,
         Background -> Black,
         VertexLabelStyle -> White
+    },
+    "LinkedHypergraph" -> {
+        VertexShapeFunction -> _HoldForm -> Function[Inset[
+            Framed[Style[#2, FontSize -> 16, FontColor -> Black],
+            Background -> White, FrameMargins -> {4 {1, 1}, {1, 1}}, FrameStyle ->RGBColor[0.34, 0.39, 0.55, .5], RoundingRadius -> {5, 10}],
+            #1, #3
+        ]],
+        "EdgeLineStyle" -> Directive[Arrowheads[{{0.03, .5}}], Opacity[.7], Hue[0.63, 0.7, 0.5]],
+        VertexLabelStyle -> _ -> FontSize -> 8,
+        VertexLabels -> {_HoldForm -> None, _ -> Automatic},
+        PlotTheme -> "WolframModel"
     }
 |>
 
-makeVertexLabel[vertex_, label_, style_, pos_] := Replace[label /. "Name" -> vertex, {
+makeVertexLabel[vertex_, label_, style_, pos_, labelOffset_] := Replace[label /. "Name" -> vertex, {
     None -> Nothing,
-    Automatic :> Text[Style[vertex, style], pos, {1, 1}],
+    Automatic :> Text[Style[vertex, style], pos + labelOffset],
     Placed[placedLabel_, offset_] :> If[offset === Tooltip, Tooltip[Text[" ", pos], Style[placedLabel, style]], Text[Style[placedLabel, style], pos, offset]],
-    l_ :> Text[Style[l, style], pos, {1, 1}]
+    l_ :> Text[Style[l, style], pos + labelOffset]
 }]
 
 
@@ -70,24 +81,21 @@ Options[SimpleHypergraphPlot] := Join[Options[Hypergraph], Options[Graphics], Op
 SimpleHypergraphPlot[h : {___List}, args___] := SimpleHypergraphPlot[Hypergraph[h], args]
 
 SimpleHypergraphPlot[h_Hypergraph, plotOpts : OptionsPattern[]] := Enclose @ Block[{
-    graph,
+    graph, plot,
     vertexEmbedding, edgeEmbedding,
     vs = VertexList[h], es = EdgeList[h], edgeTags = EdgeTags[h], taggedEdges = EdgeListTagged[h],
     nullEdges, longEdges, ws,
     colorFunction, edgeArrowsQ, edgeType, edgeMethod,
     vertexStyle, vertexLabels, vertexLabelStyle, vertexSize,
     edgeStyle, edgeLineStyle, edgeLabels, edgeLabelStyle, edgeSize, edgeSymmetries,
-    vertexCoordinates, vertexShapeFunction,
-    bounds, corner, size, dim,
-    opts = FilterRules[{
-        plotOpts,
-        #,
-        Lookup[$HypergraphPlotThemes, OptionValue[SimpleHypergraphPlot, Join[#, {plotOpts}], PlotTheme], {}]
-    } & @ Options[h], Options[SimpleHypergraphPlot]],
+    vertexCoordinates, vertexLabelOffesets, vertexShapeFunction,
+    allPoints, bounds, corner, range, size, dim,
+    opts = FilterRules[{plotOpts, Options[h]}, Options[SimpleHypergraphPlot]],
     edgeIndex,
     makeEdge, renderEdge,
     totalCounts = <||>
 },
+    opts = FixedPoint[Replace[#, (PlotTheme -> theme_) :> Splice @ Lookup[$HypergraphPlotThemes, theme, {}], {1}] &, opts];
     edgeIndex = PositionIndex[taggedEdges];
     colorFunction = OptionValue[SimpleHypergraphPlot, opts, ColorFunction];
     {
@@ -142,9 +150,10 @@ SimpleHypergraphPlot[h_Hypergraph, plotOpts : OptionsPattern[]] := Enclose @ Blo
             ]],
             Options[Graph]
         ],
+        VertexLabels -> {_ -> Automatic, \[FormalE][_] -> None},
         GraphLayout -> {"SpringEmbedding", "EdgeWeighted" -> True}
     ], GraphQ];
-    {vertexEmbedding, edgeEmbedding} = First[#, {}] & /@ Reap[GraphPlot[graph], {"v", "e"}][[2]];
+    {vertexEmbedding, edgeEmbedding} = First[#, {}] & /@ Reap[plot = GraphPlot[graph], {"v", "e"}][[2]];
 	edgeEmbedding = Join[Merge[edgeEmbedding, Identity], Association[vertexEmbedding][[Key /@ nullEdges]]];
     vertexEmbedding = Association[vertexEmbedding][[Key /@ vs]];
     If[ dim == 2 && vertexCoordinates === Automatic,
@@ -162,11 +171,13 @@ SimpleHypergraphPlot[h_Hypergraph, plotOpts : OptionsPattern[]] := Enclose @ Blo
             edgeEmbedding = Association @ KeyValueMap[#1 -> ReplacePart[#2, Thread[{{_, 1}, {_, -1}} -> Lookup[vertexEmbedding, Extract[#1, {{1}, {2}}]]]] &] @ edgeEmbedding;
         ]
     ];
-    bounds = CoordinateBounds[Values[vertexEmbedding]];
+    allPoints = DeleteDuplicates @ DeleteMissing @ Join[Values[vertexEmbedding], Flatten[Values[edgeEmbedding], 2]];
+    bounds = CoordinateBounds[allPoints];
     corner = bounds[[All, 1]];
-    size = Max[#2 - #1 & @@@ bounds];
+    range = #2 - #1 & @@@ bounds;
+    size = Max[range];
     If[size == 0, size = 1];
-
+    vertexLabelOffesets = 0.03 size Normalize[# - Mean @ Nearest[allPoints, #, 5]] & /@ vertexEmbedding;
     makeEdge[edge_, tag_, symm_, i_, j_, initPrimitive_] := Block[{
         primitive,
         pos = Replace[RegionCentroid[If[RegionQ[initPrimitive], Identity, DiscretizeGraphics @* ReplaceAll[Arrow[l_] :> l]] @ initPrimitive], {} -> corner],
@@ -267,8 +278,7 @@ SimpleHypergraphPlot[h_Hypergraph, plotOpts : OptionsPattern[]] := Enclose @ Blo
                     addArrows = If[ edgeArrowsQ || MatchQ[symm, "Ordered" | "Directed" | {}],
                         With[{lengths = RegionMeasure @* DiscretizeGraphics /@ lines},
                             {   #,
-                                lineStyle,
-                                MapIndexed[{Arrowheads[{{Switch[dim, 3, 0.015, _, 0.02] (Log[#2[[1]]] + 1), .5}}], Arrow[#1]} &, lines]
+                                MapIndexed[{Arrowheads[{{Switch[dim, 3, 0.015, _, 0.02] (Log[#2[[1]]] + 1), .5}}], lineStyle, Arrow[#1]} &, lines]
                             }
                         ] &,
                         Identity
@@ -298,9 +308,9 @@ SimpleHypergraphPlot[h_Hypergraph, plotOpts : OptionsPattern[]] := Enclose @ Blo
             Normal @ Merge[{counts, First[#] -> Length[#] & /@ GatherBy[Thread[{es, edgeTags}], First /* Sort]}, Identity]]
         ],
         Opacity[1],
-		KeyValueMap[{Replace[#1, vertexStyle], Replace[#2, vertexShapeFunction][#2, #1, Replace[#1, vertexSize]]} &, Sow[#, "Vertex"] & /@ vertexEmbedding],
+		KeyValueMap[{Replace[#1, vertexStyle], Replace[#1, vertexShapeFunction][#2, #1, Replace[Replace[#1, vertexSize], x_ ? NumericQ :> {x, x}]]} &, Sow[#, "Vertex"] & /@ vertexEmbedding],
         KeyValueMap[With[{label = Replace[#1, vertexLabels], style = Replace[#1, vertexLabelStyle]},
-            makeVertexLabel[#1, label, style, #2]
+            makeVertexLabel[#1, label, style, #2, vertexLabelOffesets[#1]]
         ] &,
             vertexEmbedding
         ]

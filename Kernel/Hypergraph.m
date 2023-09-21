@@ -132,7 +132,7 @@ hg : Hypergraph[vs_List, he_Hyperedges ? HyperedgesQ, opts : OptionsPattern[]] /
 		edges = he /. (Labeled | Style | Annotation)[v_, _] :> v
 	},
 		System`Private`HoldSetValid[Hypergraph[vertices, edges, ##]] & @@
-			Sort @ Normal @ GroupBy[
+			Normal @ GroupBy[
 				Flatten[{If[styles === {}, Nothing, VertexStyle -> styles], If[labels === {}, Nothing, VertexLabels -> labels], annotations, opts}],
 				First,
 				If[

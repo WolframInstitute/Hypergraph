@@ -350,24 +350,24 @@ HighlightRule[matches : {___Association}, hg_ ? HypergraphQ, opts : OptionsPatte
         GraphicsRow[{
             SimpleHypergraphPlot[
                 hg,
-                plotOpts,
                 EdgeStyle -> Map[
                     # -> OptionValue["HighlightLeftEdgeStyle"] &,
                     Extract[edges, #MatchEdgePositions]
                 ],
                 VertexStyle -> Map[# -> OptionValue["HighlightLeftVertexStyle"] &, #MatchVertices],
+                plotOpts,
                 $HypergraphRulePlotOptions
             ],
             Graphics[{GrayLevel[0.65], $HypergraphRuleArrow}, ImageSize -> 24],
             SimpleHypergraphPlot[
                 #Hypergraph,
-                plotOpts,
                 EdgeStyle -> Map[
                     # -> OptionValue["HighlightRightEdgeStyle"] &,
                     (* output edges always getting spliced at the first position *)
                     #NewEdges
                 ],
                 VertexStyle -> Map[# -> OptionValue["HighlightRightVertexStyle"] &, #NewVertices],
+                plotOpts,
                 $HypergraphRulePlotOptions
             ]
         }, PlotRangePadding -> 1] &,
