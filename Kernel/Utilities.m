@@ -1,5 +1,6 @@
 Package["WolframInstitute`Hypergraph`"]
 
+PackageExport[LinkedHypergraph]
 PackageScope["areaGradientDescent"]
 
 
@@ -71,5 +72,34 @@ areaGradientDescent[R_MeshRegion, stepsize_ : 1., steps_ : 10, reassemble_ : Fal
       pts[[intvertices]] -= stepsize * (solver[(A . pts)[[intvertices]]]);, {i, 1, steps}];
    S = MeshRegion[pts, MeshCells[R, 2], PlotTheme -> "LargeMesh"];
    S
+]
+
+
+Options[LinkedHypergraph] = Join[{
+    "NodeStyle" -> {FontSize -> 16, FontColor -> Black},
+    "NodeFrameStyle" -> {
+        Background -> LightBlue,
+        FrameMargins -> {4 {1, 1}, {1, 1}},
+        FrameStyle -> RGBColor[0.34, 0.39, 0.55, .5],
+        RoundingRadius -> {5, 10}
+    }}, Options[Hypergraph]]
+
+LinkedHypergraph[hg_, opts : OptionsPattern[]] := With[{
+    nodeStyle = OptionValue["NodeStyle"],
+    nodeFrameStyle = OptionValue["NodeFrameStyle"]
+},
+    Hypergraph[MapAt[
+            Annotation[HoldForm[#], {
+                VertexLabels -> None,
+                VertexShapeFunction -> Function[Inset[Framed[Style[#2, nodeStyle], nodeFrameStyle], #1, #3]]}
+            ] &,
+            hg,
+            {All, 2}
+        ],
+        Sequence @@ FilterRules[{opts}, Options[Hypergraph]],
+        PlotTheme -> "WolframModel",
+        "EdgeSymmetry" -> "Ordered",
+        "EdgeLineStyle" -> Directive[Arrowheads[{{0.03, .5}}], Opacity[.7], Hue[0.63, 0.7, 0.5]], VertexLabelStyle -> _ -> FontSize -> 8, VertexLabels -> Automatic
+    ]
 ]
 

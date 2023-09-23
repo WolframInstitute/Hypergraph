@@ -367,6 +367,10 @@ HighlightRule[matches : {___Association}, hg_ ? HypergraphQ, opts : OptionsPatte
                     #NewEdges
                 ],
                 VertexStyle -> Map[# -> OptionValue["HighlightRightVertexStyle"] &, #NewVertices],
+                VertexCoordinates -> DeleteCases[
+                    Thread[VertexList[hg] -> HypergraphEmbedding[hg]],
+                    HoldPattern[Evaluate[Alternatives @@ #NewVertices -> _]]
+                ],
                 plotOpts,
                 $HypergraphRulePlotOptions
             ]

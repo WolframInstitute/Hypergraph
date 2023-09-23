@@ -19,7 +19,7 @@ $HypergraphPlotThemes = <|
         "EdgeLineStyle" -> Directive[Opacity[.7], Hue[0.63, 0.7, 0.5]],
         VertexStyle -> Directive[Hue[0.63, 0.26, 0.89], EdgeForm[Directive[Hue[0.63, 0.7, 0.33], Opacity[0.95]]]],
         VertexSize -> 0.01,
-        VertexShapeFunction -> Function[If[Length[#1] == 3, Sphere, Disk][#1, #3]]
+        VertexShapeFunction -> Function[If[Length[#1] == 3, Sphere[#1, #3], Disk[#1, Offset[200 #3]]]]
     },
     "Dark" -> {
         VertexStyle -> White,
