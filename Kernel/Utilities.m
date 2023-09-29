@@ -85,8 +85,8 @@ Options[LinkedHypergraph] = Join[{
     }}, Options[Hypergraph]]
 
 LinkedHypergraph[hg_, opts : OptionsPattern[]] := With[{
-    nodeStyle = OptionValue["NodeStyle"],
-    nodeFrameStyle = OptionValue["NodeFrameStyle"]
+    nodeStyle = {OptionValue["NodeStyle"], OptionValue[Options[LinkedHypergraph], "NodeStyle"]},
+    nodeFrameStyle = {OptionValue["NodeFrameStyle"], OptionValue[Options[LinkedHypergraph], "NodeFrameStyle"]}
 },
     Hypergraph[MapAt[
             Annotation[HoldForm[#], {

@@ -41,7 +41,7 @@ $HypergraphPlotThemes = <|
     }
 |>
 
-makeVertexLabel[vertex_, label_, style_, pos_, labelOffset_] := Replace[label /. "Name" -> vertex, {
+makeVertexLabel[vertex_, label_, style_, pos_, labelOffset_ : {0, .01}] := Replace[label /. "Name" -> vertex, {
     None -> Nothing,
     Automatic :> Text[Style[vertex, style], pos + labelOffset],
     Placed[placedLabel_, offset_] :> If[offset === Tooltip, Tooltip[Text[" ", pos], Style[placedLabel, style]], Text[Style[placedLabel, style], pos, offset]],
@@ -308,9 +308,11 @@ SimpleHypergraphPlot[h_Hypergraph, plotOpts : OptionsPattern[]] := Enclose @ Blo
             Normal @ Merge[{counts, First[#] -> Length[#] & /@ GatherBy[Thread[{es, edgeTags}], First /* Sort]}, Identity]]
         ],
         Opacity[1],
-		KeyValueMap[{Replace[#1, vertexStyle], Replace[#1, vertexShapeFunction][#2, #1, Replace[Replace[#1, vertexSize], x_ ? NumericQ :> {x, x}]]} &, Sow[#, "Vertex"] & /@ vertexEmbedding],
-        KeyValueMap[With[{label = Replace[#1, vertexLabels], style = Replace[#1, vertexLabelStyle]},
-            makeVertexLabel[#1, label, style, #2, vertexLabelOffesets[#1]]
+		KeyValueMap[{Replace[#1, vertexStyle], Replace[#1, vertexShapeFunction][#2, #1, Replace[Replace[#1, vertexSize], x_ ? NumericQ :> {x, x}]]} &, vertexEmbedding],
+        KeyValueMap[With[{label = Replace[#1, vertexLabels], style = Replace[#1, vertexLabelStyle], offset = vertexLabelOffesets[#1]},
+            Sow[#2, "Vertex"];
+            Sow[#1 -> offset, "VertexLabelOffset"];
+            makeVertexLabel[#1, label, style, #2, offset]
         ] &,
             vertexEmbedding
         ]

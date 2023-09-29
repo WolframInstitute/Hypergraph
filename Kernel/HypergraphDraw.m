@@ -13,7 +13,7 @@ HypergraphDraw[initHg : _Hypergraph ? HypergraphQ : Hypergraph[], opts : Options
     edgeStyles, edgeSymmetries, edgeLabels,
     vertexSelect = False, edgeSelect = False, vertexMove = False, edgeMove = False,
     edgeSymmetry, edgeLabel = None,
-    vertexName = Null, vertexLabel = Automatic,
+    vertexName = Null, vertexLabel = Automatic, vertexLabelOffsets = {},
 	vertexSelection = {}, vertexId = Missing[], edgeSelection = {}, edgeId = Missing[],
     oldVertices = <||>, oldNullEdges = <||>,
 	getVertex, down, move, up,
@@ -30,9 +30,12 @@ HypergraphDraw[initHg : _Hypergraph ? HypergraphQ : Hypergraph[], opts : Options
     edgeRegions = {},
     graphicsSelectedQ = True,
     flash = 0.2,
-    edgeIndex = 1
+    edgeIndex = 1,
+    reap
 },
-    points = Catenate @ MapThread[Take, {First[#, {}] & /@ Reap[SimpleHypergraphPlot[initHg], {"Vertex", "NullEdge"}][[2]], {VertexCount[initHg], EdgeCount[initHg, {}]}}];
+    reap = Reap[SimpleHypergraphPlot[initHg], _, Rule][[2]];
+    points = Catenate @ MapThread[Take, {Lookup[reap, {"Vertex", "NullEdge"}, {}], {VertexCount[initHg], EdgeCount[initHg, {}]}}];
+    vertexLabelOffsets = Lookup[reap, "VertexLabelOffset", {}];
     mousePosition[] := Replace[MousePosition["Graphics"], {None -> mousePos, pos_ :> (mousePos = pos)}];
 	getVertex[pos_ : mousePosition[]] := If[Length[vertices] > 0,
 		First[
@@ -160,9 +163,9 @@ HypergraphDraw[initHg : _Hypergraph ? HypergraphQ : Hypergraph[], opts : Options
 
 		update[]
 	);
-    renderEdges[edgeIds_] := Block[{edgePositions, edgePrimitives},
+    renderEdges[edgeIds_] := Block[{edgePositions, edgePrimitives, newVertexLabelOffsets},
         edgeRegions = PadRight[edgeRegions, Length[edges], EmptyRegion[2]];
-        {edgePositions, edgePrimitives} = First[#, {}] & /@ Reap[
+        {edgePositions, edgePrimitives, newVertexLabelOffsets} = First[#, {}] & /@ Reap[
             SimpleHypergraphPlot[
                 edges[[edgeIds]],
                 VertexCoordinates -> Join[
@@ -173,8 +176,10 @@ HypergraphDraw[initHg : _Hypergraph ? HypergraphQ : Hypergraph[], opts : Options
                 ],
                 "EdgeSymmetry" -> Thread[edges[[edgeIds]] -> edgeSymmetries[[edgeIds]]]
             ],
-            {"Position", "Primitive"}
+            {"Position", "Primitive", "VertexLabelOffset"}
         ][[2]];
+
+        vertexLabelOffsets = DeleteDuplicatesBy[First] @ Join[newVertexLabelOffsets, vertexLabelOffsets];
 
         (* TODO: figure out what causing weird double Reap *)
         If[ Length[edgePositions] > Length[edgeIds],
@@ -484,7 +489,7 @@ HypergraphDraw[initHg : _Hypergraph ? HypergraphQ : Hypergraph[], opts : Options
                 ],
                 Opacity[1],
                 Dynamic @ Thread[{Values @ MapAt[Directive[Opacity[Clip[Sin[flash] ^ 2, {0.01, 0.99}]], #] &, vertexStyles, {Key[#]} & /@ DeleteDuplicates[DeleteMissing[Keys[vertexSelection]]]], Point /@ Values[vertices]}],
-                Dynamic @ MapThread[makeVertexLabel, {Keys[vertices], Values[vertexLabels], Values[vertexStyles], Values[vertices]}],
+                Dynamic @ MapThread[makeVertexLabel, {Keys[vertices], Values[vertexLabels], Values[vertexStyles], Values[vertices], Lookup[vertexLabelOffsets, Keys[vertices], 0.03]}],
                 Dynamic @ MapThread[
                     If[ #2 === None,
                         {},
