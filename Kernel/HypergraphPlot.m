@@ -71,8 +71,8 @@ ConcavePolygon[points_, n_ : 1] := Block[{polygon = ConvexHullRegion[points], or
     }
 ]
 
-applyIndexedRules[edge_, rules_, index_Integer, default_ : None] := Enclose[
-    GroupBy[rules, First, If[Length[#] >= index, Return[#[[index]], CompoundExpression], If[Length[#] > 0, Return[Last[#], CompoundExpression]]] & @ ReplaceList[edge, #, index] &];
+applyIndexedRules[expr_, rules_, index_Integer, default_ : None] := Enclose[
+    GroupBy[rules, First, If[Length[#] >= index, Return[#[[index]], CompoundExpression], If[Length[#] > 0, Return[Last[#], CompoundExpression]]] & @ ReplaceList[expr, #, index] &];
     default
 ]
 
@@ -88,7 +88,7 @@ SimpleHypergraphPlot[h_Hypergraph, plotOpts : OptionsPattern[]] := Enclose @ Blo
     colorFunction, edgeArrowsQ, edgeType, edgeMethod,
     vertexStyle, vertexLabels, vertexLabelStyle, vertexSize,
     edgeStyle, edgeLineStyle, edgeLabels, edgeLabelStyle, edgeSize, edgeSymmetries,
-    vertexCoordinates, vertexLabelOffesets, vertexShapeFunction,
+    vertexCoordinates, vertexLabelOffsets, vertexShapeFunction,
     allPoints, bounds, corner, range, size, dim,
     opts = FilterRules[{plotOpts, Options[h]}, Options[SimpleHypergraphPlot]],
     edgeIndex,
@@ -168,16 +168,16 @@ SimpleHypergraphPlot[h_Hypergraph, plotOpts : OptionsPattern[]] := Enclose @ Blo
             ]
         },
             vertexEmbedding = KeyMap[Replace[vertexRearange]] @ vertexEmbedding;
-            edgeEmbedding = Association @ KeyValueMap[#1 -> ReplacePart[#2, Thread[{{_, 1}, {_, -1}} -> Lookup[vertexEmbedding, Extract[#1, {{1}, {2}}]]]] &] @ edgeEmbedding;
+            edgeEmbedding = Association @ KeyValueMap[#1 -> If[MatchQ[#2, {__Real}], #2, ReplacePart[#2, Thread[{{_, 1}, {_, -1}} -> Lookup[vertexEmbedding, Extract[#1, {{1}, {2}}]]]]] &] @ edgeEmbedding;
         ]
     ];
-    allPoints = DeleteDuplicates @ DeleteMissing @ Join[Values[vertexEmbedding], Flatten[Values[edgeEmbedding], 2]];
+    allPoints = DeleteDuplicates @ DeleteMissing @ Join[Values[vertexEmbedding], Catenate[If[MatchQ[#, {__Real}], {#}, Flatten[#, 1]] & /@ Values[edgeEmbedding]]];
     bounds = CoordinateBounds[allPoints];
     corner = bounds[[All, 1]];
     range = #2 - #1 & @@@ bounds;
     size = Max[range];
     If[size == 0, size = 1];
-    vertexLabelOffesets = 0.03 size Normalize[# - Mean @ Nearest[allPoints, #, 5]] & /@ vertexEmbedding;
+    vertexLabelOffsets = 0.03 size Normalize[# - Mean @ Nearest[allPoints, #, 5]] & /@ vertexEmbedding;
     makeEdge[edge_, tag_, symm_, i_, j_, initPrimitive_] := Block[{
         primitive,
         pos = Replace[RegionCentroid[If[RegionQ[initPrimitive], Identity, DiscretizeGraphics @* ReplaceAll[Arrow[l_] :> l]] @ initPrimitive], {} -> corner],
@@ -309,7 +309,7 @@ SimpleHypergraphPlot[h_Hypergraph, plotOpts : OptionsPattern[]] := Enclose @ Blo
         ],
         Opacity[1],
 		KeyValueMap[{Replace[#1, vertexStyle], Replace[#1, vertexShapeFunction][#2, #1, Replace[Replace[#1, vertexSize], x_ ? NumericQ :> {x, x}]]} &, vertexEmbedding],
-        KeyValueMap[With[{label = Replace[#1, vertexLabels], style = Replace[#1, vertexLabelStyle], offset = vertexLabelOffesets[#1]},
+        KeyValueMap[With[{label = Replace[#1, vertexLabels], style = Replace[#1, vertexLabelStyle], offset = vertexLabelOffsets[#1]},
             Sow[#2, "Vertex"];
             Sow[#1 -> offset, "VertexLabelOffset"];
             makeVertexLabel[#1, label, style, #2, offset]
