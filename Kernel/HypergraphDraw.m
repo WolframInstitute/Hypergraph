@@ -25,13 +25,14 @@ HypergraphDraw[initHg : _Hypergraph ? HypergraphQ : Hypergraph[], opts : Options
     mousePosition,
 	color,
 	actions = {}, actionId = None, addAction,
-    mousePos, startMousePos = None,
+    mousePos = {0, 0}, startMousePos = None,
     grid,
     edgeRegions = {},
-    graphicsSelectedQ = True,
+    graphicsSelectedQ = False, graphicsControlSelectedQ = False,
     flash = 0.2,
     edgeIndex = 1,
-    reap
+    reap,
+    plotRange = {{0, 1}, {0, 1}}, pane = False
 },
     reap = Reap[SimpleHypergraphPlot[initHg], _, Rule][[2]];
     points = Catenate @ MapThread[Take, {Lookup[reap, {"Vertex", "NullEdge"}, {}], {VertexCount[initHg], EdgeCount[initHg, {}]}}];
@@ -63,6 +64,8 @@ HypergraphDraw[initHg : _Hypergraph ? HypergraphQ : Hypergraph[], opts : Options
         oldNullEdges = nullEdges;
 
 		Which[
+            graphicsControlSelectedQ,
+            Null,
             i == 1 && ! MissingQ[edgeId] && MissingQ[vertexId],
             With[{pos = FirstPosition[edgeSelection, edgeId, None, {1}, Heads -> False]},
                 If[ pos =!= None,
@@ -79,6 +82,9 @@ HypergraphDraw[initHg : _Hypergraph ? HypergraphQ : Hypergraph[], opts : Options
             With[{v = getVertexName[]},
                 addAction["VertexAdd"[v, mousePos, color, Automatic]]
             ],
+
+            i == 1 && MissingQ[vertexId] && CurrentValue["ShiftKey"],
+            pane = True,
 
             i == 1 && MissingQ[vertexId],
             With[{v = getVertexName[]},
@@ -101,6 +107,7 @@ HypergraphDraw[initHg : _Hypergraph ? HypergraphQ : Hypergraph[], opts : Options
 		];
 	);
     move[] := (
+        If[ pane, plotRange += 0.05 (startMousePos - mousePosition[])];
         If[ vertexSelect && ! MissingQ[vertexId],
             vertexMove = True
         ];
@@ -159,7 +166,7 @@ HypergraphDraw[initHg : _Hypergraph ? HypergraphQ : Hypergraph[], opts : Options
             edgeId = Missing[];
         ];
 
-		vertexSelect = edgeSelect = vertexMove = edgeMove = False;
+		vertexSelect = edgeSelect = vertexMove = edgeMove = pane = False;
 
 		update[]
 	);
@@ -412,7 +419,7 @@ HypergraphDraw[initHg : _Hypergraph ? HypergraphQ : Hypergraph[], opts : Options
             FilterRules[{opts}, Options[Hypergraph]],
             Options[initHg]
 		];
-        SelectionMove[EvaluationBox[], All, CellContents];
+        SelectionMove[EvaluationBox[], All, CellContents, AutoScroll -> False];
         graphicsSelectedQ = True
 	);
     reset[] := (
@@ -477,7 +484,7 @@ HypergraphDraw[initHg : _Hypergraph ? HypergraphQ : Hypergraph[], opts : Options
     );
 
     reset[];
-	grid = Row[{
+	grid = Panel @ Row[{
 		EventHandler[
 			Graphics[{
                 Opacity[.5],
@@ -500,7 +507,7 @@ HypergraphDraw[initHg : _Hypergraph ? HypergraphQ : Hypergraph[], opts : Options
                     If[ Length[vertexSelection] > 0,
                         {   color, Dotted,
                             KeyValueMap[
-                                With[{p = Lookup[vertices, #1]}, Table[Circle[p, 0.02 r], {r, #2}]] &,
+                                With[{p = Lookup[vertices, #1]}, Table[Circle[p, 0.02 Max[#2 - #1 & @@@ plotRange] r], {r, #2}]] &,
                                 Counts[Select[Keys[vertexSelection], Not @* MissingQ]]
                             ]
                         },
@@ -512,7 +519,21 @@ HypergraphDraw[initHg : _Hypergraph ? HypergraphQ : Hypergraph[], opts : Options
                     }
                 }
             },
-				PlotRange -> {{0, 1}, {0, 1}},
+                Epilog -> Dynamic @ Inset[Column[{
+                    EventHandler[Framed[Style["+", 24]], {
+                        "MouseDown" :>  With[{p = Mean[Transpose[plotRange]], s = 0.8}, plotRange = ScalingTransform[s, {1, 0}, p] @ ScalingTransform[s, {0, 1}, p] @ plotRange],
+                        "MouseEntered" :> (graphicsControlSelectedQ = True),
+                        "MouseExited" :> (graphicsControlSelectedQ = False)
+                    }],
+                    EventHandler[Framed[Style["-", 24]], {
+                        "MouseDown" :> With[{p = Mean[Transpose[plotRange]], s = 1.1}, plotRange = ScalingTransform[s, {1, 0}, p] @ ScalingTransform[s, {0, 1}, p] @ plotRange],
+                        "MouseEntered" :> (graphicsControlSelectedQ = True),
+                        "MouseExited" :> (graphicsControlSelectedQ = False)
+                    }]
+                }],
+                    {Right, Top}, Scaled[{1.2, 1.1}]
+                ],
+				PlotRange -> Dynamic[plotRange],
 				ImageSize -> Scaled[.5],
 				Frame -> True,
                 FrameStyle -> Dashed,
@@ -526,21 +547,22 @@ HypergraphDraw[initHg : _Hypergraph ? HypergraphQ : Hypergraph[], opts : Options
                 "MouseEntered" :> (graphicsSelectedQ = True),
                 "MouseExited" :> (graphicsSelectedQ = False)
             },
-            PassEventsDown -> False,
+            PassEventsDown :> graphicsControlSelectedQ,
             PassEventsUp -> False
         ],
-	Column[{
-        Dynamic @ ClickToCopy[Column[{"Click to copy Hypergraph:", Pane[TraditionalForm[hg], Scaled[.3], Alignment -> Center]}, Alignment -> Center], hg],
-        Row[{"Vertex: ",
-            Column[{
-                InputField[Dynamic[vertexName, (vertexName = #; vertexRename[]) &], FieldSize -> Scaled[.005], ReturnEntersInput -> False],
-                Button["Rename", vertexRename[]]
-            }],
-            Column[{
-                InputField[Dynamic[vertexLabel, (vertexLabel = #; vertexRelabel[]) &], FieldSize -> Scaled[.005], ReturnEntersInput -> False],
-                Button["Relabel", vertexRelabel[]]
+	Panel @ Column[{
+        Column[{"Vertex:",
+            Row[{
+                Column[{
+                    InputField[Dynamic[vertexName, (vertexName = #; vertexRename[]) &], FieldSize -> Scaled[.005], ReturnEntersInput -> False],
+                    Button["Rename", vertexRename[]]
+                }],
+                Column[{
+                    InputField[Dynamic[vertexLabel, (vertexLabel = #; vertexRelabel[]) &], FieldSize -> Scaled[.005], ReturnEntersInput -> False],
+                    Button["Relabel", vertexRelabel[]]
+                }]
             }]
-        }],
+        }, Alignment -> Center],
         Row[{"Edge label: ",
             InputField[Dynamic[edgeLabel, (edgeLabel = #; edgeRelabel[]) &], FieldSize -> Scaled[.005], ReturnEntersInput -> False],
             Button["Relabel", vertexRelabel[]]
@@ -560,11 +582,6 @@ HypergraphDraw[initHg : _Hypergraph ? HypergraphQ : Hypergraph[], opts : Options
             edgeStyles = ReplacePart[edgeStyles, List /@ edgeSelection -> color];
             update[]
         ) & ], ImageSize -> Scaled[.3]],
-        Pane[Style["TODO: new instructions",
-            FontFamily -> "Source Sans Pro", FontSize -> 10
-        ],
-            ImageSize -> Scaled[.45], Alignment -> Center
-        ],
         Row[{
             Button["Undo (z)", undo[], ImageSize -> Scaled[.1]],
             Button["Redo (d)", do[], ImageSize -> Scaled[.1]],
@@ -574,7 +591,8 @@ HypergraphDraw[initHg : _Hypergraph ? HypergraphQ : Hypergraph[], opts : Options
             Button["Vertex (v)", addVertices[], ImageSize -> Scaled[.1]],
             Button["Edge (e)", addEdge[], ImageSize -> Scaled[.1]],
             Button["Delete (\[DeleteKey])", deleteSelection[], ImageSize -> Scaled[.1]]
-        }]
+        }],
+        Button["Paste Hypergraph", CellPrint[ExpressionCell[hg]], ImageSize -> Scaled[.2]]
     },
         Alignment -> Center
     ]
@@ -603,8 +621,9 @@ HypergraphDraw[initHg : _Hypergraph ? HypergraphQ : Hypergraph[], opts : Options
         Editable -> False,
         ContextMenu -> {},
         GeneratedCell -> True
-    ]
-]
+    ];
+    SelectionMove[EvaluationNotebook[], All, CellContents, AutoScroll -> False]
+] // (#; &)
 
 HypergraphDraw[arg___, opts : OptionsPattern[]] := HypergraphDraw[Hypergraph[arg], opts]
 
