@@ -178,14 +178,17 @@ SimpleHypergraphPlot[h_Hypergraph, plotOpts : OptionsPattern[]] := Enclose @ Blo
     size = Max[range];
     If[size == 0, size = 1];
     vertexLabelOffsets = 0.03 size Normalize[# - Mean @ Nearest[allPoints, #, 5]] & /@ vertexEmbedding;
-    makeEdge[edge_, tag_, symm_, i_, j_, initPrimitive_] := Block[{
+    makeEdge[edge_, tag_, symm_, i_, j_, initPrimitive_, lines_ : {}] := Block[{
         primitive,
         pos = Replace[RegionCentroid[If[RegionQ[initPrimitive], Identity, DiscretizeGraphics @* ReplaceAll[Arrow[l_] :> l]] @ initPrimitive], {} -> corner],
-        edgeTagged, style, label, labelStyle, labelPrimitive
+        edgeTagged, style, lineStyle, label, labelStyle, labelPrimitive
     },
         edgeTagged = If[tag === None, edge, edge -> tag];
         style = With[{defStyle = Directive[colorFunction[i], EdgeForm[Transparent]]},
             Replace[applyIndexedRules[edgeTagged, edgeStyle, j, defStyle], Automatic -> defStyle]
+        ];
+        lineStyle = With[{defStyle = Directive[colorFunction[i], EdgeForm[Transparent]]},
+            Replace[applyIndexedRules[edgeTagged, edgeLineStyle, j, defStyle], Automatic -> defStyle]
         ];
         label = applyIndexedRules[edgeTagged, edgeLabels, j, None];
         labelStyle = applyIndexedRules[edgeTagged, edgeLabelStyle, j, {}];
@@ -195,7 +198,12 @@ SimpleHypergraphPlot[h_Hypergraph, plotOpts : OptionsPattern[]] := Enclose @ Blo
             Placed[placedLabel_, offset_] :> Text[Replace[placedLabel, None -> ""], pos, offset],
             label_ :> Text[label, pos]
         }];
-        primitive = initPrimitive /. _EmptyRegion -> {};
+        primitive = If[ edgeArrowsQ || MatchQ[symm, "Ordered" | "Directed" | {}],
+            {   initPrimitive,
+                MapIndexed[{Arrowheads[{{Switch[dim, 3, 0.015, _, 0.02] (Log[#2[[1]]] + 1), .5}}], lineStyle, Arrow[#1]} &, lines]
+            },
+            initPrimitive
+        ] /. _EmptyRegion -> {};
         {
             If[MatchQ[pos, {_, _, _}], EdgeForm[], Nothing],
             style,
@@ -208,14 +216,11 @@ SimpleHypergraphPlot[h_Hypergraph, plotOpts : OptionsPattern[]] := Enclose @ Blo
 
     renderEdge[{edge_List, tag_} -> {mult_Integer, total_Integer : 0}, {i_Integer}] := Block[{
         edgeTagged, emb = Replace[edge, vertexEmbedding, {1}],
-        position, primitive, addArrows, lineStyle
+        position, primitive, addArrows
     },
         edgeTagged = If[tag === None, edge, edge -> tag];
         Table[
             Sow[position = edgeIndex[edgeTagged][[j]], "Position"];
-            lineStyle = With[{defStyle = Directive[colorFunction[i], EdgeForm[Transparent]]},
-                Replace[applyIndexedRules[edgeTagged, edgeLineStyle, j, defStyle], Automatic -> defStyle]
-            ];
             Switch[
                 Length[edge],
                 0 | 1, Block[{s, r, dr = size 0.01, symm},
@@ -276,23 +281,19 @@ SimpleHypergraphPlot[h_Hypergraph, plotOpts : OptionsPattern[]] := Enclose @ Blo
                     ];
                     symm = applyIndexedRules[edgeTagged, edgeSymmetries, j, {}];
                     addArrows = If[ edgeArrowsQ || MatchQ[symm, "Ordered" | "Directed" | {}],
-                        With[{lengths = RegionMeasure @* DiscretizeGraphics /@ lines},
-                            {   #,
-                                MapIndexed[{Arrowheads[{{Switch[dim, 3, 0.015, _, 0.02] (Log[#2[[1]]] + 1), .5}}], lineStyle, Arrow[#1]} &, lines]
-                            }
-                        ] &,
+                        {#, Arrow /@ lines} &,
                         Identity
                     ];
                     Switch[dim,
-                        2, Sow[primitive = addArrows @ FilledCurve[curves], "Primitive"],
+                        2, Sow[addArrows[primitive = FilledCurve[curves]], "Primitive"],
                         3, Block[{pts, region},
                             pts = MeshCoordinates @ DiscretizeGraphics @ curves;
                             region = DiscretizeRegion[#, MaxCellMeasure -> {"Area" -> Area[#] / (Length[pts] + 1)}] & @
                                 Polygon[Prepend[First[pts]] /@ Partition[pts[[2 ;; -2]], 2, 1]];
-                            Sow[primitive = addArrows @ Quiet @ areaGradientDescent[region, .1, 20], "Primitive"]
+                            Sow[addArrows[primitive = Quiet @ areaGradientDescent[region, .1, 20]], "Primitive"]
                         ]
                     ];
-                    makeEdge[edge, tag, symm, i, j, primitive]
+                    makeEdge[edge, tag, symm, i, j, primitive, lines]
                 ]
             ]
             ,

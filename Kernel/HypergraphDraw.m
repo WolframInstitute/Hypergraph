@@ -413,6 +413,7 @@ HypergraphDraw[initHg : _Hypergraph ? HypergraphQ : Hypergraph[], opts : Options
 			VertexStyle -> Normal[vertexStyles],
             VertexLabels -> Normal[vertexLabels],
 			EdgeStyle -> Thread[edges -> edgeStyles],
+            "EdgeLineStyle" -> Thread[edges -> edgeStyles],
             EdgeLabels -> Thread[edges -> edgeLabels],
             "EdgeSymmetry" -> Thread[edges -> edgeSymmetries],
 			VertexCoordinates -> Normal[Join[vertices, nullEdges]],
@@ -492,7 +493,7 @@ HypergraphDraw[initHg : _Hypergraph ? HypergraphQ : Hypergraph[], opts : Options
                 AbsoluteThickness[Medium],
                 Dynamic[
                     Refresh[flash = Mod[flash + 0.01, 2 Pi];, UpdateInterval -> 0.02];
-                    Thread[{MapAt[Directive[Opacity[Clip[Sin[flash] ^ 2, {0.05, 0.95}]], Dashed, EdgeForm[Directive[Dashed, Black]], #] & , edgeStyles, List /@ edgeSelection], edgeRegions}]
+                    Thread[{MapAt[Directive[Opacity[Clip[Sin[flash] ^ 2, {0.05, 0.95}]], Dashed, EdgeForm[Directive[Dashed, Black]], #] &, edgeStyles, List /@ edgeSelection], edgeRegions}]
                 ],
                 Opacity[1],
                 Dynamic @ Thread[{Values @ MapAt[Directive[Opacity[Clip[Sin[flash] ^ 2, {0.01, 0.99}]], #] &, vertexStyles, {Key[#]} & /@ DeleteDuplicates[DeleteMissing[Keys[vertexSelection]]]], Point /@ Values[vertices]}],
@@ -592,7 +593,7 @@ HypergraphDraw[initHg : _Hypergraph ? HypergraphQ : Hypergraph[], opts : Options
             Button["Edge (e)", addEdge[], ImageSize -> Scaled[.1]],
             Button["Delete (\[DeleteKey])", deleteSelection[], ImageSize -> Scaled[.1]]
         }],
-        Button["Paste Hypergraph", CellPrint[ExpressionCell[hg]], ImageSize -> Scaled[.2]]
+        Button["Paste Hypergraph", CellPrint[ExpressionCell[hg, "Input"]], ImageSize -> Scaled[.2]]
     },
         Alignment -> Center
     ]
