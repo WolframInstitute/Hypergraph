@@ -242,7 +242,7 @@ SimpleHypergraphPlot[h_Hypergraph, plotOpts : OptionsPattern[]] := Enclose @ Blo
                     curve = With[{c = Lookup[totalCounts, Key[#], 0] + 1},
                         AppendTo[totalCounts, # -> c];
                         GraphComputation`GraphElementData["Line"][points[[c]], None][[1]] /. BezierCurve -> BSplineCurve
-                    ] & @ Sort[edge];
+                    ] & @ edge;
                     symm = applyIndexedRules[edgeTagged, edgeSymmetries, j, {}];
                     Sow[primitive = If[edgeArrowsQ || MatchQ[symm, "Ordered" | "Directed" | {}], Arrow, Identity] @
                         If[ edgeMethod === "ConcavePolygon" && DuplicateFreeQ[edge] && total == 1,
