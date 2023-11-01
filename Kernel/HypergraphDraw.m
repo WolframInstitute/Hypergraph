@@ -4,11 +4,21 @@ PackageExport["HypergraphDraw"]
 
 
 
-Options[HypergraphDraw] := Join[{"InitialColor" -> Automatic, "EdgeLabels" -> {"f", "g", "h"}, "VertexLabels" -> {"A", "B", "C"}}, Options[Hypergraph]]
+Options[HypergraphDraw] := Join[{
+    "InitialColor" -> Automatic,
+    "EdgeLabels" -> {"f", "g", "h"},
+    "VertexLabels" -> {"A", "B", "C"}
+}, Options[Hypergraph]]
 
-HypergraphDraw[initHg : _Hypergraph ? HypergraphQ : Hypergraph[], opts : OptionsPattern[]] := DynamicModule[{
-	hg, points,
-	verticesTmp = <||>, edges, nullEdges,
+HypergraphDraw[hg : _Hypergraph ? HypergraphQ : Hypergraph[], opts : OptionsPattern[]] :=
+    Module[{tmpHg = hg},
+        HypergraphDraw[Dynamic[tmpHg], opts]
+    ]
+
+HypergraphDraw[Dynamic[hg_Symbol], opts : OptionsPattern[]] := DynamicModule[{
+	initHg = hg, initOpts = Options[hg],
+    points,
+	vertices = <||>, edges, nullEdges,
     vertexStyles, vertexLabels,
     edgeStyles, edgeSymmetries, edgeLabels,
     vertexSelect = False, edgeSelect = False, vertexMove = False, edgeMove = False,
@@ -26,7 +36,7 @@ HypergraphDraw[initHg : _Hypergraph ? HypergraphQ : Hypergraph[], opts : Options
 	color,
 	actions = {}, actionId = None, addAction,
     mouseTmpPos = {0, 0}, startMousePos = None,
-    canvas, settingsWidget, widget,
+    canvas, settingsWidget,
     edgeRegions = {},
     graphicsEnteredQ = False, graphicsControlEnteredQ = False,
     flash = 0.2,
@@ -35,13 +45,13 @@ HypergraphDraw[initHg : _Hypergraph ? HypergraphQ : Hypergraph[], opts : Options
     plotRange = {{0, 1}, {0, 1}}, pane = False,
     contextMenu = {}
 },
-    reap = Reap[SimpleHypergraphPlot[initHg], _, Rule][[2]];
-    points = Catenate @ MapThread[Take, {Lookup[reap, {"Vertex", "NullEdge"}, {}], {VertexCount[initHg], EdgeCount[initHg, {}]}}];
+    reap = Reap[SimpleHypergraphPlot[hg], _, Rule][[2]];
+    points = Catenate @ MapThread[Take, {Lookup[reap, {"Vertex", "NullEdge"}, {}], {VertexCount[hg], EdgeCount[hg, {}]}}];
     vertexLabelOffsets = Lookup[reap, "VertexLabelOffset", {}];
     mousePosition[] := Replace[MousePosition["Graphics"], {None -> mouseTmpPos, pos : {_ ? NumericQ, _ ? NumericQ} :> (mouseTmpPos = pos)}];
-	getVertex[pos_ : mousePosition[]] := If[Length[verticesTmp] > 0,
+	getVertex[pos_ : mousePosition[]] := If[Length[vertices] > 0,
 		First[
-			Nearest[Reverse /@ Normal[verticesTmp], pos, {1, .02}],
+			Nearest[Reverse /@ Normal[vertices], pos, {1, .02}],
 			Missing[]
 		],
 		Missing[]
@@ -61,7 +71,7 @@ HypergraphDraw[initHg : _Hypergraph ? HypergraphQ : Hypergraph[], opts : Options
             MapIndexed[If[RegionDistance[Once[DiscretizeGraphics[#]], startMousePos] < 0.01, #2[[1]], Nothing] &, edgeRegions /. Arrow[a_] :> a];
         vertexId = getVertex[startMousePos];
         If[! MissingQ[vertexId], vertexName = vertexId; vertexLabel = vertexLabels[vertexName]];
-        oldVertices = verticesTmp;
+        oldVertices = vertices;
         oldNullEdges = nullEdges;
         contextMenu = Which[
             ! MissingQ[vertexId],
@@ -76,6 +86,9 @@ HypergraphDraw[initHg : _Hypergraph ? HypergraphQ : Hypergraph[], opts : Options
                         ] &,
                         OptionValue["VertexLabels"]
                     ]
+                ],
+                With[{command = ToString[Unevaluated[addAction["VertexDelete"[vertices[[{vertexId}]], {vertexStyles[[vertexId]]}, {vertexLabels[[vertexId]]}, edges, nullEdges, vertexSelection]]], InputForm]},
+                    MenuItem["Delete", KernelExecute[ToExpression[command]], MenuEvaluator -> Automatic]
                 ]
             },
             ! MissingQ[edgeId],
@@ -91,6 +104,9 @@ HypergraphDraw[initHg : _Hypergraph ? HypergraphQ : Hypergraph[], opts : Options
                             ] &,
                             OptionValue["EdgeLabels"]
                         ]
+                    ],
+                    With[{command = ToString[Unevaluated[addAction["EdgeDelete"[{edgeId}, edges[[{edgeId}]], edgeStyles[[{edgeId}]], edgeLabels[[{edgeId}]], edgeSymmetries[[{edgeId}]], edgeRegions[[{edgeId}]]]]], InputForm]},
+                        MenuItem["Delete", KernelExecute[ToExpression[command]], MenuEvaluator -> Automatic]
                     ]
                 }
             ],
@@ -128,14 +144,14 @@ HypergraphDraw[initHg : _Hypergraph ? HypergraphQ : Hypergraph[], opts : Options
 
             i == 1 && CurrentValue["OptionKey"],
             vertexSelect = True;
-            addAction["VertexSelect"[vertexId -> verticesTmp[vertexId]]],
+            addAction["VertexSelect"[vertexId -> vertices[vertexId]]],
 
             i == 1,
             vertexSelect = True;
             With[{pos = FirstPosition[vertexSelection, vertexId -> _, None, {1}, Heads -> False]},
                 If[ pos =!= None,
                     addAction["VertexDeselect"[First[pos], vertexSelection[[First[pos]]]]],
-                    addAction["VertexSelect"[vertexId -> verticesTmp[vertexId]]]
+                    addAction["VertexSelect"[vertexId -> vertices[vertexId]]]
                 ]
             ]
 		];
@@ -150,7 +166,7 @@ HypergraphDraw[initHg : _Hypergraph ? HypergraphQ : Hypergraph[], opts : Options
         ];
         If[ vertexMove,
             With[{diff = mousePosition[] - Lookup[oldVertices, vertexId]},
-                verticesTmp = MapAt[# + diff &, oldVertices, Key[vertexId]];
+                vertices = MapAt[# + diff &, oldVertices, Key[vertexId]];
                 renderLocalEdges[{vertexId}]
             ]
         ];
@@ -159,7 +175,7 @@ HypergraphDraw[initHg : _Hypergraph ? HypergraphQ : Hypergraph[], opts : Options
                 diff = mousePosition[] - startMousePos,
                 edge = edges[[edgeId]]
             },
-                verticesTmp = MapAt[# + diff &, oldVertices, {Key[#]} & /@ edge];
+                vertices = MapAt[# + diff &, oldVertices, {Key[#]} & /@ edge];
                 If[ edge === {},
                     nullEdges = MapAt[# + diff &, oldNullEdges, Key[\[FormalN][Count[edges[[;; edgeId]], {}]]]];
                     renderEdges[{edgeId}],
@@ -191,7 +207,7 @@ HypergraphDraw[initHg : _Hypergraph ? HypergraphQ : Hypergraph[], opts : Options
         ];
         If[ edgeMove,
             With[{key = If[edges[[edgeId]] === {}, \[FormalN][Count[edges[[;; edgeId]], {}]], edges[[edgeId]]]},
-                With[{oldPos = Lookup[Join[oldVertices, oldNullEdges], key], newPos = Lookup[Join[verticesTmp, nullEdges], key]},
+                With[{oldPos = Lookup[Join[oldVertices, oldNullEdges], key], newPos = Lookup[Join[vertices, nullEdges], key]},
                     If[ oldPos =!= newPos,
                         addAction["EdgeMove"[edgeId, oldPos, newPos]]
                     ]
@@ -210,7 +226,7 @@ HypergraphDraw[initHg : _Hypergraph ? HypergraphQ : Hypergraph[], opts : Options
             SimpleHypergraphPlot[
                 edges[[edgeIds]],
                 VertexCoordinates -> Join[
-                    Normal @ verticesTmp,
+                    Normal @ vertices,
                     With[{nullKeys = \[FormalN] /@ DeleteMissing[Lookup[PositionIndex[Lookup[PositionIndex[edges], Key[{}], {}]], edgeIds]][[All, 1]]},
                         Thread[\[FormalN] /@ Range[Length[nullKeys]] -> Lookup[nullEdges, nullKeys]]
                     ]
@@ -247,7 +263,7 @@ HypergraphDraw[initHg : _Hypergraph ? HypergraphQ : Hypergraph[], opts : Options
                 ]
             ),
 			"VertexAdd"[vertex_, coord_, vertexStyle_, label_] :> (
-                AppendTo[verticesTmp, vertex -> coord];
+                AppendTo[vertices, vertex -> coord];
                 AppendTo[vertexStyles, vertex -> vertexStyle];
                 AppendTo[vertexLabels, vertex -> label]
             ),
@@ -256,7 +272,7 @@ HypergraphDraw[initHg : _Hypergraph ? HypergraphQ : Hypergraph[], opts : Options
             "EdgeRelabel"[edgeIds_, _, newLabel_] :> (edgeLabels[[edgeIds]] = newLabel),
             "VertexDelete"[vs_, _, _, oldEdges_, _, _] :> Block[{ids = Keys[vs], positions, pos = First[vs]},
                 positions = {Key[#]} & /@ ids;
-                verticesTmp = Delete[verticesTmp, positions];
+                vertices = Delete[vertices, positions];
                 vertexStyles = Delete[vertexStyles, positions];
                 vertexLabels = Delete[vertexLabels, positions];
                 vertexSelection = DeleteCases[vertexSelection, Alternatives @@ ids -> _];
@@ -299,7 +315,7 @@ HypergraphDraw[initHg : _Hypergraph ? HypergraphQ : Hypergraph[], opts : Options
             "ResetVertexSelect"[_] :> (vertexSelection = {};),
             "ResetEdgeSelect"[_] :> (edgeSelection = {}),
             "VertexMove"[id_, _, newPos_] :> (
-                verticesTmp[id] = newPos;
+                vertices[id] = newPos;
                 vertexSelection = Replace[vertexSelection, (id -> _) -> id -> newPos, {1}];
                 renderLocalEdges[{id}]
             ),
@@ -307,14 +323,14 @@ HypergraphDraw[initHg : _Hypergraph ? HypergraphQ : Hypergraph[], opts : Options
                 If[ edge === {},
                     nullEdges[\[FormalN][Count[edges[[;; id]], {}]]] = newPos;
                     renderEdges[{id}],
-                    MapThread[(verticesTmp[#1] = #2) &, {edge, newPos}];
+                    MapThread[(vertices[#1] = #2) &, {edge, newPos}];
                     renderLocalEdges[edge]
                 ];
             ],
             "VertexRename"[newVertexId_, old_, _, _, _] :> (
                 addAction["ResetSelect"[ReplacePart[vertexSelection, {_, 1} -> newVertexId], edgeSelection], False];
                 With[{repl = Alternatives @@ Keys[old] -> newVertexId},
-                    verticesTmp = KeyMap[Replace[repl], ReverseSortBy[verticesTmp, # === newVertexId &]];
+                    vertices = KeyMap[Replace[repl], ReverseSortBy[vertices, # === newVertexId &]];
                     vertexStyles = KeyMap[Replace[repl], ReverseSortBy[vertexStyles, # === newVertexId &]];
                     vertexLabels = KeyMap[Replace[repl], ReverseSortBy[vertexLabels, # === newVertexId &]];
                     edges = Replace[edges, repl, {2}];
@@ -342,15 +358,15 @@ HypergraphDraw[initHg : _Hypergraph ? HypergraphQ : Hypergraph[], opts : Options
                 ]
             ),
 			"VertexAdd"[__] :>
-			    If[ Length[verticesTmp] > 0,
-                    vertexSelection = DeleteCases[vertexSelection, Last[Keys[verticesTmp]] -> _];
-                    verticesTmp = Most[verticesTmp]; vertexStyles = Most[vertexStyles]; vertexLabels = Most[vertexLabels]
+			    If[ Length[vertices] > 0,
+                    vertexSelection = DeleteCases[vertexSelection, Last[Keys[vertices]] -> _];
+                    vertices = Most[vertices]; vertexStyles = Most[vertexStyles]; vertexLabels = Most[vertexLabels]
                 ],
             "VertexRecolor"[id_, oldStyle_, _] :> (vertexStyles[id] = oldStyle),
             "EdgeRecolor"[id_, oldStyle_, _] :> (edgeStyles[[id]] = oldStyle),
             "EdgeRelabel"[edgeIds_, oldLabels_, _] :> MapThread[(edgeLabels[[#1]] = #2) &, {edgeIds, oldLabels}],
             "VertexDelete"[vs_, styles_, labels_, oldEdges_, oldNull_, oldSelection_] :> (
-                verticesTmp = Join[verticesTmp, vs];
+                vertices = Join[vertices, vs];
                 vertexStyles = Join[vertexStyles, AssociationThread[Keys[vs] -> styles]];
                 vertexLabels = Join[vertexLabels, AssociationThread[Keys[vs] -> labels]];
                 edges = oldEdges;
@@ -358,7 +374,7 @@ HypergraphDraw[initHg : _Hypergraph ? HypergraphQ : Hypergraph[], opts : Options
                 renderLocalEdges[Keys[vs]];
                 vertexSelection = oldSelection;
             ),
-            "EdgeDelete"[edgeIds_, deletedEdges_, styles_, labels_, symmetries_, primitives_] :> With[{order = Ordering[edgeIds]},
+            "EdgeDelete"[edgeIds_, deletedEdges_, styles_, _, symmetries_, primitives_] :> With[{order = Ordering[edgeIds]},
                 edges = Fold[Insert[#1, #2[[2]], #2[[1]]] &, edges, Thread[{edgeIds, deletedEdges}][[order]]];
                 edgeStyles = Fold[Insert[#1, #2[[2]], #2[[1]]] &, edgeStyles, Thread[{edgeIds, styles}][[order]]];
                 edgeLabels = Fold[Insert[#1, #2[[2]], #2[[1]]] &, edgeLabels, Thread[{edgeIds, styles}][[order]]];
@@ -385,19 +401,19 @@ HypergraphDraw[initHg : _Hypergraph ? HypergraphQ : Hypergraph[], opts : Options
                 edgeSelection = oldEdgeSelection
             ),
             "VertexMove"[id_, oldPos_, _] :> (
-                verticesTmp[id] = oldPos;
+                vertices[id] = oldPos;
                 renderLocalEdges[{id}]
             ),
             "EdgeMove"[id_, oldPos_, _] :> With[{edge = edges[[id]]},
                 If[ edge === {},
                     nullEdges[\[FormalN][Count[edges[[;; id]], {}]]] = oldPos;
                     renderEdges[{id}],
-                    MapThread[(verticesTmp[#1] = #2) &, {edge, oldPos}];
+                    MapThread[(vertices[#1] = #2) &, {edge, oldPos}];
                     renderLocalEdges[edge]
                 ];
             ],
             "VertexRename"[newVertexId_, old_, oldVertexStyles_, oldVertexLabels_, oldEdges_] :> (
-                verticesTmp = <|Delete[verticesTmp, Key[newVertexId]], old|>;
+                vertices = <|Delete[vertices, Key[newVertexId]], old|>;
                 vertexStyles = <|Delete[vertexStyles, Key[newVertexId]], oldVertexStyles|>;
                 vertexLabels = <|Delete[vertexLabels, Key[newVertexId]], oldVertexLabels|>;
                 edges = oldEdges;
@@ -410,11 +426,11 @@ HypergraphDraw[initHg : _Hypergraph ? HypergraphQ : Hypergraph[], opts : Options
         actionId -= 1;
 		If[updateQ, update[]]
 	);
-    getVertexName[] := Max[0, Select[Keys[verticesTmp], IntegerQ]] + 1;
-    vertexRename[] := With[{keys = Key /@ Intersection[Keys[verticesTmp], Append[Keys[vertexSelection], vertexName]]},
-        addAction["VertexRename"[vertexName, verticesTmp[[keys]], vertexStyles[[keys]], vertexLabels[[keys]], edges]]
+    getVertexName[] := Max[0, Select[Keys[vertices], IntegerQ]] + 1;
+    vertexRename[] := With[{keys = Key /@ Intersection[Keys[vertices], Append[Keys[vertexSelection], vertexName]]},
+        addAction["VertexRename"[vertexName, vertices[[keys]], vertexStyles[[keys]], vertexLabels[[keys]], edges]]
     ];
-    vertexRelabel[] := With[{keys = Key /@ Intersection[Keys[verticesTmp], Append[Keys[vertexSelection], vertexName]]},
+    vertexRelabel[] := With[{keys = Key /@ Intersection[Keys[vertices], Append[Keys[vertexSelection], vertexName]]},
         addAction["VertexRelabel"[keys, vertexLabels, vertexLabel]]
     ];
     edgeRelabel[] := If[edgeSelection =!= {}, addAction["EdgeRelabel"[edgeSelection, edgeLabels[[edgeSelection]], edgeLabel]]];
@@ -437,12 +453,12 @@ HypergraphDraw[initHg : _Hypergraph ? HypergraphQ : Hypergraph[], opts : Options
         ];
         If[ deleteVertices =!= {},
             keys = Key /@ Keys[deleteVertices];
-            addAction["VertexDelete"[verticesTmp[[keys]], Values[vertexStyles[[keys]]], Values[vertexLabels[[keys]]], edges, nullEdges, vertexSelection]]
+            addAction["VertexDelete"[vertices[[keys]], Values[vertexStyles[[keys]]], Values[vertexLabels[[keys]]], edges, nullEdges, vertexSelection]]
         ]
     ];
 	update[] := (
 		hg = Hypergraph[
-			Keys[verticesTmp], edges,
+			Keys[vertices], edges,
             "LayoutDimension" -> 2,
 			VertexStyle -> Normal[vertexStyles],
             VertexLabels -> Normal[vertexLabels],
@@ -450,39 +466,38 @@ HypergraphDraw[initHg : _Hypergraph ? HypergraphQ : Hypergraph[], opts : Options
             "EdgeLineStyle" -> Thread[edges -> edgeStyles],
             EdgeLabels -> Thread[edges -> edgeLabels],
             "EdgeSymmetry" -> Thread[edges -> edgeSymmetries],
-			VertexCoordinates -> Normal[Join[verticesTmp, nullEdges]],
+			VertexCoordinates -> Normal[Join[vertices, nullEdges]],
             FilterRules[{opts}, Options[Hypergraph]],
-            Options[initHg]
-		];
-        SelectionMove[EvaluationBox[], All, CellContents, AutoScroll -> False];
-        graphicsEnteredQ = True
+            initOpts
+		]
 	);
     reset[] := (
+        plotRange = {{0, 1}, {0, 1}};
         flash = 0;
         vertexSelection = {};
         edgeSelection = {};
-	    verticesTmp = Association @ Lookup[Options[initHg], VertexCoordinates, <||>];
+	    vertices = Association @ Lookup[initOpts, VertexCoordinates, <||>];
         nullEdges = <||>;
-        vertexStyles = Replace[Lookup[Options[initHg], VertexStyle, Automatic], {
+        vertexStyles = Replace[Lookup[initOpts, VertexStyle, Automatic], {
             rules : {(_Rule | _RuleDelayed) ...} :> Association[rules],
-            Automatic :> AssociationThread[verticesTmp, Black],
-            style_ :> AssociationThread[verticesTmp, style]
+            Automatic :> AssociationThread[vertices, Black],
+            style_ :> AssociationThread[vertices, style]
         }];
-        vertexLabels = Replace[Lookup[Options[initHg], VertexLabels, None],
+        vertexLabels = Replace[Lookup[initOpts, VertexLabels, None],
             {
                 rules : {(_Rule | _RuleDelayed) ...} :> Association[rules],
-                Automatic :> AssociationThread[verticesTmp, verticesTmp],
-                None :> AssociationThread[verticesTmp, None],
-                label_ :> AssociationThread[verticesTmp, label]
+                Automatic :> AssociationThread[vertices, vertices],
+                None :> AssociationThread[vertices, None],
+                label_ :> AssociationThread[vertices, label]
             }
         ];
         edges = EdgeList[initHg];
-        edgeStyles = Replace[Lookup[Options[initHg], EdgeStyle, Automatic], {
+        edgeStyles = Replace[Lookup[initOpts, EdgeStyle, Automatic], {
             rules : {(_Rule | _RuleDelayed) ...} :> rules[[All, 2]],
             Automatic :> Array[ColorData[97], Length[edges]],
             style_ :> ConstantArray[style, Length[edges]]
         }];
-        edgeLabels = Replace[Lookup[Options[initHg], EdgeLabels, None], {
+        edgeLabels = Replace[Lookup[initOpts, EdgeLabels, None], {
             rules : {(_Rule | _RuleDelayed) ...} :> rules[[All, 2]],
             Automatic :> edges,
             None :> ConstantArray[None, Length[edges]],
@@ -494,7 +509,7 @@ HypergraphDraw[initHg : _Hypergraph ? HypergraphQ : Hypergraph[], opts : Options
         actions = {};
         actionId = None;
 
-        If[ Not[VertexCount[initHg] == Length[verticesTmp] == Length[vertexStyles] == Length[vertexLabels] && EdgeCount[initHg] == Length[edges] == Length[edgeStyles] == Length[edgeSymmetries]],
+        If[ Not[VertexCount[initHg] == Length[vertices] == Length[vertexStyles] == Length[vertexLabels] && EdgeCount[initHg] == Length[edges] == Length[edgeStyles] == Length[edgeSymmetries]],
             Block[{
                 scaledCoordinates = If[
                     points === {},
@@ -504,11 +519,11 @@ HypergraphDraw[initHg : _Hypergraph ? HypergraphQ : Hypergraph[], opts : Options
                 scaledVertexCoordinates, nullEdgeCoordinates
             },
                 {scaledVertexCoordinates, nullEdgeCoordinates} = TakeDrop[scaledCoordinates, VertexCount[initHg]];
-                verticesTmp = AssociationThread[VertexList[initHg], scaledVertexCoordinates];
+                vertices = AssociationThread[VertexList[initHg], scaledVertexCoordinates];
                 nullEdges = AssociationThread[\[FormalN] /@ Range[Count[edges, {}]], nullEdgeCoordinates];
             ];
-            vertexStyles = AssociationThread[Keys[verticesTmp], color];
-            vertexLabels = AssociationThread[Keys[verticesTmp], Keys[verticesTmp]];
+            vertexStyles = AssociationThread[Keys[vertices], color];
+            vertexLabels = AssociationThread[Keys[vertices], Keys[vertices]];
             edgeLabels = PadRight[edgeLabels, Length[edges], None];
             edgeStyles = PadRight[edgeStyles, Length[edges], color];
             edgeSymmetries = PadRight[edgeSymmetries, Length[edges], "Unordered"];
@@ -521,7 +536,7 @@ HypergraphDraw[initHg : _Hypergraph ? HypergraphQ : Hypergraph[], opts : Options
     reset[];
 
     canvas = Style[EventHandler[
-        Graphics[{
+        Style[Graphics[{
             Opacity[.5],
             Arrowheads[{{Medium, .5}}],
             AbsoluteThickness[Medium],
@@ -530,8 +545,8 @@ HypergraphDraw[initHg : _Hypergraph ? HypergraphQ : Hypergraph[], opts : Options
                 Thread[{MapAt[Directive[Opacity[Clip[Sin[flash] ^ 2, {0.05, 0.95}]], Dashed, EdgeForm[Directive[Dashed, Black]], #] &, edgeStyles, List /@ edgeSelection], edgeRegions}]
             ],
             Opacity[1],
-            Dynamic @ Thread[{Values @ MapAt[Directive[Opacity[Clip[Sin[flash] ^ 2, {0.01, 0.99}]], #] &, vertexStyles, {Key[#]} & /@ DeleteDuplicates[DeleteMissing[Keys[vertexSelection]]]], Point /@ Values[verticesTmp]}],
-            Dynamic @ MapThread[makeVertexLabel, {Keys[verticesTmp], Values[vertexLabels], Values[vertexStyles], Values[verticesTmp], Lookup[vertexLabelOffsets, Keys[verticesTmp], 0.03]}],
+            Dynamic @ Thread[{Values @ MapAt[Directive[Opacity[Clip[Sin[flash] ^ 2, {0.01, 0.99}]], #] &, vertexStyles, {Key[#]} & /@ DeleteDuplicates[DeleteMissing[Keys[vertexSelection]]]], Point /@ Values[vertices]}],
+            Dynamic @ MapThread[makeVertexLabel, {Keys[vertices], Values[vertexLabels], Values[vertexStyles], Values[vertices], Lookup[vertexLabelOffsets, Keys[vertices], 0.03]}],
             Dynamic @ MapThread[
                 If[ #2 === None,
                     {},
@@ -542,7 +557,7 @@ HypergraphDraw[initHg : _Hypergraph ? HypergraphQ : Hypergraph[], opts : Options
                 If[ Length[vertexSelection] > 0,
                     {   color, Dotted,
                         KeyValueMap[
-                            With[{p = Lookup[verticesTmp, #1]}, Table[Circle[p, 0.02 Max[#2 - #1 & @@@ plotRange] r], {r, #2}]] &,
+                            With[{p = Lookup[vertices, #1]}, Table[Circle[p, 0.02 Max[#2 - #1 & @@@ plotRange] r], {r, #2}]] &,
                             Counts[Select[Keys[vertexSelection], Not @* MissingQ]]
                         ]
                     },
@@ -586,24 +601,29 @@ HypergraphDraw[initHg : _Hypergraph ? HypergraphQ : Hypergraph[], opts : Options
             ImageSize -> Scaled[.33],
             Frame -> True,
             FrameStyle -> Dashed,
-            FrameTicks -> None
-        ], {
+            FrameTicks -> None,
+            ContentSelectable -> False
+        ], Selectable :> CurrentValue["ShiftKey"], ShowSelection -> True], {
             {"MouseDown", 1} :> down[1],
             {"MouseDown", 2} :> down[2],
+            "MouseUp" :> up[],
             "MouseDragged" :> move[],
             "MouseMoved" :> move[],
-            "MouseUp" :> up[],
             "MouseEntered" :> (graphicsEnteredQ = True),
-            "MouseExited" :> (graphicsEnteredQ = False)
+            "MouseExited" :> (graphicsEnteredQ = False),
+            "KeyDown" :> Switch[
+                CurrentValue["EventKey"],
+                " " | "e", addEdge[],
+                "\[RawEscape]" | "q", addAction["ResetSelect"[vertexSelection, edgeSelection]],
+                "r", reset[],
+                "z", undo[],
+                "d", do[],
+                "\b" | "", deleteSelection[]
+            ]
         },
-        PassEventsDown :> graphicsControlEnteredQ || CurrentValue["ShiftKey"] || CurrentValue[{"MouseButtonTest", 2}],
-        PassEventsUp -> True
+        PassEventsUp -> False,
+        PassEventsDown :> graphicsControlEnteredQ || CurrentValue["ShiftKey"]
     ], ContextMenu -> Dynamic[contextMenu]];
-
-    (* canvas = EventHandler[
-        Graphics[Dynamic[Point @ Values @ verticesTmp]],
-        {"MouseDown", 1} :> AppendTo[verticesTmp, Unique[] -> MousePosition["Graphics"]]
-    ]; *)
 
     settingsWidget = Panel @ Column[{
         Column[{
@@ -650,34 +670,9 @@ HypergraphDraw[initHg : _Hypergraph ? HypergraphQ : Hypergraph[], opts : Options
     },
         Alignment -> Center
     ];
-
-    widget = Panel @ Column[{
-        canvas,
-        (* Toggler[Dynamic[showDock], {False -> "⬇️", True -> "⬆️"}],
-        PaneSelector[{False -> Spacer[0], True -> settingsWidget}, Dynamic[showDock]] *)
+    Column[{
+        ExpressionCell[canvas, ShowSelection -> False],
         OpenerView[{Spacer[0], settingsWidget}]
-    }];
-
-    CellPrint @ ExpressionCell[widget, "Output",
-        CellEventActions -> {
-            "KeyDown" :> Switch[
-                CurrentValue["EventKey"],
-                " " | "e", addEdge[],
-                "\[RawEscape]" | "q", addAction["ResetSelect"[vertexSelection, edgeSelection]],
-                "r", reset[],
-                "z", undo[],
-                "d", do[],
-                "\b" | "", deleteSelection[]
-            ],
-            PassEventsDown :> ! graphicsEnteredQ,
-            PassEventsUp -> False
-        },
-        ShowSelection -> False,
-        Editable -> False,
-        GeneratedCell -> True
-    ];
-    SelectionMove[EvaluationNotebook[], All, CellContents, AutoScroll -> False]
-] // (#; &)
-
-HypergraphDraw[arg___, opts : OptionsPattern[]] := HypergraphDraw[Hypergraph[arg], opts]
+    }]
+]
 
