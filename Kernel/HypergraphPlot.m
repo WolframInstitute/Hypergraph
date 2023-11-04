@@ -187,7 +187,7 @@ SimpleHypergraphPlot[h_Hypergraph, plotOpts : OptionsPattern[]] := Enclose @ Blo
         pos = Replace[RegionCentroid[primitive], {} -> corner];
         If[ Length[edge] == 2 && dim == 2,
             pos += With[{points = Sort @ MeshCoordinates[primitive]},
-                0.03 Normalize[Subtract @@ RotationTransform[Pi / 2, pos][points]]
+                0.03 Normalize[If[TrueQ[VectorAngle[#, pos - center] > Pi], #, - #] & [Subtract @@ RotationTransform[Pi / 2, pos][points]]]
             ]
         ];
         edgeTagged = If[tag === None, edge, edge -> tag];
