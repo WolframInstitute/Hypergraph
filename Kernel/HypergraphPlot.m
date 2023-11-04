@@ -89,7 +89,7 @@ SimpleHypergraphPlot[h_Hypergraph, plotOpts : OptionsPattern[]] := Enclose @ Blo
     vertexStyle, vertexLabels, vertexLabelStyle, vertexSize,
     edgeStyle, edgeLineStyle, edgeLabels, edgeLabelStyle, edgeSize, edgeSymmetries,
     vertexCoordinates, vertexLabelOffsets, vertexShapeFunction,
-    allPoints, bounds, corner, range, size, dim,
+    allPoints, bounds, corner, center, range, size, dim,
     opts = FilterRules[{plotOpts, Options[h]}, Options[SimpleHypergraphPlot]],
     edgeIndex,
     makeEdge, renderEdge,
@@ -174,15 +174,22 @@ SimpleHypergraphPlot[h_Hypergraph, plotOpts : OptionsPattern[]] := Enclose @ Blo
     allPoints = DeleteDuplicates @ DeleteMissing @ Join[Values[vertexEmbedding], Catenate[If[MatchQ[#, {__Real}], {#}, Flatten[#, 1]] & /@ Values[edgeEmbedding]]];
     bounds = CoordinateBounds[allPoints];
     corner = bounds[[All, 1]];
+    center = Mean /@ bounds;
     range = #2 - #1 & @@@ bounds;
     size = Max[range];
     If[size == 0, size = 1];
-    vertexLabelOffsets = 0.03 size Normalize[# - Mean @ Nearest[allPoints, #, 5]] & /@ vertexEmbedding;
+    vertexLabelOffsets = 0.03 Normalize[# - Mean @ Nearest[allPoints, #, 5]] & /@ vertexEmbedding;
     makeEdge[edge_, tag_, symm_, i_, j_, initPrimitive_, lines_ : {}] := Block[{
-        primitive,
-        pos = Replace[RegionCentroid[If[RegionQ[initPrimitive], Identity, DiscretizeGraphics @* ReplaceAll[Arrow[l_] :> l]] @ initPrimitive], {} -> corner],
+        primitive = If[RegionQ[initPrimitive], Identity, DiscretizeGraphics @* ReplaceAll[Arrow[l_] :> l]] @ initPrimitive,
+        pos,
         edgeTagged, style, lineStyle, label, labelStyle, labelPrimitive
     },
+        pos = Replace[RegionCentroid[primitive], {} -> corner];
+        If[ Length[edge] == 2 && dim == 2,
+            pos += With[{points = Sort @ MeshCoordinates[primitive]},
+                0.03 Normalize[Subtract @@ RotationTransform[Pi / 2, pos][points]]
+            ]
+        ];
         edgeTagged = If[tag === None, edge, edge -> tag];
         style = With[{defStyle = Directive[colorFunction[i], EdgeForm[Transparent]]},
             Replace[applyIndexedRules[edgeTagged, edgeStyle, j, defStyle], Automatic -> defStyle]
@@ -204,6 +211,7 @@ SimpleHypergraphPlot[h_Hypergraph, plotOpts : OptionsPattern[]] := Enclose @ Blo
             },
             initPrimitive
         ] /. _EmptyRegion -> {};
+        Sow[pos, "EdgeLabelPosition"];
         {
             If[MatchQ[pos, {_, _, _}], EdgeForm[], Nothing],
             style,
