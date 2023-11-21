@@ -592,14 +592,7 @@ HypergraphDraw[Dynamic[hg_Symbol], opts : OptionsPattern[]] := DynamicModule[{
                 }],
                     {Right, Top}, Scaled[{1.2, 1.1}]
                 ],
-                Inset[
-                    EventHandler[Framed[Style["Print", 12]], {
-                        "MouseDown" :> CellPrint[ExpressionCell[hg, "Input"]],
-                        mouseEvents
-                    }],
-                    {Right, Bottom}, Scaled[{1.1, - .2}]
-                ],
-                Inset[
+                Inset[Column[{
                     EventHandler[Framed[Style["Return", 12]], {
                         "MouseDown" :> (
                             (* SelectionMove[ParentCell @ EvaluationCell[], All, Cell]; *)
@@ -607,7 +600,12 @@ HypergraphDraw[Dynamic[hg_Symbol], opts : OptionsPattern[]] := DynamicModule[{
                         ),
                         mouseEvents
                     }],
-                    {Right, Bottom}, Scaled[{1.1, - 1.2}]
+                    EventHandler[Framed[Style["Print", 12]], {
+                        "MouseDown" :> CellPrint[ExpressionCell[hg, "Input"]],
+                        mouseEvents
+                    }]
+                }, Alignment -> Right],
+                    {Right, Bottom}, Scaled[{1.1, - .2}]
                 ],
                 Inset[Column[{
                         "Selection:",
