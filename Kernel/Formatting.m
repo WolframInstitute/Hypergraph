@@ -9,14 +9,23 @@ PackageScope["$HypergraphRulePlotOptions"]
 (* Hypergraph *)
 
 Hypergraph /: MakeBoxes[hg_Hypergraph /; HypergraphQ[Unevaluated[hg]], form : StandardForm] := With[{
+    boxId = SymbolName[Unique["Hypergrap"]]
+},
+    {
 	boxes = Block[{BoxForm`$UseTextFormattingWhenConvertingInput = False},
         ToBoxes[
-            SimpleHypergraphPlot[#, BaseStyle -> {
-                GraphicsHighlightColor -> Red,
-                ComponentwiseContextMenu -> {"GraphicsBox" -> {MenuItem["Draw", KernelExecute[
-                    NotebookWrite[EvaluationCell[], Cell[BoxData @ ToBoxes @ HypergraphDraw[hg], "Output"]]
-                ], MenuEvaluator -> Automatic]}}
-            }],
+            Insert[
+                SimpleHypergraphPlot[#, BaseStyle -> {
+                        GraphicsHighlightColor -> Red,
+                        ComponentwiseContextMenu -> {"GraphicsBox" -> {MenuItem["Draw", KernelExecute[
+                                MathLink`CallFrontEnd[FrontEnd`BoxReferenceReplace[FE`BoxReference[EvaluationNotebook[], boxId], ToBoxes[HypergraphDraw[hg]]]]
+                            ], MenuEvaluator -> Automatic]}
+                        }
+                    }
+                ],
+                BoxID -> boxId,
+                -1
+            ],
             form
         ]
     ]

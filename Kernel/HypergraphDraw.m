@@ -15,7 +15,7 @@ HypergraphDraw[hg : _Hypergraph ? HypergraphQ : Hypergraph[], opts : OptionsPatt
         HypergraphDraw[Dynamic[tmpHg], opts]
     ]
 
-HypergraphDraw[Dynamic[hg_Symbol], opts : OptionsPattern[]] := DynamicModule[{
+HypergraphDraw[Dynamic[hg_Symbol], opts : OptionsPattern[]] := With[{boxId = SymbolName[Unique["HypergraphDraw"]]}, DynamicModule[{
 	initHg = hg, initOpts = Options[hg],
     points,
 	vertices = <||>, edges, nullEdges,
@@ -63,6 +63,7 @@ HypergraphDraw[Dynamic[hg_Symbol], opts : OptionsPattern[]] := DynamicModule[{
         do[updateQ]
     );
 	down[i_] := (
+        If[graphicsControlEnteredQ, Return[]];
         With[{tmpPos = mousePosition[]},
             If[startMousePos =!= None && EuclideanDistance[tmpPos, startMousePos] < 0.01, edgeIndex++, edgeIndex = 1];
             startMousePos = tmpPos
@@ -114,8 +115,6 @@ HypergraphDraw[Dynamic[hg_Symbol], opts : OptionsPattern[]] := DynamicModule[{
             {}
         ];
 		Which[
-            graphicsControlEnteredQ,
-            Null,
             i == 1 && ! MissingQ[edgeId] && MissingQ[vertexId],
             With[{pos = FirstPosition[edgeSelection, edgeId, None, {1}, Heads -> False]},
                 If[ pos =!= None,
@@ -595,8 +594,7 @@ HypergraphDraw[Dynamic[hg_Symbol], opts : OptionsPattern[]] := DynamicModule[{
                 Inset[Column[{
                     EventHandler[Framed[Style["Return", 12]], {
                         "MouseDown" :> (
-                            (* SelectionMove[ParentCell @ EvaluationCell[], All, Cell]; *)
-                            NotebookWrite[ParentCell @ EvaluationCell[], Cell[BoxData @ ToBoxes @ hg, "Output"], All]
+                            MathLink`CallFrontEnd[FrontEnd`BoxReferenceReplace[FE`BoxReference[EvaluationNotebook[], boxId], ToBoxes[hg]]]
                         ),
                         mouseEvents
                     }],
@@ -640,7 +638,7 @@ HypergraphDraw[Dynamic[hg_Symbol], opts : OptionsPattern[]] := DynamicModule[{
             ]
         },
         PassEventsUp -> False,
-        PassEventsDown :> graphicsControlEnteredQ || CurrentValue["ShiftKey"]
+        PassEventsDown -> True
     ], ContextMenu -> Dynamic[contextMenu]];
 
     settingsWidget = Panel @ Column[{
@@ -691,6 +689,8 @@ HypergraphDraw[Dynamic[hg_Symbol], opts : OptionsPattern[]] := DynamicModule[{
     Column[{
         ExpressionCell[canvas, ShowSelection -> False],
         OpenerView[{Spacer[0], settingsWidget}]
-    }]
+    }],
+    BoxID -> boxId
+]
 ]
 
