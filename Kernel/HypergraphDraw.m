@@ -223,7 +223,7 @@ HypergraphDraw[Dynamic[hg_Symbol], opts : OptionsPattern[]] := With[{boxId = Sym
             ];
             vertexId = Missing[];
         ];
-        If[ edgeSelect,
+        If[ edgeSelect && ! MissingQ[edgeId],
             If[ CurrentValue["ShiftKey"] && edgeStyles[[edgeId]] =!= color,
                 addAction["EdgeRecolor"[edgeId, edgeStyles[[edgeId]], color]],
                 color = edgeStyles[[edgeId]];
@@ -231,7 +231,7 @@ HypergraphDraw[Dynamic[hg_Symbol], opts : OptionsPattern[]] := With[{boxId = Sym
                 edgeSymmetry = edgeSymmetries[[edgeId]]
             ];
         ];
-        If[ edgeMove,
+        If[ edgeMove && ! MissingQ[edgeId],
             With[{key = If[edges[[edgeId]] === {}, \[FormalN][Count[edges[[;; edgeId]], {}]], edges[[edgeId]]]},
                 With[{oldPos = Lookup[Join[oldVertices, oldNullEdges], key], newPos = Lookup[Join[vertices, nullEdges], key]},
                     If[ oldPos =!= newPos,
@@ -251,6 +251,7 @@ HypergraphDraw[Dynamic[hg_Symbol], opts : OptionsPattern[]] := With[{boxId = Sym
         {edgePositions, edgePrimitives, newVertexLabelOffsets, newEdgeLabelPositions} = First[#, {}] & /@ Reap[
             SimpleHypergraphPlot[
                 edges[[edgeIds]],
+                PlotRange -> plotRange,
                 VertexCoordinates -> Join[
                     Normal @ vertices,
                     With[{nullKeys = \[FormalN] /@ DeleteMissing[Lookup[PositionIndex[Lookup[PositionIndex[edges], Key[{}], {}]], edgeIds]][[All, 1]]},
@@ -501,6 +502,7 @@ HypergraphDraw[Dynamic[hg_Symbol], opts : OptionsPattern[]] := With[{boxId = Sym
             EdgeLabelStyle -> Thread[edges -> Darker /@ edgeStyles],
             "EdgeSymmetry" -> Thread[edges -> edgeSymmetries],
 			VertexCoordinates -> Normal[Join[vertices, nullEdges]],
+            PlotRange -> plotRange,
             FilterRules[{opts}, Options[Hypergraph]],
             initOpts
 		]

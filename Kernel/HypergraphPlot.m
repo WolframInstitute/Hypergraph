@@ -164,7 +164,7 @@ SimpleHypergraphPlot[h_Hypergraph, plotOpts : OptionsPattern[]] := Enclose @ Blo
                     ordering = OrderingBy[points, ArcTan @@ (# - center) &];
                     ordering = First @ MaximalBy[Catenate[{RotateLeft[ordering, #], RotateLeft[Reverse[ordering], #]} & /@ Range[Length[ordering]]], Count[MapIndexed[#1 == #2[[1]] &, #], True] &, 1];
                     Thread[Part[#, ordering] -> #]
-                ] & /@ Select[es, Length[#] > 3 &]
+                ] & /@ Select[es, DuplicateFreeQ[#] && Length[#] > 3 &]
             ]
         },
             vertexEmbedding = KeyMap[Replace[vertexRearange]] @ vertexEmbedding;
@@ -172,7 +172,7 @@ SimpleHypergraphPlot[h_Hypergraph, plotOpts : OptionsPattern[]] := Enclose @ Blo
         ]
     ];
     allPoints = DeleteDuplicates @ DeleteMissing @ Join[Values[vertexEmbedding], Catenate[If[MatchQ[#, {__Real}], {#}, Flatten[#, 1]] & /@ Values[edgeEmbedding]]];
-    bounds = CoordinateBounds[allPoints];
+    bounds = Lookup[AbsoluteOptions[graph], PlotRange];
     corner = bounds[[All, 1]];
     center = Mean /@ bounds;
     range = #2 - #1 & @@@ bounds;
