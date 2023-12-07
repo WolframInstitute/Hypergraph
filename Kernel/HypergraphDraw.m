@@ -45,9 +45,6 @@ HypergraphDraw[Dynamic[hg_Symbol], opts : OptionsPattern[]] := With[{boxId = Sym
     plotRange = {{0, 1}, {0, 1}}, pane = False,
     contextMenu = {}
 },
-    reap = Reap[SimpleHypergraphPlot[hg], _, Rule][[2]];
-    points = Catenate @ MapThread[Take, {Lookup[reap, {"Vertex", "NullEdge"}, {}], {VertexCount[hg], EdgeCount[hg, {}]}}];
-    vertexLabelOffsets = Lookup[reap, "VertexLabelOffset", {}];
     mousePosition[] := Replace[MousePosition["Graphics"], {None -> mouseTmpPos, pos : {_ ? NumericQ, _ ? NumericQ} :> (mouseTmpPos = pos)}];
 	getVertex[pos_ : mousePosition[]] := If[Length[vertices] > 0,
 		First[
@@ -138,7 +135,18 @@ HypergraphDraw[Dynamic[hg_Symbol], opts : OptionsPattern[]] := With[{boxId = Sym
                     ]
                 ]
             ]], MenuEvaluator -> Automatic],
-            MenuItem["Copy Hypergraph", KernelExecute[CopyToClipboard[hg]], MenuEvaluator -> Automatic]
+            MenuItem["Copy Hypergraph", KernelExecute[CopyToClipboard[hg]], MenuEvaluator -> Automatic],
+            With[{clipboard = FirstCase[NotebookGet[ClipboardNotebook[]], Cell[BoxData[boxes_], ___] :> MakeExpression[boxes], Missing[], All]},
+                MenuItem["Paste", KernelExecute[
+                    If[ MatchQ[clipboard, HoldComplete[_Hypergraph ? HypergraphQ]],
+                        update[];
+                        With[{newHg = Echo@HypergraphUnion[hg, ReleaseHold[clipboard]]},
+                            If[HypergraphQ[newHg], Block[{initHg = newHg, initOpts = Options[newHg]}, reset[plotRange]]]
+                        ]
+                    ]],
+                    MenuEvaluator -> Automatic
+                ]
+            ]
         }];
 		Which[
             i == 1 && ! MissingQ[edgeId] && MissingQ[vertexId],
@@ -507,8 +515,11 @@ HypergraphDraw[Dynamic[hg_Symbol], opts : OptionsPattern[]] := With[{boxId = Sym
             initOpts
 		]
 	);
-    reset[] := (
-        plotRange = {{0, 1}, {0, 1}};
+    reset[defaultPlotRange_ : {{0, 1}, {0, 1}}] := (
+        reap = Reap[SimpleHypergraphPlot[initHg], _, Rule][[2]];
+        points = Catenate @ MapThread[Take, {Lookup[reap, {"Vertex", "NullEdge"}, {}], {VertexCount[initHg], EdgeCount[initHg, {}]}}];
+        vertexLabelOffsets = Lookup[reap, "VertexLabelOffset", {}];
+        plotRange = defaultPlotRange;
         flash = 0;
         vertexSelection = {};
         edgeSelection = {};
@@ -567,7 +578,6 @@ HypergraphDraw[Dynamic[hg_Symbol], opts : OptionsPattern[]] := With[{boxId = Sym
             edgeSymmetries = PadRight[edgeSymmetries, Length[edges], "Unordered"];
         ];
         renderEdges[Range[Length[edges]]];
-
         update[];
     );
 
@@ -666,7 +676,7 @@ HypergraphDraw[Dynamic[hg_Symbol], opts : OptionsPattern[]] := With[{boxId = Sym
                 "\b" | "", deleteSelection[]
             ]
         },
-        PassEventsUp -> False,
+        PassEventsUp -> True,
         PassEventsDown -> True
     ],
         ContextMenu -> Dynamic[contextMenu]

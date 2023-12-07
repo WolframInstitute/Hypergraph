@@ -11,6 +11,7 @@ PackageExport["EdgeMultiplicity"]
 PackageExport["SimpleHypergraph"]
 PackageExport["SimpleHypergraphQ"]
 PackageExport["HypergraphArityReduce"]
+PackageExport["HypergraphUnion"]
 
 PackageScope["CanonicalEdge"]
 
@@ -311,4 +312,11 @@ Hypergraph /: VertexQ[hg_Hypergraph, vertex_] := MemberQ[VertexList[hg], vertex]
 Hypergraph /: EdgeQ[hg_Hypergraph, edge_List] := MemberQ[EdgeList[hg], edge]
 
 Hypergraph /: EdgeQ[hg_Hypergraph, edge_Rule] := MemberQ[EdgeListTagged[hg], edge]
+
+
+HypergraphUnion[hs___Hypergraph] := Hypergraph[
+	Through[Unevaluated @ Plus[hs]["Edges"]],
+	"EdgeSymmetry" -> DeleteDuplicates @ Through[Unevaluated @ Join[hs]["EdgeSymmetry"]],
+	Normal @ Merge[Through[{hs}["Options"]], First]
+]
 

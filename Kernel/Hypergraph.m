@@ -234,9 +234,6 @@ NonCommutativeMultiply[hs___Hypergraph] ^:= Hypergraph[
 	Normal @ Merge[Through[{hs}["Options"]], First]
 ]
 
-Plus[hs___Hypergraph] ^:= Hypergraph[
-	Through[Unevaluated @ Plus[hs]["Edges"]],
-	"EdgeSymmetry" -> DeleteDuplicates @ Through[Unevaluated @ Join[hs]["EdgeSymmetry"]],
-	Normal @ Merge[Through[{hs}["Options"]], First]
-]
+Plus[hs___Hypergraph] ^:= HypergraphUnion[hs]
+
 
