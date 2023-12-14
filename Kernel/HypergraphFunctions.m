@@ -315,7 +315,7 @@ Hypergraph /: EdgeQ[hg_Hypergraph, edge_Rule] := MemberQ[EdgeListTagged[hg], edg
 
 
 HypergraphUnion[hs___Hypergraph] := Hypergraph[
-	Through[Unevaluated @ Plus[hs]["Edges"]],
+	Union @@ VertexList /@ {hs}, Through[Unevaluated @ Plus[hs]["Edges"]],
 	"EdgeSymmetry" -> DeleteDuplicates @ Through[Unevaluated @ Join[hs]["EdgeSymmetry"]],
 	Normal @ Merge[Through[{hs}["Options"]], First]
 ]

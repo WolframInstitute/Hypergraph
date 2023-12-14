@@ -9,7 +9,7 @@ PackageScope["$HypergraphRulePlotOptions"]
 (* Hypergraph *)
 
 Hypergraph /: MakeBoxes[hg_Hypergraph /; HypergraphQ[Unevaluated[hg]], form : StandardForm] := With[{
-    boxId = SymbolName[Unique["Hypergrap"]]
+    boxId = SymbolName[Unique["Hypergraph"]]
 },
     {
 	boxes = Block[{BoxForm`$UseTextFormattingWhenConvertingInput = False},
@@ -91,22 +91,27 @@ $HypergraphRulePlotOptions = {
     ImageSize -> Tiny
 };
 
-HypergraphRule /: MakeBoxes[hr_HypergraphRule /; HypergraphRuleQ[Unevaluated[hr]], form : StandardForm] := With[{
+HypergraphRule /: MakeBoxes[hr_HypergraphRule /; HypergraphRuleQ[Unevaluated[hr]], form : StandardForm] := With[{boxId = SymbolName[Unique["HypergraphRule"]]}, With[{
     boxes = Block[{BoxForm`$UseTextFormattingWhenConvertingInput = False}, ToBoxes[
-        GraphicsRow[{
+        Insert[BoxID -> boxId, -1] @ GraphicsRow[{
             SimpleHypergraphPlot[#["Input"], $HypergraphRulePlotOptions],
             Graphics[{GrayLevel[0.65], $HypergraphRuleArrow}, ImageSize -> 24],
             SimpleHypergraphPlot[#["Output"], $HypergraphRulePlotOptions]
         },
             PlotRangePadding -> 1,
-            BaseStyle -> {GraphicsHighlightColor -> Blue},
+            BaseStyle -> {
+                GraphicsHighlightColor -> Blue,
+                ComponentwiseContextMenu -> {"GraphicsBox" -> {MenuItem["Draw", KernelExecute[
+                    MathLink`CallFrontEnd[FrontEnd`BoxReferenceReplace[FE`BoxReference[EvaluationNotebook[], boxId], ToBoxes[HypergraphRuleDraw[hr]]]]],
+                    MenuEvaluator -> Automatic]}}
+            },
             ImageSize -> Medium
         ],
         form
     ]]
 },
     hypergraphRuleBox[boxes, #]
-] & @ hr
+]] & @ hr
 
 HypergraphRule /: MakeBoxes[hr_HypergraphRule /; HypergraphRuleQ[Unevaluated[hr]], form : TraditionalForm] := With[{
     boxes = RowBox[{ToBoxes[#["Input"], form], "->", ToBoxes[#["Output"], form]}]
