@@ -167,7 +167,7 @@ SimpleHypergraphPlot[h_Hypergraph, plotOpts : OptionsPattern[]] := Enclose @ Blo
                 ] & /@ Select[es, DuplicateFreeQ[#] && Length[#] > 3 &]
             ]
         },
-            vertexEmbedding = KeyMap[Replace[vertexRearange]] @ vertexEmbedding;
+            vertexEmbedding = Merge[{KeyMap[Replace[vertexRearange]] @ vertexEmbedding, vertexEmbedding}, First];
             edgeEmbedding = Association @ KeyValueMap[#1 -> If[MatchQ[#2, {__Real}], #2, ReplacePart[#2, Thread[{{_, 1}, {_, -1}} -> Lookup[vertexEmbedding, Extract[#1, {{1}, {2}}]]]]] &] @ edgeEmbedding;
         ]
     ];
