@@ -514,15 +514,21 @@ HypergraphDraw[Dynamic[hg_Symbol], dynamicSelection : Dynamic[selection_Symbol] 
 			VertexStyle -> Normal[vertexStyles],
             VertexLabels -> Normal[vertexLabels],
             VertexLabelStyle -> Normal[vertexStyles],
+			VertexCoordinates -> Normal[Join[vertices, nullEdges]],
 			EdgeStyle -> Thread[edges -> edgeStyles],
-            "EdgeLineStyle" -> Thread[edges -> edgeStyles],
             EdgeLabels -> Thread[edges -> edgeLabels],
             EdgeLabelStyle -> Thread[edges -> Darker /@ edgeStyles],
+            "EdgeLineStyle" -> Thread[edges -> edgeStyles],
             "EdgeSymmetry" -> Thread[edges -> edgeSymmetries],
-			VertexCoordinates -> Normal[Join[vertices, nullEdges]],
             PlotRange -> plotRange,
             FilterRules[{opts}, Options[Hypergraph]],
-            resetOpts
+            FilterRules[resetOpts,
+                Except[
+                    VertexStyle | VertexLabels | VertexLabelStyle | VertexCoordinates |
+                    EdgeStyle | EdgeLabels | EdgeLabelStyle | "EdgeLineStyle" | "EdgeSymmetry" |
+                    PlotRange
+                ]
+            ]
 		];
 	);
     reset[defaultPlotRange_ : {{0, 1}, {0, 1}}] := (
@@ -535,15 +541,15 @@ HypergraphDraw[Dynamic[hg_Symbol], dynamicSelection : Dynamic[selection_Symbol] 
         nullEdges = <||>;
         vertexStyles = Replace[Lookup[resetOpts, VertexStyle, Automatic], {
             rules : {(_Rule | _RuleDelayed) ...} :> Association[rules],
-            Automatic :> AssociationThread[vertices, Black],
-            style_ :> AssociationThread[vertices, style]
+            Automatic :> AssociationThread[Keys[vertices], Black],
+            style_ :> AssociationThread[Keys[vertices], style]
         }];
         vertexLabels = Replace[Lookup[resetOpts, VertexLabels, None],
             {
                 rules : {(_Rule | _RuleDelayed) ...} :> Association[rules],
-                Automatic :> AssociationThread[vertices, vertices],
-                None :> AssociationThread[vertices, None],
-                label_ :> AssociationThread[vertices, label]
+                Automatic :> AssociationThread[Keys[vertices], Keys[vertices]],
+                None :> AssociationThread[Keys[vertices], None],
+                label_ :> AssociationThread[Keys[vertices], label]
             }
         ];
         edges = EdgeList[resetHg];
@@ -706,7 +712,7 @@ HypergraphDraw[Dynamic[hg_Symbol], dynamicSelection : Dynamic[selection_Symbol] 
             Row[{
                 "Vertex label: ",
                 Style[
-                    InputField[Dynamic[vertexLabel, (vertexLabel = #; vertexRelabel[]) &], FieldSize -> Scaled[.005], ReturnEntersInput -> False],
+                    InputField[Dynamic[vertexLabel, (vertexLabel = #; vertexRelabel[]) &], FieldSize -> Scaled[.005], ReturnEntersInput -> True],
                     ShowSelection -> True
                 ],
                 Button["Relabel", vertexRelabel[]]

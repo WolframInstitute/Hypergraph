@@ -25,7 +25,7 @@ ToLabeledEdges[vertexLabels_Association, edges : {___List}, makePattern_ : False
             If[ TrueQ[makePattern],
                 Labeled[
                     Sow[Pattern[#, _] & @ Symbol["\[FormalV]" <> StringDelete[ToString[#1], Except[WordCharacter]]], "VertexPattern"],
-                    Sow[#2, "LabelPattern"]
+                    Sow[Replace[#2, s_Symbol :> Pattern @@ {s, _}], "LabelPattern"]
                 ],
                 Labeled[#1, Labeled[#2, Unique[]]]
             ] &, vertexLabels],
@@ -67,7 +67,7 @@ ToLabeledEdges[hg_ ? HypergraphQ, makePattern_ : False] := Block[{
                     {
                         symm,
                         Replace[
-                            If[makePattern, Replace[label, None -> _], label],
+                            If[makePattern, Replace[label, {None -> _, s_Symbol :> Pattern @@ {s, _}}], label],
                             {"EdgeTag" -> tag, "EdgeSymmetry" -> symm, Automatic | "Name" -> edge}
                         ]
                     }
@@ -144,7 +144,7 @@ Options[HypergraphRuleApply] = Join[
 ]
 
 HypergraphRuleApply[input_, output_, hg_, opts : OptionsPattern[]] := Block[{
-    vertices = VertexList[hg], edges = hg["EdgeListTagged"],
+    vertices = VertexList[hg], edges = EdgeListTagged[hg],
     inputVertices = VertexList[input], outputVertices = VertexList[output],
     inputEdges = EdgeList[input], outputEdges = EdgeListTagged[output],
     bindingsMethod = Replace[OptionValue["Bindings"], {First -> (Take[#, UpTo[1]] &), _ -> Identity}],
@@ -299,7 +299,8 @@ HypergraphRuleApply[input_, output_, hg_, opts : OptionsPattern[]] := Block[{
                     "NewVertices" -> Values[newVertexMap],
                     "NewEdges" -> newEdges,
                     "DeletedVertices" -> deleteOrigVertices,
-                    "RuleVertexMap" -> origVertexMap
+                    "RuleVertexMap" -> origVertexMap,
+                    "Bindings" -> binding
                 |>
             ],
                 Catenate[Permutations /@ Subsets[Complement[vertices, matchVertices], {Length[inputFreeVertices]}]]
