@@ -10,8 +10,10 @@ PackageExport["EdgeListTagged"]
 PackageExport["EdgeMultiplicity"]
 PackageExport["SimpleHypergraph"]
 PackageExport["SimpleHypergraphQ"]
+PackageExport["ConnectedHypergraphQ"]
 PackageExport["HypergraphArityReduce"]
 PackageExport["HypergraphUnion"]
+PackageExport["UnorderedHypergraphToGraph"]
 
 PackageScope["CanonicalEdge"]
 
@@ -284,6 +286,8 @@ SimpleHypergraph[args___, opts : OptionsPattern[]] := SimpleHypergraph[Hypergrap
 
 SimpleHypergraphQ[hg_ ? HypergraphQ] := EdgeCount[hg] === EdgeCount[SimpleHypergraph[hg]]
 
+ConnectedHypergraphQ[hg_ ? HypergraphQ] := ConnectedGraphQ[Graph[VertexList[hg], Catenate[Which[Length[#] > 2, Partition[#, 2, 1], Length[#] == 2, {#}, True, Nothing] & /@ EdgeList[hg]]]]
+
 
 Hypergraph /: VertexIndex[hg_Hypergraph, v : Except[_List]] := First @ FirstPosition[VertexList[hg], v, {Missing[v]}, {1}, Heads -> False]
 
@@ -318,5 +322,17 @@ HypergraphUnion[hs___Hypergraph] := Hypergraph[
 	Union @@ VertexList /@ {hs}, Through[Unevaluated @ Plus[hs]["Edges"]],
 	"EdgeSymmetry" -> DeleteDuplicates @ Through[Unevaluated @ Join[hs]["EdgeSymmetry"]],
 	Normal @ Merge[Through[{hs}["Options"]], First]
+]
+
+
+UnorderedHypergraphToGraph[hg_] := DirectedGraph @ Graph[
+    {"Vertex", #} & /@ VertexList[hg],
+    Catenate @ MapIndexed[{edge, i} |->
+        With[{edges = {"Hyperedge", i[[1]], #} & /@ edge},
+            Join[UndirectedEdge @@@ Subsets[edges, {2}], # -> {"Vertex", #[[3]]} & /@ edges]
+        ],
+        EdgeList[hg]
+    ],
+    VertexLabels -> Automatic
 ]
 

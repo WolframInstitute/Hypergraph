@@ -3,35 +3,57 @@ Package["WolframInstitute`Hypergraph`"]
 PackageExport["EnumerateHypergraphs"]
 PackageExport["EnumerateOrderedHypergraphs"]
 
+PackageExport["RandomHypergraph"]
 
 
-EnumerateOrderedHypergraphs[sig : {{_Integer, _Integer} ...},
-    {s : _Integer ? Positive | Automatic : Automatic},
-    Optional[{connectedQ : True | False : True, simpleQ : True | False : True}, {True, True}],
+
+Options[EnumerateOrderedHypergraphs] := Join[{"Simple" -> True, "Connected" -> True, "Canonical" -> True}, Options[Hypergraph]]
+
+EnumerateOrderedHypergraphs[
+    s : _Integer ? Positive | Automatic : Automatic,
+    sig : {{_Integer, _Integer} ...},
     opts : OptionsPattern[]
 ] := With[{
-    connType = Replace[connectedQ, {True -> Automatic, False -> None}]
+    simple = Replace[OptionValue["Simple"], Except[All | True | False] -> True],
+    connType = Replace[OptionValue["Connected"], {True -> Automatic, Except[False] -> None}],
+    canonicalQ = TrueQ[OptionValue["Canonical"]]
 },
-    DeleteDuplicatesBy[
-        If[simpleQ, Select[SimpleHypergraphQ], Identity][
-            Hypergraph[First[#], opts, "EdgeSymmetry" -> "Ordered", ImageSize -> Small] & /@ EnumerateWolframModelRules[
-                sig -> {},
-                {s, connType}
+    If[canonicalQ, DeleteDuplicatesBy[CanonicalHypergraph], Identity] @
+        If[connType === False, Select[Not @* ConnectedHypergraphQ], Identity] @
+            Switch[simple, All, Identity, True, Select[SimpleHypergraphQ], False, Select[Not @* SimpleHypergraphQ]][
+                Hypergraph[#["Input"], opts, "EdgeSymmetry" -> "Ordered", ImageSize -> Small] & /@ EnumerateHypergraphRules[
+                    sig -> {},
+                    {s, Replace[connType, False -> None]}
+                ]
             ]
-        ],
-        CanonicalHypergraph
-    ]
 ]
 
-EnumerateOrderedHypergraphs[sig : {{_Integer, _Integer} ...},
-    s : _Integer ? Positive | Automatic : Automatic,
-    Optional[{connectedQ : True | False : True, simpleQ : True | False : True}, {True, True}],
+EnumerateOrderedHypergraphs[
+    {s : _Integer ? Positive | Automatic : Automatic}, sig : {{_Integer, _Integer} ...},
     opts : OptionsPattern[]
-] :=
-    Catenate[EnumerateOrderedHypergraphs[sig, {#}, {connectedQ, simpleQ}, opts] & /@ Range[
-        Replace[s, Automatic :> maxConnectedAtoms[sig, Replace[connectedQ, {True -> Automatic, False -> None}]]]
-    ]]
+] := Select[EnumerateOrderedHypergraphs[s, sig, opts], VertexCount[#] == s &]
 
-EnumerateHypergraphs[sig : {{_Integer, _Integer} ...}, args___, opts : OptionsPattern[]] :=
-    EnumerateOrderedHypergraphs[sig, args, opts, "EdgeSymmetry" -> "Unordered"]
+
+Options[EnumerateHypergraphs] := Options[EnumerateOrderedHypergraphs]
+
+EnumerateHypergraphs[s_, sig_, opts : OptionsPattern[]] :=
+    EnumerateOrderedHypergraphs[s, sig, opts, "EdgeSymmetry" -> "Unordered", "Canonical" -> False]
+
+
+
+Options[RandomHypergraph] := Options[EnumerateHypergraphs]
+
+RandomHypergraph[s : _Integer ? Positive | Automatic : Automatic, sig_, opts : OptionsPattern[]] := Block[{
+    hg,
+    simple = Replace[OptionValue["Simple"], Except[All | True | False] -> True],
+    connected = Replace[OptionValue["Connected"], Except[All | True | False] -> True]
+},
+    Until[
+        Switch[simple, All, True, True, SimpleHypergraphQ[hg], False, ! SimpleHypergraphQ[hg]] &&
+            Switch[connected, All, True, True, ConnectedHypergraphQ[hg], False, ! ConnectedHypergraphQ[hg]],
+
+        hg = Hypergraph[ResourceFunction["RandomHypergraph"][{s, sig}], opts]
+    ];
+    hg
+]
 
