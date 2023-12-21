@@ -9,6 +9,8 @@ PackageExport["RandomHypergraph"]
 
 Options[EnumerateOrderedHypergraphs] := Join[{"Simple" -> True, "Connected" -> True, "Canonical" -> True}, Options[Hypergraph]]
 
+EnumerateOrderedHypergraphs[sig : {{_Integer, _Integer} ...}, opts : OptionsPattern[]] := EnumerateOrderedHypergraphs[Automatic, sig, opts]
+
 EnumerateOrderedHypergraphs[
     s : _Integer ? Positive | Automatic : Automatic,
     sig : {{_Integer, _Integer} ...},
@@ -23,7 +25,7 @@ EnumerateOrderedHypergraphs[
             Switch[simple, All, Identity, True, Select[SimpleHypergraphQ], False, Select[Not @* SimpleHypergraphQ]][
                 Hypergraph[#["Input"], opts, "EdgeSymmetry" -> "Ordered", ImageSize -> Small] & /@ EnumerateHypergraphRules[
                     sig -> {},
-                    {s, Replace[connType, False -> None]}
+                    If[s === Automatic, #, {s, #}] & @ Replace[connType, False -> None]
                 ]
             ]
 ]
@@ -36,7 +38,9 @@ EnumerateOrderedHypergraphs[
 
 Options[EnumerateHypergraphs] := Options[EnumerateOrderedHypergraphs]
 
-EnumerateHypergraphs[s_, sig_, opts : OptionsPattern[]] :=
+EnumerateHypergraphs[sig : {{_Integer, _Integer} ...}, opts : OptionsPattern[]] := EnumerateHypergraphs[Automatic, sig, opts]
+
+EnumerateHypergraphs[s : _Integer ? Positive | Automatic : Automatic, sig : {{_Integer, _Integer} ...}, opts : OptionsPattern[]] :=
     EnumerateOrderedHypergraphs[s, sig, opts, "EdgeSymmetry" -> "Unordered", "Canonical" -> False]
 
 
