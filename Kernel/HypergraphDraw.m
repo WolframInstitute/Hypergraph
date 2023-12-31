@@ -25,7 +25,7 @@ HypergraphDraw[Dynamic[hg_Symbol], dynamicSelection : Dynamic[selection_Symbol] 
     vertexStyles, vertexLabels,
     edgeStyles, edgeSymmetries, edgeLabels, edgeLabelPositions,
     vertexSelect = False, edgeSelect = False, vertexMove = False, edgeMove = False,
-    edgeSymmetry, edgeLabel = None,
+    edgeSymmetry = "Unordered", edgeLabel = None,
     vertexName = Null, vertexLabel = Automatic, vertexLabelOffsets = {},
 	vertexSelection = {}, vertexId = Missing[], edgeSelection = {}, edgeId = Missing[],
     oldVertices = <||>, oldNullEdges = <||>,
@@ -37,7 +37,7 @@ HypergraphDraw[Dynamic[hg_Symbol], dynamicSelection : Dynamic[selection_Symbol] 
     edgeRelabel,
     selectionHypergraph,
     mousePosition,
-	color,
+	color = None,
 	actions = {}, actionId = None, addAction,
     mouseTmpPos = {0, 0}, startMousePos = None,
     canvas, settingsWidget,
@@ -549,11 +549,7 @@ HypergraphDraw[Dynamic[hg_Symbol], dynamicSelection : Dynamic[selection_Symbol] 
         }];
         edgeLabelPositions = ConstantArray[Automatic, Length[edgeLabels]];
         edgeSymmetries = Replace[Replace[edges, resetHg["EdgeSymmetry"], {1}], Except["Unordered" | "Cyclic" | "Ordered"] -> "Unordered", {1}];
-        color = Replace[OptionValue["InitialColor"], Automatic -> FirstCase[vertexStyles, _ ? ColorQ, Black, All]];
-        edgeSymmetry = "Unordered";
-        actions = {};
-        actionId = None;
-
+        If[color === None, color = Replace[OptionValue["InitialColor"], Automatic :> FirstCase[vertexStyles, _ ? ColorQ, Black, All]]];
         If[ Not[VertexCount[resetHg] == Length[vertices] == Length[vertexStyles] == Length[vertexLabels] && EdgeCount[resetHg] == Length[edges] == Length[edgeStyles] == Length[edgeSymmetries] == Length[edgeLabels] == Length[edgeLabelPositions]],
             Block[{
                 scaledCoordinates = If[
@@ -637,7 +633,11 @@ HypergraphDraw[Dynamic[hg_Symbol], dynamicSelection : Dynamic[selection_Symbol] 
                     EventHandler[Framed[Style["Print", 12]], {
                         "MouseDown" :> (update[]; CellPrint[ExpressionCell[hg, "Input"]]),
                         mouseEvents
-                    }]
+                    }],
+                    If[ hideReturnQ, Nothing, EventHandler[Framed[Style["Undo", 12]], {
+                        "MouseDown" :> undo[],
+                        mouseEvents
+                    }]]
                 }, Alignment -> Right],
                     {Right, Bottom}, Scaled[{1.1, - .2}]
                 ]
