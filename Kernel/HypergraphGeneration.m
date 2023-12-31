@@ -41,7 +41,7 @@ Options[EnumerateHypergraphs] := Options[EnumerateOrderedHypergraphs]
 EnumerateHypergraphs[sig : {{_Integer, _Integer} ...}, opts : OptionsPattern[]] := EnumerateHypergraphs[Automatic, sig, opts]
 
 EnumerateHypergraphs[s : _Integer ? Positive | Automatic : Automatic, sig : {{_Integer, _Integer} ...}, opts : OptionsPattern[]] :=
-    EnumerateOrderedHypergraphs[s, sig, opts, "EdgeSymmetry" -> "Unordered", "Canonical" -> False]
+    EnumerateOrderedHypergraphs[s, sig, opts, "EdgeSymmetry" -> "Unordered"]
 
 
 

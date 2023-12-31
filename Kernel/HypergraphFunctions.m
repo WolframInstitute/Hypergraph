@@ -70,7 +70,10 @@ CanonicalEdgeTagged[edge_List, symm : {___Cycles}] := CanonicalEdge[edge, symm]
 CanonicalEdgeTagged[edge_List -> tag_, symm : {___Cycles}] := CanonicalEdge[edge, symm] -> tag
 
 
-CanonicalHypergraph[hg_ ? HypergraphQ] := Block[{
+
+Options[CanonicalHypergraph] = {Method -> Automatic}
+
+CanonicalHypergraph[hg_ ? HypergraphQ, opts : OptionsPattern[]] := Enclose @ Block[{
 	vs = VertexList[hg], edges = EdgeList[hg], tags = EdgeTags[hg],
     taggedEdgePositions, emptyEdgePositions,
 	orderedEdges, counts, iso, emptyEdges, newEdges, ordering,
@@ -89,7 +92,7 @@ CanonicalHypergraph[hg_ ? HypergraphQ] := Block[{
     edges = Delete[edges, taggedEdgePositions];
     tags = Delete[tags, Complement[emptyEdgePositions, taggedEdgePositions]];
 	emptyEdges = Cases[edges, {}];
-	iso = ResourceFunction["FindCanonicalHypergraphIsomorphism"][orderedEdges];
+	iso = Confirm @ Replace[OptionValue[Method], {Automatic | "Graph" -> CanonicalHypergraphGraphIsomorphism, "Combinatorical" -> ResourceFunction["FindCanonicalHypergraphIsomorphism"]}][orderedEdges];
     iso = KeySelect[iso, ! MemberQ[tagVertices, #] &];
     newEdges = First @* Sort /@ TakeList[Map[Replace[iso], orderedEdges, {2}], counts];
     ordering = Ordering[newEdges];
@@ -116,6 +119,13 @@ CanonicalHypergraph[hg_ ? HypergraphQ] := Block[{
 ]
 
 CanonicalHypergraph[args___] := CanonicalHypergraph[Hypergraph[args]]
+
+
+CanonicalHypergraphGraphIsomorphism[edges_] := Enclose @ Block[{g = UnorderedHypergraphToGraph[edges], cg, iso},
+	cg = CanonicalGraph[g];
+	iso = Sort @ Confirm @ First[FindGraphIsomorphism[g, cg]];
+	KeyMap[Last] @ KeySelect[iso, MatchQ[{"Vertex", _}]]
+]
 
 
 CanonicalHypergraphRule[HoldPattern[HypergraphRule[in_Hypergraph, out_Hypergraph]] ? HypergraphRuleQ] := Block[{
@@ -325,7 +335,7 @@ HypergraphUnion[hs___Hypergraph] := Hypergraph[
 ]
 
 
-UnorderedHypergraphToGraph[hg_] := DirectedGraph @ Graph[
+UnorderedHypergraphToGraph[hg_ ? HypergraphQ] := DirectedGraph @ Graph[
     {"Vertex", #} & /@ VertexList[hg],
     Catenate @ MapIndexed[{edge, i} |->
         With[{edges = {"Hyperedge", i[[1]], #} & /@ edge},
@@ -335,4 +345,6 @@ UnorderedHypergraphToGraph[hg_] := DirectedGraph @ Graph[
     ],
     VertexLabels -> Automatic
 ]
+
+UnorderedHypergraphToGraph[args___] := Enclose @ UnorderedHypergraphToGraph[ConfirmBy[Hypergraph[args], HypergraphQ]]
 
