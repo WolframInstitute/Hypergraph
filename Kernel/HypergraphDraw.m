@@ -68,39 +68,71 @@ HypergraphDraw[Dynamic[hg_Symbol], dynamicSelection : Dynamic[selection_Symbol] 
         AppendTo[actions, action];
         do[updateQ]
     );
-    makePalette[] := Column[{
-        If[ MissingQ[vertexId],
-            "Vertex:",
-            Pane @ Column[{
-                StringTemplate["Vertex: ``"][vertexName],
-                StringTemplate["Label: ``"][vertexLabel],
-                DynamicModule[{label}, PopupMenu[Dynamic[label, (addAction["VertexRelabel"[{vertexId}, {vertexLabel}, #]]; label = #) &], OptionValue["VertexLabels"]]],
-                Button["Delete", addAction["VertexDelete"[vertices[[{vertexId}]], {vertexStyles[[vertexId]]}, {vertexLabels[[vertexId]]}, edges, nullEdges, vertexSelection]]]
-            }]
-        ],
-        If[ MissingQ[edgeId],
-            "Edge:",
-            Pane @ Column[{
-                StringTemplate["Edge: ``"][edges[[edgeId]]],
-                StringTemplate["Label: ``"][edgeLabels[[edgeId]]],
-                DynamicModule[{label}, PopupMenu[Dynamic[label, (addAction["EdgeRelabel"[{edgeId}, {edgeLabel}, #]]; label = #) &], OptionValue["EdgeLabels"]]],
-                Button["Delete", addAction["EdgeDelete"[{edgeId}, edges[[{edgeId}]], edgeStyles[[{edgeId}]], edgeLabels[[{edgeId}]], edgeSymmetries[[{edgeId}]], edgeRegions[[{edgeId}]]]]]
-            }]
-        ],
-        Button["Copy Selection", CopyToClipboard @ selectionHypergraph[], Enabled -> Length[vertexSelection] + Length[edgeSelection] > 0],
-        Button["Copy Hypergraph", CopyToClipboard[hg]],
-        Block[{clipboard = FirstCase[NotebookGet[ClipboardNotebook[]], Cell[BoxData[boxes_], ___] :> MakeExpression[boxes], Missing[], All], enabled},
-            enabled = MatchQ[clipboard, HoldComplete[_Hypergraph ? HypergraphQ]];
-            Button["Paste",
-                update[];
-                With[{newHg = HypergraphUnion[hg, ReleaseHold[clipboard]]},
-                    If[HypergraphQ[newHg], hg = newHg]
-                ],
-                Enabled -> enabled
+    makePalette[] := Panel[
+        Column[{
+            Column[{
+                Row[{
+                    Button["🗑️",
+                        deleteSelection[];
+                        NotebookDelete[attachedCell]
+                    ],
+                    Button["✅",
+                        vertexSelection = {}; edgeSelection = {};
+                        NotebookDelete[ParentCell[EvaluationBox[]]]
+                    ]
+                }],
+                Dynamic @ Column[{
+                    Row[{"Selected vertices:", DeleteMissing @ Keys @ vertexSelection}],
+                    Row[{"Selected edges:", edges[[edgeSelection]]}]
+                }],
+                Dynamic @ Button[Style["Copy Selection", 8], CopyToClipboard @ selectionHypergraph[], Enabled -> Length[vertexSelection] + Length[edgeSelection] > 0]
+            }],
+            Dynamic[Column @ {
+                If[ ! MissingQ[vertexId],
+                    Pane @ Column[{
+                        StringTemplate["Vertex: ``"][vertexName],
+                        Row[{"Label: ",
+                            Style[
+                                InputField[Dynamic[vertexLabel, (vertexLabel = #; vertexRelabel[]) &], FieldSize -> Scaled[.005], ReturnEntersInput -> True],
+                                ShowSelection -> True
+                            ],
+                            DynamicModule[{label = vertexLabel}, PopupMenu[Dynamic[label, (addAction["VertexRelabel"[{vertexId}, {vertexLabel}, #]]; label = #) &], OptionValue["VertexLabels"]]],
+                        }]
+                    }],
+                    Nothing
+                ]
+            }],
+            Dynamic[Column @ {
+                If[ ! MissingQ[edgeId],
+                    Pane @ Column[{
+                        StringTemplate["Edge: ``"][edges[[edgeId]]],
+                        Row[{"Label:",
+                            Style[
+                                InputField[Dynamic[edgeLabel, (edgeLabel = #; edgeRelabel[]) &], FieldSize -> Scaled[.005], ReturnEntersInput -> True],
+                                ShowSelection -> True
+                            ],
+                            DynamicModule[{label = edgeLabels[[edgeId]]}, PopupMenu[Dynamic[label, (addAction["EdgeRelabel"[{edgeId}, {edgeLabel}, #]]; label = #) &], OptionValue["EdgeLabels"]]]
+                        }]
+                    }],
+                    Nothing
+                ]
+            }],
+            Button[Style["Copy Hypergraph", 8], CopyToClipboard[hg]],
+            Block[{clipboard = FirstCase[NotebookGet[ClipboardNotebook[]], Cell[BoxData[boxes_], ___] :> MakeExpression[boxes], Missing[], All], enabled},
+                enabled = MatchQ[clipboard, HoldComplete[_Hypergraph ? HypergraphQ]];
+                Button["Paste",
+                    update[];
+                    With[{newHg = HypergraphUnion[hg, ReleaseHold[clipboard]]},
+                        If[HypergraphQ[newHg], hg = newHg]
+                    ],
+                    Enabled -> enabled
+                ]
             ]
-        ]
-    },
-        Dividers -> {None, {1, 2, 3}}
+        },
+            Dividers -> {None, {1, 2, 3}}
+        ],
+        Button[Style["❌", 8], NotebookDelete @ attachedCell, ImageSize -> Tiny, Appearance -> "Palette"],
+        {{Top, Right}}
     ];
 	down[i_] := (
         If[graphicsControlEnteredQ, Return[]];
@@ -164,13 +196,13 @@ HypergraphDraw[Dynamic[hg_Symbol], dynamicSelection : Dynamic[selection_Symbol] 
         If[ edgeSelect,
             edgeMove = True
         ];
-        If[ vertexMove,
+        If[ vertexMove && ! MissingQ[vertexId],
             With[{diff = mousePosition[] - Lookup[oldVertices, vertexId]},
                 vertices = MapAt[# + diff &, oldVertices, Key[vertexId]];
                 renderLocalEdges[{vertexId}]
             ]
         ];
-        If[ edgeMove,
+        If[ edgeMove && ! MissingQ[edgeId],
             With[{
                 diff = mousePosition[] - startMousePos,
                 edge = edges[[edgeId]]
@@ -247,7 +279,7 @@ HypergraphDraw[Dynamic[hg_Symbol], dynamicSelection : Dynamic[selection_Symbol] 
         edgeRegions[[edgeIds]] = edgePrimitives[[edgePositions]];
         edgeLabelPositions[[edgeIds]] = newEdgeLabelPositions[[edgePositions]];
     ];
-    renderLocalEdges[vertexIds_] := renderEdges[First /@ Position[edges, edge_ /; IntersectingQ[edge, vertexIds], {1}, Heads -> False]];
+    renderLocalEdges[vertexIds_List] := renderEdges[First /@ Position[edges, edge_ /; IntersectingQ[edge, vertexIds], {1}, Heads -> False]];
     do[updateQ_ : True] := (
         If[actionId === None || actionId >= Length[actions], Return[]];
         actionId += 1;
@@ -303,11 +335,13 @@ HypergraphDraw[Dynamic[hg_Symbol], dynamicSelection : Dynamic[selection_Symbol] 
                 edgeId = Missing[];
             ],
             "VertexSelect"[vertex : (id_ -> _)] :> (
+                If[ ! CurrentValue["OptionKey"], edgeSelection = {}];
                 AppendTo[vertexSelection, vertex];
                 If[! MissingQ[id], vertexName = id; vertexLabel = vertexLabels[vertexName]];
             ),
             "VertexDeselect"[index_, _] :> (vertexSelection = Delete[vertexSelection, index]),
             "EdgeSelect"[id_, index_] :> (
+                If[ ! CurrentValue["OptionKey"], vertexSelection = {}];
                 If[ ! MemberQ[edgeSelection, id],
                     edgeSelection = Insert[edgeSelection, id, index]
                 ]
@@ -342,7 +376,7 @@ HypergraphDraw[Dynamic[hg_Symbol], dynamicSelection : Dynamic[selection_Symbol] 
                 ];
             ),
             "VertexRelabel"[vs_List, _, newVertexLabel_] :> (
-                addAction["ResetSelect"[vertexSelection, edgeSelection], False];
+                (* addAction["ResetSelect"[vertexSelection, edgeSelection], False]; *)
                 vertexLabels = ReplacePart[vertexLabels, Thread[vs -> newVertexLabel, List, 1]]
             )
         }];
@@ -633,11 +667,7 @@ HypergraphDraw[Dynamic[hg_Symbol], dynamicSelection : Dynamic[selection_Symbol] 
                     EventHandler[Framed[Style["Print", 12]], {
                         "MouseDown" :> (update[]; CellPrint[ExpressionCell[hg, "Input"]]),
                         mouseEvents
-                    }],
-                    If[ hideReturnQ, Nothing, EventHandler[Framed[Style["Undo", 12]], {
-                        "MouseDown" :> undo[],
-                        mouseEvents
-                    }]]
+                    }]
                 }, Alignment -> Right],
                     {Right, Bottom}, Scaled[{1.1, - .2}]
                 ]
@@ -655,14 +685,10 @@ HypergraphDraw[Dynamic[hg_Symbol], dynamicSelection : Dynamic[selection_Symbol] 
                 NotebookDelete @ attachedCell;
                 attachedCell = AttachCell[EvaluationCell[],
                     ExpressionCell[
-                        EventHandler[
-                            Panel[makePalette[], "Menu"],
-                            "MouseExited" :> (NotebookDelete[ParentCell[EvaluationBox[]]];)
-                        ],
+                        makePalette[],
                         StripOnInput -> True, Background -> White, CellFrameColor -> LightBlue, CellFrameMargins -> 0, CellFrame -> 0
                     ],
-                    {Left, Bottom}, Offset[MousePosition["GraphicsAbsolute"], Automatic], {Left, Center},
-                    RemovalConditions -> {"ParentChanged", "EvaluatorQuit", "MouseClickOutside", "MouseExit"}
+                    {Left, Bottom}, Offset[MousePosition["GraphicsAbsolute"] + {10, 0}, Automatic], {Left, Center}
                 ];
                 down[2];
             ),
