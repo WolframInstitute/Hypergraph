@@ -694,7 +694,6 @@ HypergraphDraw[Dynamic[hg_Symbol], dynamicSelection : Dynamic[selection_Symbol] 
             ),
             "MouseUp" :> up[],
             "MouseDragged" :> move[],
-            "MouseMoved" :> move[],
             "MouseEntered" :> (graphicsEnteredQ = True),
             "MouseExited" :> (graphicsEnteredQ = False; update[]),
             "KeyDown" :> Switch[
