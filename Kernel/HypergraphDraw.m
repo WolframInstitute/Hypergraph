@@ -96,8 +96,14 @@ HypergraphDraw[Dynamic[hg_Symbol], dynamicSelection : Dynamic[selection_Symbol] 
                                 InputField[Dynamic[vertexLabel, (vertexLabel = #; vertexRelabel[]) &], FieldSize -> Scaled[.005], ReturnEntersInput -> True],
                                 ShowSelection -> True
                             ],
-                            DynamicModule[{label = vertexLabel}, PopupMenu[Dynamic[label, (addAction["VertexRelabel"[{vertexId}, {vertexLabel}, #]]; label = #) &], OptionValue["VertexLabels"]]],
-                        }]
+                            DynamicModule[{label = vertexLabel}, PopupMenu[Dynamic[label, (addAction["VertexRelabel"[{vertexId}, {vertexLabel}, #]]; label = #) &], OptionValue["VertexLabels"]]]
+                        }],
+                        DynamicModule[{vertexColor = vertexStyles[vertexId]},
+                            ColorSetter[Dynamic[vertexColor, (
+                                vertexColor = #;
+                                vertexStyles[vertexId] = vertexColor;
+                            ) & ]]
+                        ]
                     }],
                     Nothing
                 ]
@@ -112,7 +118,22 @@ HypergraphDraw[Dynamic[hg_Symbol], dynamicSelection : Dynamic[selection_Symbol] 
                                 ShowSelection -> True
                             ],
                             DynamicModule[{label = edgeLabels[[edgeId]]}, PopupMenu[Dynamic[label, (addAction["EdgeRelabel"[{edgeId}, {edgeLabel}, #]]; label = #) &], OptionValue["EdgeLabels"]]]
-                        }]
+                        }],
+                        Pane[
+                            DynamicModule[{symmetry = edgeSymmetries[[edgeId]]},
+                                RadioButtonBar[
+                                    Dynamic[symmetry, (symmetry = #; edgeSymmetries[[edgeId]] = #; renderEdges[{edgeId}]) &],
+                                    {"Unordered", "Cyclic", "Ordered"}
+                                ]
+                            ],
+                            Alignment -> Center
+                        ],
+                        DynamicModule[{edgeColor = edgeStyles[[edgeId]]},
+                            ColorSetter[Dynamic[edgeColor, (
+                                edgeColor = #;
+                                edgeStyles[[edgeId]] = edgeColor;
+                            ) & ]]
+                        ]
                     }],
                     Nothing
                 ]
@@ -509,7 +530,7 @@ HypergraphDraw[Dynamic[hg_Symbol], dynamicSelection : Dynamic[selection_Symbol] 
             EdgeStyle -> Thread[edges[[edgeSelection]] -> edgeStyles[[edgeSelection]]],
             "EdgeLineStyle" -> Thread[edges[[edgeSelection]] -> edgeStyles[[edgeSelection]]],
             EdgeLabels -> Thread[edges[[edgeSelection]] -> edgeLabels[[edgeSelection]]],
-            EdgeLabelStyle -> Thread[edges[[edgeSelection]] -> Darker /@ edgeStyles[[edgeSelection]]],
+            EdgeLabelStyle -> Thread[edges[[edgeSelection]] -> (FirstCase[#, color_ ? ColorQ :> Darker[color], Black, All] & /@ edgeStyles[[edgeSelection]])],
             "EdgeSymmetry" -> Thread[edges[[edgeSelection]] -> edgeSymmetries[[edgeSelection]]],
             VertexCoordinates -> Join[
                 Normal @ vertices[[keys]],
@@ -532,7 +553,7 @@ HypergraphDraw[Dynamic[hg_Symbol], dynamicSelection : Dynamic[selection_Symbol] 
 			VertexCoordinates -> Normal[Join[vertices, nullEdges]],
 			EdgeStyle -> Thread[edges -> edgeStyles],
             EdgeLabels -> Thread[edges -> edgeLabels],
-            EdgeLabelStyle -> Thread[edges -> Darker /@ edgeStyles],
+            EdgeLabelStyle -> Thread[edges -> (FirstCase[#, color_ ? ColorQ :> Darker[color], Black, All] & /@ edgeStyles)],
             "EdgeLineStyle" -> Thread[edges -> edgeStyles],
             "EdgeSymmetry" -> Thread[edges -> edgeSymmetries],
             PlotRange -> plotRange,
@@ -624,7 +645,7 @@ HypergraphDraw[Dynamic[hg_Symbol], dynamicSelection : Dynamic[selection_Symbol] 
             Dynamic @ MapThread[
                 If[ #1 === None,
                     {},
-                    Text[Style[#1, Darker[#3]], #2]
+                    Text[Style[#1, Darker[FirstCase[#3, color_ ? ColorQ, Black, All]]], #2]
                 ] &, {edgeLabels, edgeLabelPositions, edgeStyles}
             ],
             Dynamic @ {
