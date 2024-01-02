@@ -331,7 +331,18 @@ Hypergraph /: EdgeQ[hg_Hypergraph, edge_Rule] := MemberQ[EdgeListTagged[hg], edg
 HypergraphUnion[hs___Hypergraph] := Hypergraph[
 	Union @@ VertexList /@ {hs}, Through[Unevaluated @ Plus[hs]["Edges"]],
 	"EdgeSymmetry" -> DeleteDuplicates @ Through[Unevaluated @ Join[hs]["EdgeSymmetry"]],
-	Normal @ Merge[Through[{hs}["Options"]], First]
+	Merge[Through[{hs}["Options"]], Identity] //
+        MapAt[
+            Join,
+            #,
+            {Key[#]} & /@ Intersection[Keys[#], Keys[$DefaultHypergraphAnnotations]]
+        ] & //
+        MapAt[
+            First,
+            #,
+            {Key[#]} & /@ Complement[Keys[#], Keys[$DefaultHypergraphAnnotations]]
+        ] & //
+        Normal
 ]
 
 

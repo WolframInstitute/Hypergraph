@@ -228,12 +228,7 @@ HypergraphProp[hg_, "FullEdgeSymmetry"] := Block[{rules = Map[
 
 (* Values *)
 
-NonCommutativeMultiply[hs___Hypergraph] ^:= Hypergraph[
-	Through[Unevaluated @ NonCommutativeMultiply[hs]["Edges"]],
-	"EdgeSymmetry" -> DeleteDuplicates @ Merge[Through[{hs}["EdgeSymmetry"]], Identity],
-	Normal @ Merge[Through[{hs}["Options"]], First]
-]
+NonCommutativeMultiply[hs___Hypergraph] ^:= HypergraphUnion[hs]
 
 Plus[hs___Hypergraph] ^:= HypergraphUnion[hs]
-
 

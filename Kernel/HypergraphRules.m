@@ -327,7 +327,7 @@ Options[HighlightRule] := Join[{
 }, Options[HypergraphRuleApply], Options[SimpleHypergraphPlot]]
 
 HighlightRule[rule_ ? HypergraphRuleQ, hg_ ? HypergraphQ, opts : OptionsPattern[]] :=
-    HighlightRule[rule[hg, FilterRules[{opts}, Options[HypergraphRuleApply]]], hg]
+    HighlightRule[rule[hg, FilterRules[{opts}, Options[HypergraphRuleApply]]], hg, FilterRules[{opts}, Except[Options[HypergraphRuleApply], Options[HighlightRule]]]]
 
 HighlightRule[matches : {___Association}, hg_ ? HypergraphQ, opts : OptionsPattern[]] := Block[{
     edges = EdgeListTagged[hg], plotOpts = FilterRules[{opts}, Options[SimpleHypergraphPlot]]
@@ -342,6 +342,7 @@ HighlightRule[matches : {___Association}, hg_ ? HypergraphQ, opts : OptionsPatte
                 ],
                 VertexStyle -> Map[# -> OptionValue["HighlightLeftVertexStyle"] &, #MatchVertices],
                 plotOpts,
+                PlotRange -> Automatic,
                 $HypergraphRulePlotOptions
             ],
             Graphics[{GrayLevel[0.65], $HypergraphRuleArrow}, ImageSize -> 24],
@@ -358,6 +359,7 @@ HighlightRule[matches : {___Association}, hg_ ? HypergraphQ, opts : OptionsPatte
                     HoldPattern[Evaluate[Alternatives @@ #NewVertices -> _]]
                 ],
                 plotOpts,
+                PlotRange -> Automatic,
                 $HypergraphRulePlotOptions
             ]
         }, PlotRangePadding -> 1] &,

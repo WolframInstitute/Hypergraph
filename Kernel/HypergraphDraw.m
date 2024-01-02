@@ -240,8 +240,7 @@ HypergraphDraw[Dynamic[hg_Symbol], dynamicSelection : Dynamic[selection_Symbol] 
     up[] := (
         If[ vertexSelect && ! MissingQ[vertexId],
             If[ CurrentValue["ShiftKey"] && vertexStyles[vertexId] =!= color,
-                addAction["VertexRecolor"[vertexId, vertexStyles[vertexId], color]],
-                color = vertexStyles[vertexId]
+                addAction["VertexRecolor"[vertexId, vertexStyles[vertexId], color]]
             ]
         ];
         If[ vertexMove,
@@ -253,7 +252,6 @@ HypergraphDraw[Dynamic[hg_Symbol], dynamicSelection : Dynamic[selection_Symbol] 
         If[ edgeSelect && ! MissingQ[edgeId],
             If[ CurrentValue["ShiftKey"] && edgeStyles[[edgeId]] =!= color,
                 addAction["EdgeRecolor"[edgeId, edgeStyles[[edgeId]], color]],
-                color = edgeStyles[[edgeId]];
                 edgeLabel = edgeLabels[[edgeId]];
                 edgeSymmetry = edgeSymmetries[[edgeId]]
             ];
@@ -592,12 +590,12 @@ HypergraphDraw[Dynamic[hg_Symbol], dynamicSelection : Dynamic[selection_Symbol] 
         vertexSelection = Select[vertexSelection, MemberQ[Keys[vertices], First[#]] &];
         edgeSelection = Take[edgeSelection, UpTo[Length[edges]]];
         edgeStyles = Replace[Lookup[resetOpts, EdgeStyle, Automatic], {
-            rules : {(_Rule | _RuleDelayed) ...} :> rules[[All, 2]],
+            rules : {(_Rule | _RuleDelayed) ...} :> Replace[edges, Append[rules, _ -> color], {1}],
             Automatic :> Array[ColorData[97], Length[edges]],
             style_ :> ConstantArray[style, Length[edges]]
         }];
         edgeLabels = Replace[Lookup[resetOpts, EdgeLabels, None], {
-            rules : {(_Rule | _RuleDelayed) ...} :> rules[[All, 2]],
+            rules : {(_Rule | _RuleDelayed) ...} :> Replace[edges, Append[rules, _ -> None], {1}],
             Automatic :> edges,
             None :> ConstantArray[None, Length[edges]],
             label_ :> ConstantArray[label, Length[edges]]
@@ -714,7 +712,7 @@ HypergraphDraw[Dynamic[hg_Symbol], dynamicSelection : Dynamic[selection_Symbol] 
                 down[2];
             ),
             "MouseUp" :> up[],
-            "MouseDragged" :> move[],
+            "MouseMoved" :> move[],
             "MouseEntered" :> (graphicsEnteredQ = True),
             "MouseExited" :> (graphicsEnteredQ = False; update[]),
             "KeyDown" :> Switch[
