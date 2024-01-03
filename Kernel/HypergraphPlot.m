@@ -172,7 +172,7 @@ SimpleHypergraphPlot[h_Hypergraph, plotOpts : OptionsPattern[]] := Enclose @ Blo
         ]
     ];
     allPoints = DeleteDuplicates @ DeleteMissing @ Join[Values[vertexEmbedding], Catenate[If[MatchQ[#, {__Real}], {#}, Flatten[#, 1]] & /@ Values[edgeEmbedding]]];
-    bounds = Lookup[AbsoluteOptions[graph], PlotRange];
+    bounds = Lookup[AbsoluteOptions[graph, PlotRange], PlotRange];
     corner = bounds[[All, 1]];
     center = Mean /@ bounds;
     range = #2 - #1 & @@@ bounds;

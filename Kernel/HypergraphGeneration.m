@@ -45,7 +45,7 @@ EnumerateHypergraphs[s : _Integer ? Positive | Automatic : Automatic, sig : {{_I
 
 
 
-Options[RandomHypergraph] := Options[EnumerateHypergraphs]
+Options[RandomHypergraph] := Join[{"Simple" -> False, "Connected" -> False}, Options[Hypergraph]]
 
 RandomHypergraph[s : _Integer ? Positive | Automatic : Automatic, sig_, opts : OptionsPattern[]] := Block[{
     hg,
