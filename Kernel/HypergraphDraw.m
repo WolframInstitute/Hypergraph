@@ -46,14 +46,14 @@ HypergraphDraw[Dynamic[hg_Symbol], dynamicSelection : Dynamic[selection_Symbol] 
     flash = 0.2,
     edgeIndex = 1,
     reap,
-    plotRange = {{0, 1}, {0, 1}}, pane = False,
+    plotRange = {{0, 1}, {0, 1}}, ar = 1, pane = False,
     hideReturnQ = TrueQ[OptionValue["HideReturn"]],
     makePalette, widget,
     attachedCell
 },
     If[! HypergraphQ[hg], hg = Hypergraph[]];
     resetHg = hg;
-    resetOpts = Options[resetHg];
+    resetOpts = Join[FilterRules[{opts}, Options[Hypergraph]], Options[resetHg]];
     mousePosition[] := Replace[MousePosition["Graphics"], {None -> mouseTmpPos, pos : {_ ? NumericQ, _ ? NumericQ} :> (mouseTmpPos = pos)}];
 	getVertex[pos_ : mousePosition[]] := If[Length[vertices] > 0,
 		First[
@@ -162,7 +162,7 @@ HypergraphDraw[Dynamic[hg_Symbol], dynamicSelection : Dynamic[selection_Symbol] 
             startMousePos = tmpPos
         ];
         edgeId = If[Length[#] == 0, Missing[], #[[ Mod[edgeIndex - 1, Length[#]] + 1 ]]] & @
-            MapIndexed[If[RegionDistance[Once[DiscretizeGraphics[#]], startMousePos] < 0.01, #2[[1]], Nothing] &, edgeRegions /. Arrow[a_] :> a];
+            MapIndexed[If[RegionDistance[Once[DiscretizeGraphics[#]], startMousePos] < 0.01, #2[[1]], Nothing] &, edgeRegions /. {Arrow[a_] :> a, Offset[r_] :> r / 200}];
         vertexId = getVertex[startMousePos];
         If[! MissingQ[vertexId], vertexName = vertexId; vertexLabel = vertexLabels[vertexName]];
         oldVertices = vertices;
@@ -555,6 +555,7 @@ HypergraphDraw[Dynamic[hg_Symbol], dynamicSelection : Dynamic[selection_Symbol] 
             "EdgeLineStyle" -> Thread[edges -> edgeStyles],
             "EdgeSymmetry" -> Thread[edges -> edgeSymmetries],
             PlotRange -> plotRange,
+            (* AspectRatio -> ar, *)
             FilterRules[{opts}, Options[Hypergraph]],
             FilterRules[resetOpts,
                 Except[
@@ -565,11 +566,11 @@ HypergraphDraw[Dynamic[hg_Symbol], dynamicSelection : Dynamic[selection_Symbol] 
             ]
 		];
 	);
-    reset[defaultPlotRange_ : {{0, 1}, {0, 1}}] := (
-        reap = Reap[SimpleHypergraphPlot[resetHg], _, Rule][[2]];
+    reset[] := (
+        reap = Reap[ar = Lookup[AbsoluteOptions[SimpleHypergraphPlot[resetHg, resetOpts], AspectRatio], AspectRatio], _, Rule][[2]];
+        plotRange = {{0, 1}, {0, 1}};
         points = Catenate @ MapThread[Take, {Lookup[reap, {"Vertex", "NullEdge"}, {}], {VertexCount[resetHg], EdgeCount[resetHg, {}]}}];
         vertexLabelOffsets = Lookup[reap, "VertexLabelOffset", {}];
-        plotRange = defaultPlotRange;
         flash = 0;
 	    vertices = Association @ Lookup[resetOpts, VertexCoordinates, <||>];
         nullEdges = <||>;
@@ -650,7 +651,7 @@ HypergraphDraw[Dynamic[hg_Symbol], dynamicSelection : Dynamic[selection_Symbol] 
                 If[ Length[vertexSelection] > 0,
                     {   color, Dotted,
                         KeyValueMap[
-                            With[{p = Lookup[vertices, #1]}, Table[Circle[p, 0.02 Max[#2 - #1 & @@@ plotRange] r], {r, #2}]] &,
+                            With[{p = Lookup[vertices, #1]}, Table[Circle[p, Offset[10 r]], {r, #2}]] &,
                             Counts[Select[Keys[vertexSelection], Not @* MissingQ]]
                         ]
                     },
@@ -679,18 +680,19 @@ HypergraphDraw[Dynamic[hg_Symbol], dynamicSelection : Dynamic[selection_Symbol] 
                     If[ hideReturnQ, Nothing, EventHandler[Framed[Style["Return", 12]], {
                         "MouseDown" :> (
                             update[];
-                            MathLink`CallFrontEnd[FrontEnd`BoxReferenceReplace[FE`BoxReference[EvaluationNotebook[], boxId], ToBoxes[hg]]]
+                            MathLink`CallFrontEnd[FrontEnd`BoxReferenceReplace[FE`BoxReference[EvaluationNotebook[], boxId], ToBoxes[Hypergraph[hg, PlotRange -> Full]]]]
                         ),
                         mouseEvents
                     }]],
                     EventHandler[Framed[Style["Print", 12]], {
-                        "MouseDown" :> (update[]; CellPrint[ExpressionCell[hg, "Input"]]),
+                        "MouseDown" :> (update[]; CellPrint[ExpressionCell[Hypergraph[hg, PlotRange -> Full], "Input"]]),
                         mouseEvents
                     }]
                 }, Alignment -> Right],
                     {Right, Bottom}, Scaled[{1.1, - .2}]
                 ]
             }],
+            FilterRules[{opts}, Options[Graphics]],
             PlotRange -> Dynamic[plotRange],
             ImageSize -> Scaled[.33],
             Frame -> True,
@@ -707,7 +709,8 @@ HypergraphDraw[Dynamic[hg_Symbol], dynamicSelection : Dynamic[selection_Symbol] 
                         makePalette[],
                         StripOnInput -> True, Background -> White, CellFrameColor -> LightBlue, CellFrameMargins -> 0, CellFrame -> 0
                     ],
-                    {Left, Bottom}, Offset[MousePosition["GraphicsAbsolute"] + {10, 0}, Automatic], {Left, Center}
+                    {Left, Bottom}, Offset[MousePosition["GraphicsAbsolute"] + {10, 0}, Automatic], {Left, Center},
+                    RemovalConditions -> {"EvaluatorQuit", "ParentChanged", "MouseClickOutside"}
                 ];
                 down[2];
             ),
@@ -781,7 +784,7 @@ HypergraphDraw[Dynamic[hg_Symbol], dynamicSelection : Dynamic[selection_Symbol] 
             ExpressionCell[canvas, ShowSelection -> False, ContextMenu -> {}],
             OpenerView[{Spacer[0], settingsWidget}]
         }],
-        Refresh[Block[{resetHg = hg, resetOpts = Options[hg]}, reset[plotRange]], TrackedSymbols :> {hg}];
+        Refresh[Block[{resetHg = hg, resetOpts = Join[FilterRules[{opts}, Options[Hypergraph]], Options[hg]]}, reset[]], TrackedSymbols :> {hg}];
     ];
     Interpretation[widget, hg]
     ,

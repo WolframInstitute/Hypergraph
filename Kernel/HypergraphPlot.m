@@ -184,7 +184,7 @@ SimpleHypergraphPlot[h_Hypergraph, plotOpts : OptionsPattern[]] := Enclose @ Blo
         pos,
         edgeTagged, style, lineStyle, label, labelStyle, labelPrimitive
     },
-        pos = Replace[RegionCentroid[primitive], {} -> corner];
+        pos = Replace[RegionCentroid[primitive /. Offset[r_] :> r], {} -> corner];
         If[ Length[edge] == 2 && dim == 2,
             pos += With[{points = Sort[MeshCoordinates[If[RegionQ[primitive], DiscretizeRegion, DiscretizeGraphics] @ primitive]][[{1, -1}]]},
                 0.03 size Normalize[If[TrueQ[VectorAngle[#, pos - center] > Pi], #, - #] & [Subtract @@ RotationTransform[Pi / 2, pos][points]]]
@@ -240,9 +240,9 @@ SimpleHypergraphPlot[h_Hypergraph, plotOpts : OptionsPattern[]] := Enclose @ Blo
                     ];
                     Sow[primitive = Switch[Length[edge],
                         0,
-                            Switch[dim, 2, Circle, 3, Sphere][Sow[Lookup[edgeEmbedding, \[FormalN][j]], "NullEdge"], r],
+                            Switch[dim, 2, Circle, 3, Sphere][Sow[Lookup[edgeEmbedding, \[FormalN][j]], "NullEdge"], Offset[200 r]],
                         1,
-                            Switch[dim, 2, Disk[First[emb], r], 3, Sphere[First[emb], r], _, Nothing]
+                            Switch[dim, 2, Disk[First[emb], Offset[200 r]], 3, Sphere[First[emb], r], _, Nothing]
                     ], "Primitive"];
                     makeEdge[edge, tag, symm, i, j, primitive]
                 ],
