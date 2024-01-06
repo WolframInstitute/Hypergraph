@@ -6,14 +6,21 @@ PackageExport["HypergraphEmbedding"]
 
 PackageScope["makeVertexLabel"]
 PackageScope["makeAnnotationRules"]
+PackageScope["$HypergraphPlotThemes"]
 
 
 
 $HypergraphPlotThemes = <|
-    Automatic -> {},
+    Automatic -> {
+        EdgeStyle -> Automatic,
+        "EdgeLineStyle" -> Automatic,
+        VertexStyle -> Automatic,
+        VertexSize -> Automatic,
+        VertexShapeFunction -> Automatic
+    },
     "WolframModel" -> {
         EdgeStyle -> {
-            {_, _} -> Directive[Arrowheads[{{0.03, .5}}], Opacity[.7], Hue[0.63, 0.7, 0.5]],
+            {_, _} | {} -> Directive[Arrowheads[{{0.03, .5}}], Opacity[.7], Hue[0.63, 0.7, 0.5]],
             _ -> Directive[Opacity[0.1], Hue[0.63, 0.66, 0.81]]
         },
         "EdgeLineStyle" -> Directive[Opacity[.7], Hue[0.63, 0.7, 0.5]],
@@ -41,12 +48,14 @@ $HypergraphPlotThemes = <|
     }
 |>
 
-makeVertexLabel[vertex_, label_, style_, pos_, labelOffset_ : {0, .01}] := Replace[label /. "Name" -> vertex, {
-    None -> Nothing,
-    Automatic :> Text[Style[vertex, style], pos + labelOffset],
-    Placed[placedLabel_, offset_] :> If[offset === Tooltip, Tooltip[Text[" ", pos], Style[placedLabel, style]], Text[Style[placedLabel, style], pos, offset]],
-    l_ :> Text[Style[l, style], pos + labelOffset]
-}]
+makeVertexLabel[vertex_, label_, defaultStyle_, pos_, labelOffset_ : {0, .01}] := With[{style = Replace[defaultStyle, Automatic | None -> Black]},
+    Replace[label /. "Name" -> vertex, {
+        None -> Nothing,
+        Automatic :> Text[Style[vertex, style], pos + labelOffset],
+        Placed[placedLabel_, offset_] :> If[offset === Tooltip, Tooltip[Text[" ", pos], Style[placedLabel, style]], Text[Style[placedLabel, style], pos, offset]],
+        l_ :> Text[Style[l, style], pos + labelOffset]
+    }]
+]
 
 
 makeAnnotationRules[opts_List, keys_ : All] := If[MatchQ[keys, _List | All], Association, #[[1, 2]] &] @ KeyValueMap[
@@ -90,7 +99,7 @@ SimpleHypergraphPlot[h_Hypergraph, plotOpts : OptionsPattern[]] := Enclose @ Blo
     edgeStyle, edgeLineStyle, edgeLabels, edgeLabelStyle, edgeSize, edgeSymmetries,
     vertexCoordinates, vertexLabelOffsets, vertexShapeFunction,
     allPoints, bounds, corner, center, range, size, dim,
-    opts = FilterRules[{plotOpts, Options[h]}, Options[SimpleHypergraphPlot]],
+    opts = FilterRules[{plotOpts, Options[h], Options[Hypergraph]}, Options[SimpleHypergraphPlot]],
     edgeIndex,
     makeEdge, renderEdge,
     totalCounts = <||>
@@ -198,7 +207,7 @@ SimpleHypergraphPlot[h_Hypergraph, plotOpts : OptionsPattern[]] := Enclose @ Blo
             Replace[applyIndexedRules[edgeTagged, edgeLineStyle, j, defStyle], Automatic -> defStyle]
         ];
         label = applyIndexedRules[edgeTagged, edgeLabels, j, None];
-        labelStyle = applyIndexedRules[edgeTagged, edgeLabelStyle, j, {}];
+        labelStyle = Replace[applyIndexedRules[edgeTagged, edgeLabelStyle, j, {}], Automatic | None -> Black];
         labelPrimitive = Replace[label /. {"Name" -> edge, "EdgeTag" -> tag, "EdgeSymmetry" -> symm}, {
             None -> {},
             Automatic :> Text[edge, pos],
@@ -240,9 +249,9 @@ SimpleHypergraphPlot[h_Hypergraph, plotOpts : OptionsPattern[]] := Enclose @ Blo
                     ];
                     Sow[primitive = Switch[Length[edge],
                         0,
-                            Switch[dim, 2, Circle, 3, Sphere][Sow[Lookup[edgeEmbedding, \[FormalN][j]], "NullEdge"], Offset[200 r]],
+                            Switch[dim, 2, Circle, 3, Sphere][Sow[Lookup[edgeEmbedding, \[FormalN][j]], "NullEdge"], Offset[400 r]],
                         1,
-                            Switch[dim, 2, Disk[First[emb], Offset[200 r]], 3, Sphere[First[emb], r], _, Nothing]
+                            Switch[dim, 2, Disk[First[emb], Offset[400 r]], 3, Sphere[First[emb], r], _, Nothing]
                     ], "Primitive"];
                     makeEdge[edge, tag, symm, i, j, primitive]
                 ],

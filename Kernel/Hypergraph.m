@@ -159,9 +159,9 @@ Options[Hypergraph] := Join[{
 	"EdgeLineStyle" -> Automatic,
 	"EdgeSize" -> Automatic,
 	"EdgeSymmetry" -> Automatic,
-	PlotTheme -> Automatic
+	PlotTheme -> "WolframModel"
 },
-	Options[Graph]
+	FilterRules[Options[Graph], Except[PlotTheme]]
 ]
 
 Options[Hypergraph3D] := Options[Hypergraph]
