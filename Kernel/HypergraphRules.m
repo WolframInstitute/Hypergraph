@@ -151,7 +151,7 @@ HypergraphRuleApply[input_, output_, hg_, opts : OptionsPattern[]] := Block[{
     symmetryMethod = Replace[OptionValue["Symmetry"], {Automatic -> (_ &), _ -> Identity}],
     canonicalizeMethod = Replace[OptionValue["Canonicalize"], {
         Automatic -> Identity,
-        Full -> DeleteDuplicatesBy[#[[{"MatchVertices", "MatchEdgePositions", "NewVertices", "NewEdges", "DeletedVertices"}]] &]
+        Full -> DeleteDuplicatesBy[Sort /@ #[[{"MatchVertices", "MatchEdgePositions", "NewVertices", "NewEdges", "DeletedVertices"}]] &]
     }],
     patterns, labelPatterns,
     annotationRules, outputAnnotationRules,

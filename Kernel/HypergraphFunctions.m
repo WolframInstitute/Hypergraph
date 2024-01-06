@@ -71,7 +71,7 @@ CanonicalEdgeTagged[edge_List -> tag_, symm : {___Cycles}] := CanonicalEdge[edge
 
 
 
-Options[CanonicalHypergraph] = {Method -> Automatic}
+Options[CanonicalHypergraph] = {Method -> Automatic, "Annotations" -> False}
 
 CanonicalHypergraph[hg_ ? HypergraphQ, opts : OptionsPattern[]] := Enclose @ Block[{
 	vs = VertexList[hg], edges = EdgeList[hg], tags = EdgeTags[hg],
@@ -92,7 +92,7 @@ CanonicalHypergraph[hg_ ? HypergraphQ, opts : OptionsPattern[]] := Enclose @ Blo
     edges = Delete[edges, taggedEdgePositions];
     tags = Delete[tags, Complement[emptyEdgePositions, taggedEdgePositions]];
 	emptyEdges = Cases[edges, {}];
-	iso = Confirm @ Replace[OptionValue[Method], {Automatic | "Graph" -> CanonicalHypergraphGraphIsomorphism, "Combinatorical" -> ResourceFunction["FindCanonicalHypergraphIsomorphism"]}][orderedEdges];
+	iso = Confirm @ Replace[OptionValue[Method], {Automatic | "Graph" -> CanonicalHypergraphGraphIsomorphism, "Combinatorial" -> ResourceFunction["FindCanonicalHypergraphIsomorphism"]}][orderedEdges];
     iso = KeySelect[iso, ! MemberQ[tagVertices, #] &];
     newEdges = First @* Sort /@ TakeList[Map[Replace[iso], orderedEdges, {2}], counts];
     ordering = Ordering[newEdges];
@@ -103,17 +103,20 @@ CanonicalHypergraph[hg_ ? HypergraphQ, opts : OptionsPattern[]] := Enclose @ Blo
     Hypergraph[
         Sort[Values[iso]],
         Join[emptyEdges, newEdges],
-        With[{keys = Keys[Options[hg]]},
-            KeySort @ Association @ Options[hg] //
-                MapAt[
-                    Sort @ mapEdgeOptions[Replace[#, iso, {1}] &, #] &,
-                    {Key[#]} & /@ Intersection[$EdgeAnnotations, keys]
-                ] //
-                MapAt[
-                    Sort @ mapVertexOptions[Replace[#, iso] &, #] &,
-                    {Key[#]} & /@ Intersection[$VertexAnnotations, keys]
-                ] //
-                Normal
+        If[ TrueQ[OptionValue["Annotations"]],
+            With[{keys = Keys[Options[hg]]},
+                KeySort @ Association @ Options[hg] //
+                    MapAt[
+                        Sort @ mapEdgeOptions[Replace[#, iso, {1}] &, #] &,
+                        {Key[#]} & /@ Intersection[$EdgeAnnotations, keys]
+                    ] //
+                    MapAt[
+                        Sort @ mapVertexOptions[Replace[#, iso] &, #] &,
+                        {Key[#]} & /@ Intersection[$VertexAnnotations, keys]
+                    ] //
+                    Normal
+            ],
+            {}
         ]
     ]
 ]
