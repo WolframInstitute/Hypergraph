@@ -44,7 +44,7 @@ makeAnnotationRules[opts_List, keys_ : All] := If[MatchQ[keys, _List | All], Ass
             automatic = default = #2
         ];
         DeleteDuplicatesBy[Replace[{(Verbatim[_] -> _) :> _, _ :> Unique[]}]] @
-            Append[Replace[Flatten[ReplaceList[#1, opts]], {Automatic -> _ -> automatic, s : Except[_Rule | _RuleDelayed] :> _ -> s}, {1}], _ -> default]
+            Append[Replace[Flatten[ReplaceList[#1, FilterRules[opts, #1]]], {Automatic -> _ -> automatic, s : Except[_Rule | _RuleDelayed] :> _ -> s}, {1}], _ -> default]
     ] &,
     If[keys === All, $DefaultHypergraphAnnotations, $DefaultHypergraphAnnotations[[ Key /@ Developer`ToList[keys] ]]]
 ]
@@ -175,15 +175,15 @@ hg_Hypergraph[prop_String, args___] := HypergraphProp[hg, prop, args]
 
 
 Options[Hypergraph] := Join[{
-	 ColorFunction -> ColorData[97],
+	PlotTheme -> "WolframModel",
+	ColorFunction -> ColorData[97],
 	"LayoutDimension" -> 2,
     "EdgeArrows" -> False,
     "EdgeType" -> "Cyclic",
 	"EdgeMethod" -> "ConcavePolygon",
 	"EdgeLineStyle" -> Automatic,
 	"EdgeSize" -> Automatic,
-	"EdgeSymmetry" -> Automatic,
-	PlotTheme -> "WolframModel"
+	"EdgeSymmetry" -> Automatic
 },
 	FilterRules[Options[Graph], Except[PlotTheme]]
 ]

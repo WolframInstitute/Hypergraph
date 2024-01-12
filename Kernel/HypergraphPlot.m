@@ -214,7 +214,6 @@ SimpleHypergraphPlot[h_Hypergraph, plotOpts : OptionsPattern[]] := Enclose @ Blo
         position, primitive, addArrows
     },
         edgeTagged = If[tag === None, edge, edge -> tag];
-        Sow[position = edgeIndex[edgeTagged][[j]], "Position"];
         Switch[
             Length[edge],
             0 | 1, Block[{s, r, dr = size 0.01, symm},
@@ -271,7 +270,7 @@ SimpleHypergraphPlot[h_Hypergraph, plotOpts : OptionsPattern[]] := Enclose @ Blo
                         Lookup[edgeEmbedding, #][[c]]
                     ] & /@ (DirectedEdge[##, edge] & @@@ Partition[edge, 2, 1, If[edgeType === "Cyclic", 1, None]]);
                     curves = Catenate[GraphComputation`GraphElementData["Line"][#, None] /. BezierCurve -> BSplineCurve & /@ points];
-                    lines = Insert[#[[2]], #[[1, 1, -1]], {1, 1}] & /@ Partition[curves, 2, 1];
+                    lines = Insert[#[[2]], #[[1, 1, -1]], {1, 1}] & /@ Partition[curves, 2, 1, 1];
                 ];
                 symm = edgeSymmetries[[i]];
                 addArrows = If[ edgeArrowsQ || MatchQ[symm, "Ordered" | "Directed" | {}],
