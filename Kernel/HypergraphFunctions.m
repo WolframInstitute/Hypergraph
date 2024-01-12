@@ -20,6 +20,10 @@ PackageScope["CanonicalEdge"]
 
 
 HoldPattern[Options[hg_Hypergraph ? HypergraphQ]] ^:= hg["Options"]
+HoldPattern[Options[hg_Hypergraph ? HypergraphQ, patt__]] ^:= FilterRules[Options[hg], patt]
+
+HoldPattern[AbsoluteOptions[hg_Hypergraph ? HypergraphQ]] ^:= hg["AbsoluteOptions"]
+HoldPattern[AbsoluteOptions[hg_Hypergraph ? HypergraphQ, patt__]] ^:= FilterRules[AbsoluteOptions[hg], patt]	
 
 EdgeList[hg_Hypergraph ? HypergraphQ] ^:= hg["EdgeList"]
 
@@ -42,7 +46,7 @@ VertexList[hg_Hypergraph ? HypergraphQ, patt_] ^:= Cases[hg["VertexList"], patt]
 VertexCount[hg_Hypergraph ? HypergraphQ, args___] ^:= Length @ VertexList[hg, args]
 
 
-HypergraphIncidence[hg_ ? HypergraphQ] := Merge[(u |-> AssociationMap[u &, u]) /@ EdgeList[hg], Identity][[Key /@ VertexList[hg]]]
+HypergraphIncidence[hg_ ? HypergraphQ] := Replace[Merge[(u |-> AssociationMap[u &, u]) /@ EdgeList[hg], Identity][[Key /@ VertexList[hg]]], _Missing -> {}, {1}]
 
 EdgeMultiplicity[hg_ ? HypergraphQ] := Counts[CanonicalEdgeTagged @@@ Thread[EdgeList[hg] -> EdgeSymmetry[hg]]]
 
