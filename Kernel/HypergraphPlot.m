@@ -211,7 +211,7 @@ SimpleHypergraphPlot[h_Hypergraph, plotOpts : OptionsPattern[]] := Enclose @ Blo
 
     renderEdge[{edge_List, tag_} -> {mult_Integer, total_Integer : 0}, i_Integer, j_Integer] := Block[{
         edgeTagged, emb = Replace[edge, vertexEmbedding, {1}],
-        position, primitive, addArrows
+        primitive, addArrows
     },
         edgeTagged = If[tag === None, edge, edge -> tag];
         Switch[

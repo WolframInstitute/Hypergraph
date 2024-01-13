@@ -45,19 +45,14 @@ ToLabeledEdges[hg_ ? HypergraphQ, makePattern_ : False] := Block[{
     vs = VertexList[hg],
     edges = EdgeList[hg],
     taggedEdges = EdgeListTagged[hg],
-    vertexLabelRules = makeAnnotationRules[Options[hg], VertexLabels],
+    opts = AbsoluteOptions[hg],
     vertexLabels,
     edgeSymmetry = EdgeSymmetry[hg],
     edgeTags = EdgeTags[hg],
     edgeLabels
 },
-    vertexLabels = AssociationMap[makeVertexLabelPattern[#, Replace[#, vertexLabelRules], makePattern] &, vs];
-    edgeLabels = With[{rules = makeAnnotationRules[Options[hg], EdgeLabels], index = PositionIndex[taggedEdges]},
-        Values @ SortBy[First] @ Catenate @ KeyValueMap[{edge, multiplicity} |->
-            Thread[index[edge] -> (PadRight[#, multiplicity, #] & @ ReplaceList[edge, rules])],
-            Counts[taggedEdges]
-        ]
-    ];
+    vertexLabels = Association @ Map[Apply[#1 -> makeVertexLabelPattern[#1, #2, makePattern] &], Lookup[opts, VertexLabels]];
+    edgeLabels = Values[Lookup[opts, EdgeLabels]];
     MapAt[
         MapIndexed[
             With[{edge = #1, symm = edgeSymmetry[[#2[[1]]]], tag = edgeTags[[#2[[1]]]],
@@ -181,22 +176,16 @@ HypergraphRuleApply[input_, output_, hg_, opts : OptionsPattern[]] := Block[{
     deleteVertices = Complement[inputVertices, outputVertices];
     newVertexMap = Block[{$ModuleNumber = 1}, Verbatim[#] -> Unique["\[FormalV]"] & /@ newVertices];
 
-    annotationRules = makeAnnotationRules[hg["Options"]];
-    outputAnnotationRules = makeAnnotationRules[output["Options"]];
+    annotationRules = AbsoluteOptions[hg];
+    outputAnnotationRules = AbsoluteOptions[output];
 
-    {vertexAnnotations, outputVertexAnnotations} = MapThread[{vs, rules} |->
-        Append[
-            Map[Thread[vs -> Replace[vs, #, {1}]] &, rules[[Key /@ {VertexStyle, VertexLabelStyle}]]],
-            VertexLabels -> Function[Null, Thread[vs :> #], HoldAll] @@ Replace[Hold[vs], rules[VertexLabels], {2}]
-        ],
-        {{vertices, outputVertices}, {annotationRules, outputAnnotationRules}}
+    {vertexAnnotations, outputVertexAnnotations} = Map[
+        rules |-> KeyTake[rules, {VertexStyle, VertexLabelStyle, VertexLabels}],
+        {annotationRules, outputAnnotationRules}
     ];
-    {edgeAnnotations, outputEdgeAnnotations} = MapThread[{es, rules} |->
-        Append[
-            Map[Thread[es -> Replace[es, #, {1}]] &, rules[[Key /@ {EdgeStyle, EdgeLabelStyle, "EdgeSymmetry"}]]],
-            EdgeLabels -> Function[Null, Thread[es :> #], HoldAll] @@ Replace[Hold[es], rules[EdgeLabels], {2}]
-        ],
-        {{edges, outputEdges}, {annotationRules, outputAnnotationRules}}
+    {edgeAnnotations, outputEdgeAnnotations} = Map[
+        rules |-> KeyTake[rules, {EdgeStyle, EdgeLabelStyle, "EdgeSymmetry", EdgeLabels}],
+        {annotationRules, outputAnnotationRules}
     ];
 
     {edgeAnnotations, outputEdgeAnnotations} = MapThread[{h, es, annotations} |->
