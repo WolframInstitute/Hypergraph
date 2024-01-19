@@ -201,7 +201,8 @@ HypergraphProp[Hypergraph[_, edges_, ___], "Edges"] := edges
 applyRules[expr_, rules_, length_Integer, default_] := PadRight[#, length, #] & @ Replace[Catenate @ Values @ GroupBy[rules, First, ReplaceList[expr, #, length] &], {} -> {default}]
 
 HypergraphProp[hg_, "AbsoluteOptions", patt___] := Block[{vertices = VertexList[hg], edges = EdgeListTagged[hg], opts = Join[Options[hg, patt], Options[Hypergraph]], annotationRules, edgeCounts},
-	annotationRules = makeAnnotationRules[FixedPoint[Replace[#, (PlotTheme -> theme_) :> Splice @ Lookup[$HypergraphPlotThemes, theme, {}], {1}] &, opts]];
+	opts = FixedPoint[Replace[#, (PlotTheme -> theme_) :> Splice @ Lookup[$HypergraphPlotThemes, theme, {}], {1}] &, opts];
+	annotationRules = makeAnnotationRules[opts];
 	edgeCounts = Counts[edges];
 	Join[
 		KeyValueMap[
@@ -227,7 +228,7 @@ HypergraphProp[hg_, "AbsoluteOptions", patt___] := Block[{vertices = VertexList[
 			],
 			AssociationThread[$EdgeAnnotations -> Lookup[annotationRules, $EdgeAnnotations]]
 		],
-		Normal[KeyDrop[opts, Join[$VertexAnnotations, $EdgeAnnotations]]]
+		DeleteDuplicatesBy[First] @ FilterRules[opts, Except[Join[$VertexAnnotations, $EdgeAnnotations]]]
 	]
 ]
 
