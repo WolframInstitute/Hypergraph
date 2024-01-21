@@ -80,7 +80,13 @@ SimpleHypergraphPlot[h_Hypergraph, plotOpts : OptionsPattern[]] := Enclose @ Blo
     edgeStyle, edgeLineStyle, edgeLabels, edgeLabelStyle, edgeSize, edgeSymmetries,
     vertexCoordinates, vertexLabelOffsets, vertexShapeFunction,
     allPoints, bounds, corner, center, range, size, dim,
-    opts = FilterRules[{plotOpts, AbsoluteOptions[h], Options[Hypergraph]}, Options[SimpleHypergraphPlot]],
+    opts = FilterRules[{
+        FilterRules[{plotOpts}, Except[Options[Hypergraph]]],
+        AbsoluteOptions[Hypergraph[h, FilterRules[{plotOpts}, Options[Hypergraph]]]],
+        Options[Hypergraph]
+    },
+        Options[SimpleHypergraphPlot]
+    ],
     edgeIndex,
     makeEdge, renderEdge,
     totalCounts = <||>
