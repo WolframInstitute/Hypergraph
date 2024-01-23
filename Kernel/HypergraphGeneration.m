@@ -12,7 +12,7 @@ Options[EnumerateOrderedHypergraphs] := Join[{"Simple" -> True, "Connected" -> T
 EnumerateOrderedHypergraphs[sig : {{_Integer, _Integer} ...}, opts : OptionsPattern[]] := EnumerateOrderedHypergraphs[Automatic, sig, opts]
 
 EnumerateOrderedHypergraphs[
-    s : _Integer ? Positive | Automatic : Automatic,
+    {s : _Integer ? Positive | Automatic | All : Automatic},
     sig : {{_Integer, _Integer} ...},
     opts : OptionsPattern[]
 ] := With[{
@@ -25,22 +25,25 @@ EnumerateOrderedHypergraphs[
             Switch[simple, All, Identity, True, Select[SimpleHypergraphQ], False, Select[Not @* SimpleHypergraphQ]][
                 Hypergraph[#["Input"], opts, "EdgeSymmetry" -> "Ordered", ImageSize -> Small] & /@ EnumerateHypergraphRules[
                     sig -> {},
-                    If[s === Automatic, #, {s, #}] & @ Replace[connType, False -> None]
+                    If[MatchQ[s, Automatic | All], #, {s, #}] & @ Replace[connType, False -> None]
                 ]
             ]
 ]
 
 EnumerateOrderedHypergraphs[
-    {s : _Integer ? Positive | Automatic : Automatic}, sig : {{_Integer, _Integer} ...},
+    s : _Integer ? Positive | Automatic | All : Automatic,
+    sig : {{_Integer, _Integer} ...},
     opts : OptionsPattern[]
-] := Select[EnumerateOrderedHypergraphs[s, sig, opts], VertexCount[#] == s &]
+] := Catenate[
+    EnumerateOrderedHypergraphs[{#}, sig, opts] & /@ Range[Replace[s, Automatic | All :> maxConnectedAtoms[sig, Replace[OptionValue["Connected"], {True -> Automatic, _ -> None}]]]]
+]
 
 
 Options[EnumerateHypergraphs] := Options[EnumerateOrderedHypergraphs]
 
 EnumerateHypergraphs[sig : {{_Integer, _Integer} ...}, opts : OptionsPattern[]] := EnumerateHypergraphs[Automatic, sig, opts]
 
-EnumerateHypergraphs[s : _Integer ? Positive | Automatic : Automatic, sig : {{_Integer, _Integer} ...}, opts : OptionsPattern[]] :=
+EnumerateHypergraphs[s : _Integer ? Positive | Automatic | {_Integer ? Positive | Automatic} : Automatic, sig : {{_Integer, _Integer} ...}, opts : OptionsPattern[]] :=
     EnumerateOrderedHypergraphs[s, sig, opts, "EdgeSymmetry" -> "Unordered"]
 
 
