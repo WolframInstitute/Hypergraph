@@ -128,8 +128,8 @@ CanonicalHypergraph[hg_ ? HypergraphQ, opts : OptionsPattern[]] := Enclose @ Blo
 CanonicalHypergraph[args___] := CanonicalHypergraph[Hypergraph[args]]
 
 
-CanonicalHypergraphGraphIsomorphism[edges_] := Enclose @ Block[{g = UnorderedHypergraphToGraph[edges], cg, iso},
-	cg = CanonicalGraph[g];
+CanonicalHypergraphGraphIsomorphism[edges_] := Enclose @ Catch @ Block[{g = UnorderedHypergraphToGraph[edges], cg, iso},
+	cg = Check[CanonicalGraph[g], Throw[ResourceFunction["FindCanonicalHypergraphIsomorphism"][edges]], CanonicalGraph::ngen];
 	iso = Sort @ Confirm @ First[FindGraphIsomorphism[g, cg]];
 	KeyMap[Last] @ KeySelect[iso, MatchQ[{"Vertex", _}]]
 ]

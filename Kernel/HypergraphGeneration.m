@@ -7,7 +7,7 @@ PackageExport["RandomHypergraph"]
 
 
 
-Options[EnumerateOrderedHypergraphs] := Join[{"Simple" -> True, "Connected" -> True, "Canonical" -> True}, Options[Hypergraph]]
+Options[EnumerateOrderedHypergraphs] := Join[{"Simple" -> True, "Connected" -> True, "Canonical" -> Automatic}, Options[Hypergraph]]
 
 EnumerateOrderedHypergraphs[sig : {{_Integer, _Integer} ...}, opts : OptionsPattern[]] := EnumerateOrderedHypergraphs[Automatic, sig, opts]
 
@@ -18,9 +18,9 @@ EnumerateOrderedHypergraphs[
 ] := With[{
     simple = Replace[OptionValue["Simple"], Except[All | True | False] -> True],
     connType = Replace[OptionValue["Connected"], {True -> Automatic, Except[False] -> None}],
-    canonicalQ = TrueQ[OptionValue["Canonical"]]
+    canonical = OptionValue["Canonical"]
 },
-    If[canonicalQ, DeleteDuplicatesBy[CanonicalHypergraph], Identity] @
+    If[ MatchQ[canonical, False | None], Identity, DeleteDuplicatesBy[CanonicalHypergraph[#, Method -> canonical] &]] @
         If[connType === False, Select[Not @* ConnectedHypergraphQ], Identity] @
             Switch[simple, All, Identity, True, Select[SimpleHypergraphQ], False, Select[Not @* SimpleHypergraphQ]][
                 Hypergraph[#["Input"], opts, "EdgeSymmetry" -> "Ordered", ImageSize -> Small] & /@ EnumerateHypergraphRules[

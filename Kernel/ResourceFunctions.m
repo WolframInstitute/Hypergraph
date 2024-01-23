@@ -9,7 +9,7 @@ PackageScope["maxConnectedAtoms"]
 
 RandomHypergraphRule[args___, opts : OptionsPattern[]] := HypergraphRule[##, opts] & @@ ResourceFunction["RandomWolframModel"][args]
 
-EnumerateHypergraphRules[args___, opts : OptionsPattern[]] := HypergraphRule[##, opts] & @@@ ResourceFunction["EnumerateWolframModelRules"][args]
+EnumerateHypergraphRules[args___, opts : OptionsPattern[]] := HypergraphRule[##, opts] & @@@ EnumerateWolframModelRules[args]
 
 
 
