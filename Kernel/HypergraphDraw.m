@@ -534,7 +534,10 @@ HypergraphDraw[Dynamic[hg_Symbol], dynamicSelection : Dynamic[selection_Symbol] 
         points = Catenate @ MapThread[Take, {Lookup[reap, {"Vertex", "NullEdge"}, {}], {VertexCount[resetHg], EdgeCount[resetHg, {}]}}];
         vertexLabelOffsets = Lookup[reap, "VertexLabelOffset", {}];
         flash = 0;
-	    vertices = Join[Association @ Replace[Lookup[resetOpts, VertexCoordinates], Except[KeyValuePattern[_ -> {_ ? NumericQ, _ ? NumericQ}]] -> <||>], vertices];
+	    vertices = DeleteCases[
+            Join[Association @ Replace[Lookup[resetOpts, VertexCoordinates], Except[KeyValuePattern[_ -> {_ ? NumericQ, _ ? NumericQ}]] -> <||>], vertices],
+            Automatic | None
+        ];
         nullEdges = <||>;
         vertexLabels = Association @ Replace[Lookup[resetOpts, VertexLabels],
             {
