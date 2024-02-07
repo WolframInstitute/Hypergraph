@@ -22,6 +22,7 @@ $HypergraphPlotThemes = <|
             {_, _} | {} -> Directive[Arrowheads[{{0.03, .5}}], Opacity[.7], Hue[0.63, 0.7, 0.5]],
             _ -> Directive[Opacity[0.1], Hue[0.63, 0.66, 0.81]]
         },
+        EdgeLabelStyle -> Hue[0.63, 0.7, 0.5],
         "EdgeLineStyle" -> Directive[Opacity[.7], Hue[0.63, 0.7, 0.5]],
         VertexStyle -> Directive[Hue[0.63, 0.26, 0.89], EdgeForm[Directive[Hue[0.63, 0.7, 0.33], Opacity[0.95]]]],
         VertexSize -> 0.01,
@@ -169,7 +170,7 @@ SimpleHypergraphPlot[h_Hypergraph, plotOpts : OptionsPattern[]] := Enclose @ Blo
     corner = bounds[[All, 1]];
     center = Mean /@ bounds;
     range = #2 - #1 & @@@ bounds;
-    size = Max[range];
+    size = Min[range];
     If[size == 0, size = 1];
     vertexLabelOffsets = 0.03 Normalize[# - Mean @ Nearest[allPoints, #, 5]] & /@ vertexEmbedding;
     makeEdge[edge_, tag_, symm_, i_, initPrimitive_, lines_ : {}] := Block[{
@@ -183,6 +184,7 @@ SimpleHypergraphPlot[h_Hypergraph, plotOpts : OptionsPattern[]] := Enclose @ Blo
                 0.03 size Normalize[If[TrueQ[VectorAngle[#, pos - center] > Pi], #, - #] & [Subtract @@ RotationTransform[Pi / 2, pos][points]]]
             ]
         ];
+        If[ Length[edge] == 1, pos += 0.03 size];
         edgeTagged = If[tag === None, edge, edge -> tag];
         style = With[{defStyle = Directive[colorFunction[i], EdgeForm[Transparent]]},
             Replace[edgeStyle[[i]], Automatic -> defStyle]
@@ -210,7 +212,7 @@ SimpleHypergraphPlot[h_Hypergraph, plotOpts : OptionsPattern[]] := Enclose @ Blo
             style,
             If[ MatchQ[label, Placed[_, Tooltip]],
                 Tooltip[primitive, Replace[labelPrimitive, Text[expr_, ___] :> Style[expr, labelStyle]]],
-                {primitive, Replace[labelPrimitive, Text[expr_, args___] :> Text[Style[expr, labelStyle], args]]}
+                {primitive, Opacity[1], Replace[labelPrimitive, Text[expr_, args___] :> Text[Style[expr, labelStyle], args]]}
             ]
         }
     ];
@@ -231,9 +233,9 @@ SimpleHypergraphPlot[h_Hypergraph, plotOpts : OptionsPattern[]] := Enclose @ Blo
                 ];
                 Sow[primitive = Switch[Length[edge],
                     0,
-                        Switch[dim, 2, Circle, 3, Sphere][Sow[Lookup[edgeEmbedding, \[FormalN][j]], "NullEdge"], Offset[400 r]],
+                        Switch[dim, 2, Circle, 3, Sphere][Sow[Lookup[edgeEmbedding, \[FormalN][j]], "NullEdge"], Offset[400 r / size]],
                     1,
-                        Switch[dim, 2, Disk[First[emb], Offset[400 r]], 3, Sphere[First[emb], r], _, Nothing]
+                        Switch[dim, 2, Disk[First[emb], Offset[400 r / size]], 3, Sphere[First[emb], r], _, Nothing]
                 ], "Primitive"];
                 makeEdge[edge, tag, symm, i, primitive]
             ],
