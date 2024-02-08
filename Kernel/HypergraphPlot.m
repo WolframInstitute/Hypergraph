@@ -1,3 +1,5 @@
+(* ::Package:: *)
+
 Package["WolframInstitute`Hypergraph`"]
 
 PackageExport["SimpleHypergraphPlot"]
@@ -31,6 +33,7 @@ $HypergraphPlotThemes = <|
     "Dark" -> {
         VertexStyle -> White,
         EdgeStyle -> White,
+        EdgeLabelStyle -> White,
         "EdgeLineStyle" -> White,
         Background -> Black,
         VertexLabelStyle -> White
