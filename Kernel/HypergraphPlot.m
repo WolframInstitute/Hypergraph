@@ -141,11 +141,11 @@ SimpleHypergraphPlot[h_Hypergraph, plotOpts : OptionsPattern[]] := Enclose @ Blo
         VertexCoordinates -> vertexCoordinates,
         FilterRules[
             FilterRules[{opts}, Except[
-                VertexStyle | EdgeStyle |
+                VertexStyle | EdgeStyle | VertexSize | VertexShapeFunction |
                 VertexLabels | EdgeLabels | VertexLabelStyle | EdgeLabelStyle |
-                VertexCoordinates
+                VertexCoordinates | Background | PlotTheme | GraphLayout
             ]],
-            Options[Graph]
+            Options[Switch[dim, 2, Graph, 3, Graph3D]]
         ],
         VertexLabels -> {_ -> Automatic, \[FormalE][_] -> None},
         GraphLayout -> {"SpringEmbedding", "EdgeWeighted" -> True}

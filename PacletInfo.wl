@@ -7,7 +7,7 @@ PacletObject[
     "Creator" -> "Nikolay Murzin and Carlos Zapata Carratalá",
     "License" -> "MIT",
     "PublisherID" -> "WolframInstitute",
-    "Version" -> "1.1.3",
+    "Version" -> "1.1.5",
     "WolframVersion" -> "13.2+",
     "PrimaryContext" -> "WolframInstitute`Hypergraph`",
     "Extensions" -> {

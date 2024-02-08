@@ -9,6 +9,7 @@ Options[HypergraphDraw] := Join[{
     "InitialColor" -> Automatic,
     "EdgeLabels" -> {"f", "g", "h"},
     "VertexLabels" -> {"A", "B", "C"},
+    "InterfaceColor" -> Black,
     "HideReturn" -> False
 }, Options[Hypergraph]]
 
@@ -22,7 +23,7 @@ HypergraphDraw[Dynamic[hg_Symbol], dynamicSelection : Dynamic[selection_Symbol] 
 	resetHg,
     points,
 	vertices = <||>, edges, nullEdges = <||>,
-    vertexStyles, vertexLabels,
+    vertexStyles, vertexLabels, vertexLabelStyles,
     edgeStyles, edgeSymmetries, edgeLabels, edgeLabelPositions,
     vertexSelect = False, edgeSelect = False, vertexMove = False, edgeMove = False,
     edgeSymmetry = "Unordered", edgeLabel = None,
@@ -37,7 +38,7 @@ HypergraphDraw[Dynamic[hg_Symbol], dynamicSelection : Dynamic[selection_Symbol] 
     edgeRelabel,
     selectionHypergraph,
     mousePosition,
-	color = None,
+	color = None, interfaceColor = OptionValue["InterfaceColor"],
 	actions = {}, actionId = None, addAction,
     mouseTmpPos = {0, 0}, startMousePos = None,
     canvas, settingsWidget,
@@ -513,6 +514,7 @@ HypergraphDraw[Dynamic[hg_Symbol], dynamicSelection : Dynamic[selection_Symbol] 
             "LayoutDimension" -> 2,
 			VertexStyle -> Normal[vertexStyles],
             VertexLabels -> Normal[vertexLabels],
+            VertexLabelStyle -> Normal[vertexLabelStyles],
 			VertexCoordinates -> Normal[Join[vertices, nullEdges]],
 			EdgeStyle -> Thread[edges -> edgeStyles],
             EdgeLabels -> Thread[edges -> edgeLabels],
@@ -554,9 +556,10 @@ HypergraphDraw[Dynamic[hg_Symbol], dynamicSelection : Dynamic[selection_Symbol] 
             (_ -> style_) :> style
         }, {1}];
         vertexStyles = Association @ Replace[Lookup[resetOpts, VertexStyle], {
-            (v_ -> Automatic) :> v -> Black,
+            (v_ -> Automatic) :> v -> interfaceColor,
             (v_ -> style_) :> (If[color === None, color = FirstCase[style, _ ? ColorQ, None]]; v -> style)
         }, {1}];
+        vertexLabelStyles = Association @ Lookup[resetOpts, VertexLabelStyle];
         edgeLabels = Replace[Lookup[resetOpts, EdgeLabels], {
             (e_ -> Automatic) :> e,
             (_ -> label_) :> label
@@ -585,8 +588,8 @@ HypergraphDraw[Dynamic[hg_Symbol], dynamicSelection : Dynamic[selection_Symbol] 
             edgeStyles = PadRight[edgeStyles, Length[edges], color];
             edgeSymmetries = PadRight[edgeSymmetries, Length[edges], "Unordered"];
         ];
-        vertexStyles = Replace[vertexStyles, c_ ? ColorQ :> Directive[EdgeForm[Opacity[1, Black]], Opacity[0.5, c]], {1}];
-        edgeStyles = Replace[Thread[{edges, edgeStyles}], {{{_, _, __}, c_ ? ColorQ} :> Opacity[0.1, c], {_, s_} :> s}, {1}];
+        vertexStyles = Replace[vertexStyles, c_ ? ColorQ :> Directive[Opacity[0.5, c], EdgeForm[Opacity[1, interfaceColor]]], {1}];
+        edgeStyles = Replace[Thread[{edges, edgeStyles}], {{{_, _, __}, c_ ? ColorQ} :> Opacity[0.5, c], {_, s_} :> s}, {1}];
         renderEdges[Range[Length[edges]]];
     ];
     renderEdges[edgeIds_] := Enclose @ Block[{vs = Union @@ edges[[edgeIds]], edgePrimitives, newVertexLabelOffsets, newEdgeLabelPositions},
@@ -621,20 +624,20 @@ HypergraphDraw[Dynamic[hg_Symbol], dynamicSelection : Dynamic[selection_Symbol] 
             AbsoluteThickness[Medium],
             Dynamic[
                 Refresh[flash = Mod[flash + 0.01, 2 Pi];, UpdateInterval -> 0.02];
-                Thread[{MapAt[Directive[Opacity[Clip[Sin[flash] ^ 2, {0.05, 0.95}]], Dashed, EdgeForm[Directive[Dashed, Black]], #] &, edgeStyles, List /@ edgeSelection], edgeRegions /. a_Arrow :> {Opacity[1], a}}]
+                Thread[{MapAt[Directive[Opacity[Clip[Sin[flash] ^ 2, {0.05, 0.95}]], Dashed, EdgeForm[Directive[Dashed, interfaceColor]], #] &, edgeStyles, List /@ edgeSelection], edgeRegions /. a_Arrow :> {Opacity[1], a}}]
             ],
             Opacity[1],
             Dynamic @ Thread[{Values @ MapAt[Directive[Opacity[Clip[Sin[flash] ^ 2, {0.01, 0.99}]], #] &, vertexStyles, {Key[#]} & /@ DeleteDuplicates[DeleteMissing[Keys[vertexSelection]]]], {EdgeForm[Opacity[1]], Disk[#, Offset[2.5]]} & /@ Values[vertices]}],
-            Dynamic @ MapThread[makeVertexLabel, {Keys[vertices], Values[vertexLabels], ConstantArray[Black, Length[vertices]], Values[vertices], Lookup[vertexLabelOffsets, Keys[vertices], 0.03]}],
+            Dynamic @ MapThread[makeVertexLabel, {Keys[vertices], Values[vertexLabels], Lookup[vertexLabelStyles, Keys[vertices], interfaceColor], Values[vertices], Lookup[vertexLabelOffsets, Keys[vertices], 0.03]}],
             Dynamic @ MapThread[
                 If[ #1 === None,
                     {},
-                    Text[Style[#1, Darker[FirstCase[#3, _ ? ColorQ, Black, All]]], #2]
+                    Text[Style[#1, Darker[FirstCase[#3, _ ? ColorQ, interfaceColor, All]]], #2]
                 ] &, {edgeLabels, edgeLabelPositions, edgeStyles}
             ],
             Dynamic @ {
                 If[ Length[vertexSelection] > 0,
-                    {   Black, Dotted,
+                    {   interfaceColor, Dotted,
                         KeyValueMap[
                             With[{p = Lookup[vertices, #1]}, Table[Circle[p, Offset[10 r]], {r, #2}]] &,
                             Counts[Select[Keys[vertexSelection], Not @* MissingQ]]
@@ -643,18 +646,18 @@ HypergraphDraw[Dynamic[hg_Symbol], dynamicSelection : Dynamic[selection_Symbol] 
                     Nothing
                 ],
                 {
-                    Black, Dashed,
+                    interfaceColor, Dashed,
                     KeyValueMap[Table[Circle[#1, 0.02 r], {r, #2}] &, Counts[Values[Select[vertexSelection, MissingQ[#[[1]]] &]]]]
                 }
             }
         },
             Epilog -> Dynamic @ With[{mouseEvents = Sequence["MouseEntered" :> (graphicsControlEnteredQ = True), "MouseExited" :> (graphicsControlEnteredQ = False)]}, {
                 Inset[Column[{
-                    EventHandler[Framed[Style["+", 24]], {
+                    EventHandler[Framed[Style["+", 24, interfaceColor], FrameStyle -> interfaceColor], {
                         "MouseDown" :> With[{p = Mean[Transpose[plotRange]], s = 0.8}, plotRange = ScalingTransform[s, {1, 0}, p] @ ScalingTransform[s, {0, 1}, p] @ plotRange],
                         mouseEvents
                     }],
-                    EventHandler[Framed[Style["-", 24]], {
+                    EventHandler[Framed[Style["-", 24, interfaceColor], FrameStyle -> interfaceColor], {
                         "MouseDown" :> With[{p = Mean[Transpose[plotRange]], s = 1.1}, plotRange = ScalingTransform[s, {1, 0}, p] @ ScalingTransform[s, {0, 1}, p] @ plotRange],
                         mouseEvents
                     }]
@@ -662,14 +665,14 @@ HypergraphDraw[Dynamic[hg_Symbol], dynamicSelection : Dynamic[selection_Symbol] 
                     {Right, Top}, Scaled[{1.2, 1.1}]
                 ],
                 Inset[Column[{
-                    If[ hideReturnQ, Nothing, EventHandler[Framed[Style["Return", 12]], {
+                    If[ hideReturnQ, Nothing, EventHandler[Framed[Style["Return", 12, interfaceColor], FrameStyle -> interfaceColor], {
                         "MouseDown" :> (
                             update[];
                             MathLink`CallFrontEnd[FrontEnd`BoxReferenceReplace[FE`BoxReference[EvaluationNotebook[], boxId], ToBoxes[Hypergraph[hg, PlotRange -> Full]]]]
                         ),
                         mouseEvents
                     }]],
-                    EventHandler[Framed[Style["Print", 12]], {
+                    EventHandler[Framed[Style["Print", 12, interfaceColor], FrameStyle -> interfaceColor], {
                         "MouseDown" :> (update[]; CellPrint[ExpressionCell[Hypergraph[hg, PlotRange -> Full], "Input"]]),
                         mouseEvents
                     }]
@@ -677,14 +680,14 @@ HypergraphDraw[Dynamic[hg_Symbol], dynamicSelection : Dynamic[selection_Symbol] 
                     {Right, Bottom}, Scaled[{1.1, - .2}]
                 ]
             }],
-            FilterRules[{opts}, Options[Graphics]],
             PlotRange -> Dynamic[plotRange],
-            ImageSize -> Scaled[.33],
             Frame -> True,
             FrameStyle -> Dashed,
             FrameTicks -> None,
             ContentSelectable -> False,
-            ContextMenu -> {}
+            ContextMenu -> {},
+            FilterRules[AbsoluteOptions[hg], Options[Graphics]],
+            ImageSize -> Scaled[.33]
         ], Selectable :> CurrentValue["ShiftKey"], ShowSelection -> True], {
             {"MouseDown", 1} :> down[1],
             {"MouseDown", 2} :> (
