@@ -54,9 +54,9 @@ $HypergraphPlotThemes = <|
 makeVertexLabel[vertex_, label_, defaultStyle_, pos_, labelOffset_ : {0, .01}] := With[{style = Replace[defaultStyle, Automatic | None -> Black]},
     Replace[label /. "Name" -> vertex, {
         None -> Nothing,
-        Automatic :> Text[Style[vertex, style], pos + labelOffset],
+        Automatic :> Text[Style[vertex, style], pos, labelOffset],
         Placed[placedLabel_, offset_] :> If[offset === Tooltip, Tooltip[Text[" ", pos], Style[placedLabel, style]], Text[Style[placedLabel, style], pos, offset]],
-        l_ :> Text[Style[l, style], pos + labelOffset]
+        l_ :> Text[Style[l, style], pos, labelOffset]
     }]
 ]
 
@@ -175,7 +175,7 @@ SimpleHypergraphPlot[h_Hypergraph, plotOpts : OptionsPattern[]] := Enclose @ Blo
     range = #2 - #1 & @@@ bounds;
     size = Min[range];
     If[size == 0, size = 1];
-    vertexLabelOffsets = 0.03 Normalize[# - Mean @ Nearest[allPoints, #, 5]] & /@ vertexEmbedding;
+    vertexLabelOffsets = - 2 Normalize[Mean[Threaded[#] - Nearest[allPoints, #, 5]]] & /@ vertexEmbedding;
     makeEdge[edge_, tag_, symm_, i_, initPrimitive_, lines_ : {}] := Block[{
         primitive = If[RegionQ[initPrimitive], Identity, DiscretizeGraphics @* ReplaceAll[Arrow[l_] :> l]] @ initPrimitive,
         pos,
