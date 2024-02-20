@@ -108,8 +108,8 @@ CanonicalHypergraph[hg_ ? HypergraphQ, opts : OptionsPattern[]] := Enclose @ Blo
         Sort[Values[iso]],
         Join[emptyEdges, newEdges],
         If[ TrueQ[OptionValue["Annotations"]],
-            With[{keys = Keys[Options[hg]]},
-                KeySort @ Association @ Options[hg] //
+            With[{keys = Keys[AbsoluteOptions[hg]]},
+                KeySort @ Association @ AbsoluteOptions[hg] //
                     MapAt[
                         Sort @ mapEdgeOptions[Replace[#, iso, {1}] &, #] &,
                         {Key[#]} & /@ Intersection[$EdgeAnnotations, keys]
