@@ -190,10 +190,10 @@ SimpleHypergraphPlot[h_Hypergraph, plotOpts : OptionsPattern[]] := Enclose @ Blo
         If[ Length[edge] == 1, pos += 0.03 size];
         edgeTagged = If[tag === None, edge, edge -> tag];
         style = With[{defStyle = Directive[colorFunction[i], EdgeForm[Transparent]]},
-            Replace[edgeStyle[[i]], Automatic -> defStyle]
+            Replace[edgeStyle[[i]], {Automatic -> defStyle, l_List :> Directive @@ l}]
         ];
         lineStyle = With[{defStyle = Directive[colorFunction[i], EdgeForm[Transparent]]},
-            Replace[edgeLineStyle[[i]], Automatic -> defStyle]
+            Replace[edgeLineStyle[[i]], {Automatic -> defStyle, l_List :> Directive @@ l}]
         ];
         label = edgeLabels[[i]]; 
         labelStyle = Replace[edgeLabelStyle[[i]], Automatic | None -> Black];
@@ -322,7 +322,7 @@ SimpleHypergraphPlot[h_Hypergraph, plotOpts : OptionsPattern[]] := Enclose @ Blo
         ],
         Opacity[1],
         MapThread[{vertex, style, vsf, sz, coord} |->
-            {style, vsf[coord, vertex, Replace[sz, x_ ? NumericQ :> {x, x}]]},
+            {Replace[style, l_List :> Directive @@ l], vsf[coord, vertex, Replace[sz, x_ ? NumericQ :> {x, x}]]},
             {Keys[vertexEmbedding], vertexStyle, vertexShapeFunction, vertexSize, Values[vertexEmbedding]}
         ],
         MapThread[{vertex, coord, label, style, offset} |-> (

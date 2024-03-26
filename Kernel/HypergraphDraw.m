@@ -624,11 +624,11 @@ HypergraphDraw[Dynamic[hg_Symbol], dynamicSelection : Dynamic[selection_Symbol] 
             AbsoluteThickness[Medium],
             Dynamic[
                 Refresh[flash = Mod[flash + 0.01, 2 Pi];, UpdateInterval -> 0.02];
-                Thread[{MapAt[Directive[Opacity[Clip[Sin[flash] ^ 2, {0.05, 0.95}]], Dashed, EdgeForm[Directive[Dashed, interfaceColor]], #] &, edgeStyles, List /@ edgeSelection], edgeRegions /. a_Arrow :> {Opacity[1], a}}]
+                Thread[{MapAt[Directive[Opacity[Clip[Sin[flash] ^ 2, {0.05, 0.95}]], Dashed, EdgeForm[Directive[Dashed, interfaceColor]], #] &, Replace[edgeStyles, l_List :> Directive @@ l, {1}], List /@ edgeSelection], edgeRegions /. a_Arrow :> {Opacity[1], a}}]
             ],
             Opacity[1],
             Dynamic @ Thread[{Values @ MapAt[Directive[Opacity[Clip[Sin[flash] ^ 2, {0.01, 0.99}]], #] &, vertexStyles, {Key[#]} & /@ DeleteDuplicates[DeleteMissing[Keys[vertexSelection]]]], {EdgeForm[Opacity[1]], Disk[#, Offset[2.5]]} & /@ Values[vertices]}],
-            Dynamic @ MapThread[makeVertexLabel, {Keys[vertices], Values[vertexLabels], Lookup[vertexLabelStyles, Keys[vertices], interfaceColor], Values[vertices], Lookup[vertexLabelOffsets, Keys[vertices], 0.03]}],
+            Dynamic @ MapThread[makeVertexLabel, {Keys[vertices], Values[vertexLabels], Lookup[vertexLabelStyles, Keys[vertices], interfaceColor], Values[vertices], Lookup[vertexLabelOffsets, Keys[vertices], {1, 1}]}],
             Dynamic @ MapThread[
                 If[ #1 === None,
                     {},
