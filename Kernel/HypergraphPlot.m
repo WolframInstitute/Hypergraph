@@ -143,7 +143,7 @@ SimpleHypergraphPlot[h_Hypergraph, plotOpts : OptionsPattern[]] := Enclose @ Blo
             FilterRules[{opts}, Except[
                 VertexStyle | EdgeStyle | VertexSize | VertexShapeFunction |
                 VertexLabels | EdgeLabels | VertexLabelStyle | EdgeLabelStyle |
-                VertexCoordinates | Background | PlotTheme | GraphLayout
+                VertexCoordinates | Background | PlotTheme
             ]],
             Options[Switch[dim, 2, Graph, 3, Graph3D]]
         ],
@@ -322,7 +322,7 @@ SimpleHypergraphPlot[h_Hypergraph, plotOpts : OptionsPattern[]] := Enclose @ Blo
         ],
         Opacity[1],
         MapThread[{vertex, style, vsf, sz, coord} |->
-            {Replace[style, l_List :> Directive @@ l], vsf[coord, vertex, Replace[sz, x_ ? NumericQ :> {x, x}]]},
+            {Replace[style, l_List :> Directive @@ l], vsf[coord, vertex, Replace[sz, {Automatic :> 0.01 size, x_ ? NumericQ :> {x, x}}]]},
             {Keys[vertexEmbedding], vertexStyle, vertexShapeFunction, vertexSize, Values[vertexEmbedding]}
         ],
         MapThread[{vertex, coord, label, style, offset} |-> (
