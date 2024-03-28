@@ -24,7 +24,7 @@ $DefaultHypergraphAnnotations = <|
 	VertexCoordinates -> Automatic,
 	VertexShapeFunction -> Function[{AbsolutePointSize[Replace[#3, Automatic -> 3]], Point[#1]}],
 
-    EdgeStyle -> Automatic,
+    EdgeStyle -> {Automatic, Inherited},
 	"EdgeLineStyle" -> Automatic,
     EdgeLabels -> {"Name", None},
     EdgeLabelStyle -> {},
@@ -38,12 +38,26 @@ $EdgeAnnotations = {EdgeStyle, "EdgeLineStyle", EdgeLabels, EdgeLabelStyle, "Edg
 
 getDefault[value_, def_ : None] := Replace[value, {_, default_} | default_ :> Replace[def, None -> default]]
 
-makeAnnotationRules[opts_List, keys_ : All] := If[MatchQ[keys, _List | All], Association, #[[1, 2]] &] @ KeyValueMap[
-    #1 -> With[{automatic = Replace[#2, {automatic_, _} | automatic_ :> automatic]},
-        DeleteDuplicatesBy[Replace[{(Verbatim[_] -> _) :> _, _ :> Unique[]}]] @
-            Replace[Flatten[ReplaceList[#1, FilterRules[opts, #1]]], {Automatic -> _ -> automatic, s : Except[_Rule | _RuleDelayed] :> _ -> s}, {1}] 
-    ] &,
-    If[keys === All, $DefaultHypergraphAnnotations, $DefaultHypergraphAnnotations[[ Key /@ Developer`ToList[keys] ]]]
+makeAnnotationRules[opts_List, keys_ : All] := With[{
+	customAnnotations = Flatten @ Values @ FilterRules[opts, {"VertexAnnotationRules", "EdgeAnnotationRules"}]
+}, {
+	annotations = Join[FilterRules[opts, Except["VertexAnnotationRules" | "EdgeAnnotationRules"]], customAnnotations]
+},
+	KeyValueMap[
+		#1 -> With[{automatic = Replace[#2, {automatic_, _} | automatic_ :> automatic], default = getDefault[#2]},
+			Replace[
+				Flatten[ReplaceList[#1, FilterRules[annotations, #1]]],
+				{
+					Automatic -> _ -> automatic,
+					(k_ -> Except[Automatic, default]) :> k -> Inherited,
+					s : Except[_Rule | _RuleDelayed] :> _ -> s
+				},
+				{1}
+			] // DeleteDuplicatesBy[Replace[{(Verbatim[_] -> _) :> _, _ :> Unique[]}]]
+		] &,
+		Association[$DefaultHypergraphAnnotations, # -> Automatic & /@ DeleteDuplicates @ Keys[customAnnotations]] //
+			If[keys === All, #, #[[ Key /@ Developer`ToList[keys] ]]] &
+	] // If[MatchQ[keys, _List | All], Association, #[[1, 2]] &]
 ]
 
 
@@ -118,7 +132,7 @@ extractEdgeAnnotations[edgeSpec : {$EdgePattern ...}] :=  With[{
 		e_ :> prepEdge[e] -> {}
 	}, {1}]
 },
-	{annotations[[All, 1]], (key |-> key -> Map[#[[1]] -> Lookup[#[[2]], key, None] &, annotations]) /@ DeleteDuplicates[Keys @ Catenate @ annotations[[All, 2]]]}
+	{annotations[[All, 1]], (key |-> key -> Map[#[[1]] -> Lookup[#[[2]], key, getDefault[Lookup[$DefaultHypergraphAnnotations, key]]] &, annotations]) /@ DeleteDuplicates[Keys @ Catenate @ annotations[[All, 2]]]}
 ]
 
 Hypergraph[vs_List, edgeSpec : {$EdgePattern ...}, opts : OptionsPattern[]] := Block[{edges, annotations},
@@ -142,7 +156,7 @@ Hypergraph[he_Hyperedges ? HyperedgesQ, opts : OptionsPattern[]] := Hypergraph[h
 Hypergraph[vs_List, he_Hyperedges ? HyperedgesQ, opts : OptionsPattern[]] := With[{
 	vertices = Replace[vs, (Labeled | Style | Annotation)[v_, __] :> v, {1}]
 },
-	Hypergraph[DeleteDuplicates @ Join[vertices, DeleteElements[he["VertexList"], vertices]], he, opts] /; ! ContainsAll[vertices, he["VertexList"]]
+	Hypergraph[Join[vs, DeleteElements[he["VertexList"], vertices]], he, opts] /; ! ContainsAll[vertices, he["VertexList"]]
 ]
 
 hg : Hypergraph[vs_List, he_Hyperedges ? HyperedgesQ, opts : OptionsPattern[]] /; System`Private`HoldNotValidQ[hg] := With[{
@@ -158,7 +172,7 @@ hg : Hypergraph[vs_List, he_Hyperedges ? HyperedgesQ, opts : OptionsPattern[]] /
 },
 	System`Private`SetNoEntry @ System`Private`HoldSetValid[Hypergraph[vertices, edges, ##]] & @@
 		Normal @ GroupBy[
-			Flatten[{(key |-> key -> Map[#[[1]] -> Lookup[#[[2]], key, None] &, annotations]) /@ DeleteDuplicates[Keys @ Catenate @ annotations[[All, 2]]], opts}],
+			Flatten[{(key |-> key -> Map[#[[1]] -> Lookup[#[[2]], key, getDefault[Lookup[$DefaultHypergraphAnnotations, key]]] &, annotations]) /@ DeleteDuplicates[Keys @ Catenate @ annotations[[All, 2]]], opts}],
 			First,
 			If[
 				KeyExistsQ[$DefaultHypergraphAnnotations, #[[1, 1]]],
@@ -210,25 +224,32 @@ HypergraphProp[Hypergraph[vertices_, ___], "VertexList"] := vertices
 HypergraphProp[Hypergraph[_, edges_, ___], "Edges"] := edges
 
 
-applyRules[expr_, rules_, length_Integer, default_] := PadRight[#, length, #] & @ Replace[Catenate @ Values @ GroupBy[rules, First, ReplaceList[expr, #, length] &], {} -> {default}]
+applyRules[expr_, rules_, length_Integer, default_] := PadRight[#, length, {default}] & @ Map[FirstCase[#, Except[Inherited], default, {1}] &, Thread @ Values @ GroupBy[rules, First, PadRight[#, length, Replace[#, {} -> Inherited]] & @ ReplaceList[expr, #, length] &]]
 
-HypergraphProp[hg_, "AbsoluteOptions", patt___] := Block[{vertices = VertexList[hg], edges = EdgeListTagged[hg], opts = Join[Options[hg, patt], Options[Hypergraph]], annotationRules, edgeCounts},
+HypergraphProp[hg_, "AbsoluteOptions", patt___] := Block[{
+	vertices = VertexList[hg], edges = EdgeListTagged[hg],
+	opts = Join[Options[hg, patt], Options[Hypergraph]],
+	annotationRules, vertexAnnotations, edgeAnnotations,
+	edgeCounts
+},
 	opts = FixedPoint[Replace[#, (PlotTheme -> theme_) :> Splice @ Lookup[$HypergraphPlotThemes, theme, {}], {1}] &, opts];
 	annotationRules = makeAnnotationRules[opts];
 	edgeCounts = Counts[edges];
+	vertexAnnotations = Join[$VertexAnnotations, DeleteDuplicates @ Keys @ Lookup[opts, "VertexAnnotationRules", {}]];
+	edgeAnnotations = Join[$EdgeAnnotations, DeleteDuplicates @ Keys @ Lookup[opts, "EdgeAnnotationRules", {}]];
 	Join[
 		KeyValueMap[
 			{name, rules} |-> With[{
-				default = getDefault[$DefaultHypergraphAnnotations[name], Lookup[rules, _, None]],
+				default = getDefault[Lookup[$DefaultHypergraphAnnotations, name, None], Lookup[rules, _, None]],
 				restRules = DeleteCases[rules, Verbatim[_] -> _]
 			},
 				name -> Map[v |-> (v -> First @ applyRules[v, restRules, 1, default]), vertices]
 			],
-			AssociationThread[$VertexAnnotations -> Lookup[annotationRules, $VertexAnnotations]]
+			AssociationThread[vertexAnnotations -> Lookup[annotationRules, vertexAnnotations]]
 		],
 		KeyValueMap[
 			{name, rules} |-> With[{
-				default = getDefault[$DefaultHypergraphAnnotations[name], Lookup[rules, _, None]],
+				default = getDefault[Lookup[$DefaultHypergraphAnnotations, name, None], Lookup[rules, _, None]],
 				restRules = DeleteCases[rules, Verbatim[_] -> _]
 			},
 				name -> Permute[#, FindPermutation[#[[All, 1]], edges]] & @ Catenate @ KeyValueMap[
@@ -246,9 +267,9 @@ HypergraphProp[hg_, "AbsoluteOptions", patt___] := Block[{vertices = VertexList[
 					edgeCounts
 				]
 			],
-			AssociationThread[$EdgeAnnotations -> Lookup[annotationRules, $EdgeAnnotations]]
+			AssociationThread[edgeAnnotations -> Lookup[annotationRules, edgeAnnotations]]
 		],
-		DeleteDuplicatesBy[First] @ FilterRules[opts, Except[Join[$VertexAnnotations, $EdgeAnnotations]]]
+		DeleteDuplicatesBy[First] @ FilterRules[opts, Except[Join[vertexAnnotations, edgeAnnotations]]]
 	]
 ]
 
