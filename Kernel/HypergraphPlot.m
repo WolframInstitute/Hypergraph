@@ -21,7 +21,8 @@ $HypergraphPlotThemes = <|
     },
     "WolframModel" -> {
         EdgeStyle -> {
-            {_, _} | {} -> Directive[Arrowheads[{{0.03, .5}}], Opacity[.7], Hue[0.63, 0.7, 0.5]],
+            {} -> Directive[Opacity[.4], Hue[0.63, 0.7, 0.5]],
+            {_, _} -> Directive[Arrowheads[{{0.03, .5}}], Opacity[.7], Hue[0.63, 0.7, 0.5]],
             _ -> Directive[Opacity[0.1], Hue[0.63, 0.66, 0.81]]
         },
         EdgeLabelStyle -> Hue[0.63, 0.7, 0.5],
@@ -86,7 +87,7 @@ SimpleHypergraphPlot[h_Hypergraph, plotOpts : OptionsPattern[]] := Enclose @ Blo
     allPoints, bounds, corner, center, range, size, dim,
     opts = FilterRules[{
         FilterRules[{plotOpts}, Except[Options[Hypergraph]]],
-        AbsoluteOptions[Hypergraph[h, FilterRules[{plotOpts}, Options[Hypergraph]]]],
+        AbsoluteOptions[Hypergraph[h, FilterRules[{Options[h], plotOpts}, Options[Hypergraph]]]],
         Options[Hypergraph]
     },
         Options[SimpleHypergraphPlot]
@@ -141,9 +142,12 @@ SimpleHypergraphPlot[h_Hypergraph, plotOpts : OptionsPattern[]] := Enclose @ Blo
         VertexCoordinates -> vertexCoordinates,
         FilterRules[
             FilterRules[{opts}, Except[
-                VertexStyle | EdgeStyle | VertexSize | VertexShapeFunction |
-                VertexLabels | EdgeLabels | VertexLabelStyle | EdgeLabelStyle |
-                VertexCoordinates | Background | PlotTheme
+                Join[
+                    VertexStyle | EdgeStyle | VertexSize | VertexShapeFunction |
+                    VertexLabels | EdgeLabels | VertexLabelStyle | EdgeLabelStyle |
+                    VertexCoordinates | Background | PlotTheme,
+                    Switch[dim, 2, Alternatives[], 3, Alternatives[GraphLayout]]
+                ]
             ]],
             Options[Switch[dim, 2, Graph, 3, Graph3D]]
         ],
@@ -236,9 +240,9 @@ SimpleHypergraphPlot[h_Hypergraph, plotOpts : OptionsPattern[]] := Enclose @ Blo
                 ];
                 Sow[primitive = Switch[Length[edge],
                     0,
-                        Switch[dim, 2, Circle, 3, Sphere][Sow[Lookup[edgeEmbedding, \[FormalN][j]], "NullEdge"], Offset[400 r / size]],
+                        Switch[dim, 2, Circle, 3, Sphere][Sow[Lookup[edgeEmbedding, \[FormalN][j]], "NullEdge"], Switch[dim, 2, Offset[400 r / size], 3, r / size]],
                     1,
-                        Switch[dim, 2, Disk[First[emb], Offset[400 r / size]], 3, Sphere[First[emb], r], _, Nothing]
+                        Switch[dim, 2, Disk[First[emb], Offset[400 r / size]], 3, Sphere[First[emb], r / size], _, Nothing]
                 ], "Primitive"];
                 makeEdge[edge, tag, symm, i, primitive]
             ],
@@ -322,13 +326,13 @@ SimpleHypergraphPlot[h_Hypergraph, plotOpts : OptionsPattern[]] := Enclose @ Blo
         ],
         Opacity[1],
         MapThread[{vertex, style, vsf, sz, coord} |->
-            {Replace[style, l_List :> Directive @@ l], vsf[coord, vertex, Replace[sz, {Automatic :> 0.01 size, x_ ? NumericQ :> {x, x}}]]},
+            {Replace[style, l_List :> Directive @@ l], vsf[coord, vertex, Replace[sz, {Automatic :> 0.01 size, x_ ? NumericQ :> If[dim == 3, 1 / 3, 1] {x, x}}]]},
             {Keys[vertexEmbedding], vertexStyle, vertexShapeFunction, vertexSize, Values[vertexEmbedding]}
         ],
         MapThread[{vertex, coord, label, style, offset} |-> (
             Sow[coord, "Vertex"];
             Sow[vertex -> offset, "VertexLabelOffset"];
-            makeVertexLabel[vertex, label, style, coord, offset]
+            makeVertexLabel[vertex, label, style, coord, Take[offset, UpTo[2]]]
         ), {Keys[vertexEmbedding], Values[vertexEmbedding], vertexLabels, vertexLabelStyle, Lookup[vertexLabelOffsets, Keys[vertexEmbedding]]}]
 	},
         FilterRules[{opts}, Options[Switch[dim, 2, Graphics, 3, Graphics3D]]],
