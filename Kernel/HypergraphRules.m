@@ -188,18 +188,6 @@ HypergraphRuleApply[input_, output_, hg_, opts : OptionsPattern[]] := Block[{
         {annotationRules, outputAnnotationRules}
     ];
 
-    {edgeAnnotations, outputEdgeAnnotations} = MapThread[{h, es, annotations} |->
-        MapAt[
-            Join[
-                #,
-                MapIndexed[#1 -> Directive[OptionValue[SimpleHypergraphPlot, h["Options"], ColorFunction][#2[[1]]], EdgeForm[Transparent]] &, es]
-            ] &,
-            annotations,
-            Key[EdgeStyle]
-        ],
-        {{hg, output}, {edges, outputEdges}, {edgeAnnotations, outputEdgeAnnotations}}
-    ];
-
     embedding = Thread[vertices -> HypergraphEmbedding[hg]];
 
     canonicalizeMethod @ Catenate @ MapThread[{pos, bindings} |-> Block[{

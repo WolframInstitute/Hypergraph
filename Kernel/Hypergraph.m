@@ -232,7 +232,7 @@ HypergraphProp[hg_, "AbsoluteOptions", patt___] := Block[{
 	annotationRules, vertexAnnotations, edgeAnnotations,
 	edgeCounts
 },
-	opts = FixedPoint[Replace[#, (PlotTheme -> theme_) :> Splice @ Lookup[$HypergraphPlotThemes, theme, {}], {1}] &, opts];
+	opts = DeleteDuplicatesBy[FixedPoint[Replace[#, (PlotTheme -> theme_) :> Splice @ Lookup[$HypergraphPlotThemes, theme, {}], {1}] &, opts], First];
 	annotationRules = makeAnnotationRules[opts];
 	edgeCounts = Counts[edges];
 	vertexAnnotations = Join[$VertexAnnotations, DeleteDuplicates @ Keys @ Lookup[opts, "VertexAnnotationRules", {}]];
