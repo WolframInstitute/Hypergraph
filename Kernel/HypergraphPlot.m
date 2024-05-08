@@ -187,14 +187,14 @@ SimpleHypergraphPlot[h_Hypergraph, plotOpts : OptionsPattern[]] := Enclose @ Blo
     },
         pos = Replace[RegionCentroid[primitive /. Offset[r_] :> r], {} -> corner];
         If[ Length[edge] == 2 && dim == 2,
-            pos += With[{points = Sort[MeshCoordinates[If[RegionQ[primitive], DiscretizeRegion, DiscretizeGraphics] @ primitive]][[{1, -1}]]},
+            pos += With[{points = Sort[MeshCoordinates[If[RegionQ[primitive], DiscretizeRegion, DiscretizeGraphics] @ Chop @ primitive]][[{1, -1}]]},
                 0.03 size Normalize[If[TrueQ[VectorAngle[#, pos - center] > Pi], #, - #] & [Subtract @@ RotationTransform[Pi / 2, pos][points]]]
             ]
         ];
         If[ Length[edge] == 1, pos += 0.03 size];
         edgeTagged = If[tag === None, edge, edge -> tag];
         style = With[{defStyle = Directive[colorFunction[i], EdgeForm[Transparent]]},
-            Replace[edgeStyle[[i]], {Automatic -> defStyle, l_List :> Directive @@ l}]
+            Replace[edgeStyle[[i]], {Automatic | Inherited -> defStyle, l_List :> Directive @@ l}]
         ];
         lineStyle = With[{defStyle = Directive[colorFunction[i], EdgeForm[Transparent]]},
             Replace[edgeLineStyle[[i]], {Automatic -> defStyle, l_List :> Directive @@ l}]
@@ -233,11 +233,8 @@ SimpleHypergraphPlot[h_Hypergraph, plotOpts : OptionsPattern[]] := Enclose @ Blo
             Length[edge],
             0 | 1, Block[{s, r, dr = size 0.01, symm},
                 symm  = edgeSymmetries[[i]];
-                s  = Replace[edgeSize[[i]], Automatic -> 0.03];
-                If[ TrueQ[Positive[s]],
-                    r = size s,
-                    r = size 0.03 + (j - 1) * dr
-                ];
+                s = Replace[edgeSize[[i]], Automatic | _ ? Negative -> 0.03];
+                r = size s + If[Length[edge] > 0, (j - 1) * dr, 0];
                 Sow[primitive = Switch[Length[edge],
                     0,
                         Switch[dim, 2, Circle, 3, Sphere][Sow[Lookup[edgeEmbedding, \[FormalN][j]], "NullEdge"], Switch[dim, 2, Offset[400 r / size], 3, r / size]],
