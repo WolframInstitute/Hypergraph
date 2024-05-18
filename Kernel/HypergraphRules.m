@@ -307,16 +307,13 @@ HighlightRule[rule_ ? HypergraphRuleQ, hg_ ? HypergraphQ, opts : OptionsPattern[
     HighlightRule[rule[hg, FilterRules[{opts}, Options[HypergraphRuleApply]]], hg, FilterRules[{opts}, Except[Options[HypergraphRuleApply], Options[HighlightRule]]]]
 
 HighlightRule[matches : {___Association}, hg_ ? HypergraphQ, opts : OptionsPattern[]] := Block[{
-    edges = EdgeListTagged[hg], plotOpts = FilterRules[{opts}, Options[SimpleHypergraphPlot]]
+    edges = EdgeListTagged[hg], plotOpts = FilterRules[{opts}, Options[SimpleHypergraphPlot]], hgOpts = AbsoluteOptions[hg]
 },
     Map[
         GraphicsRow[{
             SimpleHypergraphPlot[
                 hg,
-                EdgeStyle -> Map[
-                    # -> OptionValue["HighlightLeftEdgeStyle"] &,
-                    Extract[edges, #MatchEdgePositions]
-                ],
+                EdgeStyle -> MapAt[#[[1]] -> OptionValue["HighlightLeftEdgeStyle"] &, Lookup[hgOpts, EdgeStyle], #MatchEdgePositions],
                 VertexStyle -> Map[# -> OptionValue["HighlightLeftVertexStyle"] &, #MatchVertices],
                 plotOpts,
                 PlotRange -> Automatic,
