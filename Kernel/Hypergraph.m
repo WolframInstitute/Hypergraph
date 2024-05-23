@@ -323,7 +323,9 @@ HypergraphProp[hg_, "FullEdgeSymmetry"] := With[{
 
 (* Values *)
 
-NonCommutativeMultiply[hs___Hypergraph] ^:= HypergraphUnion[hs]
-
 Plus[hs___Hypergraph] ^:= HypergraphUnion[hs]
+
+Times[hs___Hypergraph] ^:= HypergraphHadamardProduct[hs]
+
+NonCommutativeMultiply[hs___Hypergraph] ^:= HypergraphHadamardProduct[hs]
 

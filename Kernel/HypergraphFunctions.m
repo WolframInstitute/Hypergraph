@@ -13,6 +13,7 @@ PackageExport["SimpleHypergraphQ"]
 PackageExport["ConnectedHypergraphQ"]
 PackageExport["HypergraphArityReduce"]
 PackageExport["HypergraphUnion"]
+PackageExport["HypergraphHadamardProduct"]
 PackageExport["UnorderedHypergraphToGraph"]
 
 PackageScope["CanonicalEdge"]
@@ -337,12 +338,25 @@ Hypergraph /: EdgeQ[hg_Hypergraph, edge_Rule] := MemberQ[EdgeListTagged[hg], edg
 
 HypergraphUnion[hs___Hypergraph] := Hypergraph[
 	Union @@ VertexList /@ {hs}, Through[Unevaluated @ Plus[hs]["Edges"]],
-	Merge[Through[{hs}["AbsoluteOptions"]], Identity] //
+	Merge[AbsoluteOptions /@ {hs}, Identity] //
         MapAt[Reverse @* DeleteDuplicatesBy[First] @* DeleteCases[_ -> None] @* Catenate @* Reverse, {Key[#]} & /@ $VertexAnnotations] //
         MapAt[Apply[Join], {Key[#]} & /@ $EdgeAnnotations] //
         MapAt[Last, #, {Key[#]} & /@ Complement[Keys[#], Keys[$DefaultHypergraphAnnotations]]] & //
         Normal
 ]
+
+HypergraphHadamardProduct[h1_Hypergraph, h2_Hypergraph] := Hypergraph[
+    Union[VertexList[h1], VertexList[h2]],
+    Catenate @ Values @ Merge[KeyUnion[{GroupBy[EdgeListTagged[h1], Replace[(edge_ -> _) :> edge]], Counts[EdgeList[h2]]}],
+        Which[MissingQ[#[[1]]], Nothing, MissingQ[#[[2]]], #[[1]], True, Catenate[Table @@ #]] &
+    ],
+    Merge[{AbsoluteOptions[h1, $VertexAnnotations], AbsoluteOptions[h2, $VertexAnnotations]}, Identity] //
+        MapAt[DeleteDuplicatesBy[First] @* DeleteCases[_ -> None] @* Catenate, {Key[#]} & /@ $VertexAnnotations] //
+        Normal,
+    AbsoluteOptions[h1, $EdgeAnnotations]
+]
+
+HypergraphHadamardProduct[hs___Hypergraph] := Fold[HypergraphHadamardProduct, {hs}]
 
 
 UnorderedHypergraphToGraph[hg_ ? HypergraphQ] := DirectedGraph @ Graph[
