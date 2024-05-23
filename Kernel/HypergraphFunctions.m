@@ -348,7 +348,7 @@ HypergraphUnion[hs___Hypergraph] := Hypergraph[
 HypergraphHadamardProduct[h1_Hypergraph, h2_Hypergraph] := Hypergraph[
     Union[VertexList[h1], VertexList[h2]],
     Catenate @ Values @ Merge[KeyUnion[{GroupBy[EdgeListTagged[h1], Replace[(edge_ -> _) :> edge]], Counts[EdgeList[h2]]}],
-        Which[MissingQ[#[[1]]], Nothing, MissingQ[#[[2]]], #[[1]], True, Catenate[Table @@ #]] &
+        If[MissingQ[#[[1]]] || MissingQ[#[[2]]], Nothing, Catenate[Table @@ #]] &
     ],
     Merge[{AbsoluteOptions[h1, $VertexAnnotations], AbsoluteOptions[h2, $VertexAnnotations]}, Identity] //
         MapAt[DeleteDuplicatesBy[First] @* DeleteCases[_ -> None] @* Catenate, {Key[#]} & /@ $VertexAnnotations] //
