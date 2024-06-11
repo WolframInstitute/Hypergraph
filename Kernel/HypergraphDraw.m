@@ -117,12 +117,12 @@ HypergraphDraw[Dynamic[hg_Symbol], dynamicSelection : Dynamic[selection_Symbol] 
                                 InputField[Dynamic[edgeLabel, (edgeLabel = #; edgeRelabel[]) &], FieldSize -> Scaled[.005], ReturnEntersInput -> True],
                                 ShowSelection -> True
                             ],
-                            DynamicModule[{label = edgeLabels[[edgeId]]}, PopupMenu[Dynamic[label, (addAction["EdgeRelabel"[{edgeId}, {edgeLabel}, #]]; label = #) &], OptionValue["EdgeLabels"]]]
+                            DynamicModule[{label = edgeLabels[[edgeId]]}, PopupMenu[Dynamic[label, (addAction["EdgeRelabel"[edgeSelection, edgeLabels[[edgeSelection]], #]]; label = #) &], OptionValue["EdgeLabels"]]]
                         }],
                         Pane[
                             DynamicModule[{symmetry = edgeSymmetries[[edgeId]]},
                                 RadioButtonBar[
-                                    Dynamic[symmetry, (symmetry = #; edgeSymmetries[[edgeId]] = #; renderEdges[{edgeId}]) &],
+                                    Dynamic[symmetry, (symmetry = #; edgeSymmetries[[edgeSelection]] = #; renderEdges[edgeSelection]) &],
                                     {"Unordered", "Cyclic", "Ordered"}
                                 ]
                             ],
