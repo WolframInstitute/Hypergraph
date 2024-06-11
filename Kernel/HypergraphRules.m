@@ -134,7 +134,7 @@ PatternRuleToMultiReplaceRule[rule : _[lhs_List | Verbatim[HoldPattern][lhs_List
 
 
 Options[HypergraphRuleApply] = Join[
-    {"Bindings" -> Automatic, "Symmetry" -> Automatic, "Canonicalize" -> Automatic},
+    {"BindingsMethod" -> Automatic, "SymmetryMethod" -> Automatic, "CanonicalizeMethod" -> Automatic, "MatchesMethod" -> Automatic},
     Options[ResourceFunction["MultiReplace"]]
 ]
 
@@ -142,9 +142,10 @@ HypergraphRuleApply[input_, output_, hg_, opts : OptionsPattern[]] := Block[{
     vertices = VertexList[hg], edges = EdgeListTagged[hg],
     inputVertices = VertexList[input], outputVertices = VertexList[output],
     inputEdges = EdgeList[input], outputEdges = EdgeListTagged[output],
-    bindingsMethod = Replace[OptionValue["Bindings"], {First -> (Take[#, UpTo[1]] &), _ -> Identity}],
-    symmetryMethod = Replace[OptionValue["Symmetry"], {Automatic -> (_ &), _ -> Identity}],
-    canonicalizeMethod = Replace[OptionValue["Canonicalize"], {
+    bindingsMethod = Replace[OptionValue["BindingsMethod"], {First -> (Take[#, UpTo[1]] &), _ -> Identity}],
+    symmetryMethod = Replace[OptionValue["SymmetryMethod"], {Automatic -> (_ &), _ -> Identity}],
+    matchesMethod = Replace[OptionValue["MatchesMethod"], {Automatic -> Identity}],
+    canonicalizeMethod = Replace[OptionValue["CanonicalizeMethod"], {
         Automatic -> Identity,
         Full -> DeleteDuplicatesBy[Sort /@ #[[{"MatchVertices", "MatchEdgePositions", "NewVertices", "NewEdges", "DeletedVertices"}]] &]
     }],
@@ -159,7 +160,7 @@ HypergraphRuleApply[input_, output_, hg_, opts : OptionsPattern[]] := Block[{
 },
     outputSymmetry = Thread[outputEdges -> EdgeSymmetry[output]];
     {patterns, labelPatterns} = First[#, {}] & /@ Reap[
-        matches = Thread @ Keys @ ResourceFunction["MultiReplace"][
+        matches = Thread @ Keys @ matchesMethod @ ResourceFunction["MultiReplace"][
             ToLabeledEdges[hg],
             MapAt[symmetryMethod, ToLabeledPatternEdges[input], {1, All, 2, 1}],
             {1},
