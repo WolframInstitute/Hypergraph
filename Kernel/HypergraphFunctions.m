@@ -14,7 +14,7 @@ PackageExport["ConnectedHypergraphQ"]
 PackageExport["HypergraphArityReduce"]
 PackageExport["HypergraphUnion"]
 PackageExport["HypergraphHadamardProduct"]
-PackageExport["UnorderedHypergraphToGraph"]
+PackageExport["OrderedHypergraphToGraph"]
 
 PackageScope["CanonicalEdge"]
 
@@ -78,11 +78,12 @@ CanonicalEdgeTagged[edge_List -> tag_, symm : {___Cycles}] := CanonicalEdge[edge
 
 Options[CanonicalHypergraph] = {Method -> Automatic, "Annotations" -> False}
 
-CanonicalHypergraph[hg_ ? HypergraphQ, opts : OptionsPattern[]] := Enclose @ Block[{
+CanonicalHypergraph[hg_ ? HypergraphQ, OptionsPattern[]] := Enclose @ Block[{
 	vs = VertexList[hg], edges = EdgeList[hg], tags = EdgeTags[hg],
     taggedEdgePositions, emptyEdgePositions,
-	orderedEdges, counts, iso, emptyEdges, newEdges, ordering,
-	tagVertices, freeVertices, newFreeVertices
+	orderedEdges, counts, iso, emptyEdges, newEdges, ordering, edgeMap,
+	tagVertices, freeVertices, newFreeVertices,
+    edgeAnnotations, vertexAnnotations
 },
 	tagVertices = Catenate @ Reap[orderedEdges = MapThread[
 		{edge, tag, symm} |-> With[{tagVertex = If[tag === None, None, Sow[Unique[]]]},
@@ -97,7 +98,11 @@ CanonicalHypergraph[hg_ ? HypergraphQ, opts : OptionsPattern[]] := Enclose @ Blo
     edges = Delete[edges, taggedEdgePositions];
     tags = Delete[tags, Complement[emptyEdgePositions, taggedEdgePositions]];
 	emptyEdges = Cases[edges, {}];
-	iso = Confirm @ Replace[OptionValue[Method], {Automatic | "Graph" -> CanonicalHypergraphGraphIsomorphism, "Combinatorial" -> ResourceFunction["FindCanonicalHypergraphIsomorphism"]}][orderedEdges];
+	iso = Confirm @ Replace[OptionValue[Method], {
+        Automatic | "Graph" -> CanonicalHypergraphGraphIsomorphism,
+        "MultiGraph" -> CanonicalHypergraphMultiGraphIsomorphism,
+        "Combinatorial" -> ResourceFunction["FindCanonicalHypergraphIsomorphism"]
+    }][orderedEdges];
     iso = KeySelect[iso, ! MemberQ[tagVertices, #] &];
     newEdges = First @* Sort /@ TakeList[Map[Replace[iso], orderedEdges, {2}], counts];
     ordering = Ordering[newEdges];
@@ -105,23 +110,27 @@ CanonicalHypergraph[hg_ ? HypergraphQ, opts : OptionsPattern[]] := Enclose @ Blo
     freeVertices = DeleteElements[vs, Keys[iso]];
     newFreeVertices = Max[iso] + Range[Length @ freeVertices];
     iso = <|iso, Thread[freeVertices -> newFreeVertices]|>;
+    edgeMap = Thread[EdgeListTagged[hg] -> newEdges];
+    If[ TrueQ[OptionValue["Annotations"]],
+        edgeAnnotations = $EdgeAnnotations;
+        vertexAnnotations = $VertexAnnotations
+        ,
+        edgeAnnotations = {"EdgeSymmetry"};
+        vertexAnnotations = {}
+    ];
     Hypergraph[
         Sort[Values[iso]],
         Join[emptyEdges, newEdges],
-        If[ TrueQ[OptionValue["Annotations"]],
-            With[{keys = Keys[AbsoluteOptions[hg]]},
-                KeySort @ Association @ AbsoluteOptions[hg] //
-                    MapAt[
-                        Sort @ mapEdgeOptions[Replace[#, iso, {1}] &, #] &,
-                        {Key[#]} & /@ Intersection[$EdgeAnnotations, keys]
-                    ] //
-                    MapAt[
-                        Sort @ mapVertexOptions[Replace[#, iso] &, #] &,
-                        {Key[#]} & /@ Intersection[$VertexAnnotations, keys]
-                    ] //
-                    Normal
-            ],
-            {}
+        With[{annotations = KeySort @ KeyTake[Association @ AbsoluteOptions[hg], Join[edgeAnnotations, vertexAnnotations]]},
+            annotations // MapAt[
+                Sort @ mapEdgeOptions[Replace[#, edgeMap] &, #] &,
+                {Key[#]} & /@ Intersection[edgeAnnotations, Keys[annotations]]
+            ] //
+            MapAt[
+                Sort @ mapVertexOptions[Replace[#, iso] &, #] &,
+                {Key[#]} & /@ Intersection[vertexAnnotations, Keys[annotations]]
+            ] //
+            Normal
         ]
     ]
 ]
@@ -129,9 +138,15 @@ CanonicalHypergraph[hg_ ? HypergraphQ, opts : OptionsPattern[]] := Enclose @ Blo
 CanonicalHypergraph[args___] := CanonicalHypergraph[Hypergraph[args]]
 
 
-CanonicalHypergraphGraphIsomorphism[edges_] := Enclose @ Catch @ Block[{g = UnorderedHypergraphToGraph[edges], cg, iso},
+CanonicalHypergraphGraphIsomorphism[edges_] := Enclose @ Catch @ Block[{g = OrderedHypergraphToGraph[edges], cg, iso},
 	cg = Check[CanonicalGraph[g], Throw[ResourceFunction["FindCanonicalHypergraphIsomorphism"][edges]], CanonicalGraph::ngen];
 	iso = Sort @ Confirm @ First[FindGraphIsomorphism[g, cg]];
+	KeyMap[Last] @ KeySelect[iso, MatchQ[{"Vertex", _}]]
+]
+
+CanonicalHypergraphMultiGraphIsomorphism[edges_] := Enclose @ Catch @ Block[{g = OrderedHypergraphToGraph[edges], mult, iso},
+    mult = ResourceFunction["EdgeMultiplicity"][g];
+    iso = Sort @ Confirm @ First @ FindGraphIsomorphism[Keys[mult], CanonicalGraph[Keys[mult]]];
 	KeyMap[Last] @ KeySelect[iso, MatchQ[{"Vertex", _}]]
 ]
 
@@ -359,16 +374,17 @@ HypergraphHadamardProduct[h1_Hypergraph, h2_Hypergraph] := Hypergraph[
 HypergraphHadamardProduct[hs___Hypergraph] := Fold[HypergraphHadamardProduct, {hs}]
 
 
-UnorderedHypergraphToGraph[hg_ ? HypergraphQ] := DirectedGraph @ Graph[
+(* SetReplace`HypergraphToGraph[g, "StructurePreserving"] *)
+
+OrderedHypergraphToGraph[hg_ ? HypergraphQ] := TransitiveReductionGraph @ Graph[
     {"Vertex", #} & /@ VertexList[hg],
     Catenate @ MapIndexed[{edge, i} |->
         With[{edges = {"Hyperedge", i[[1]], #} & /@ edge},
-            Join[UndirectedEdge @@@ Subsets[edges, {2}], # -> {"Vertex", #[[3]]} & /@ edges]
+            Join[DirectedEdge @@@ Subsets[edges, {2}], # -> {"Vertex", #[[3]]} & /@ edges]
         ],
         EdgeList[hg]
-    ],
-    VertexLabels -> Automatic
+    ]
 ]
 
-UnorderedHypergraphToGraph[args___] := Enclose @ UnorderedHypergraphToGraph[ConfirmBy[Hypergraph[args], HypergraphQ]]
+OrderedHypergraphToGraph[args___] := Enclose @ OrderedHypergraphToGraph[ConfirmBy[Hypergraph[args], HypergraphQ]]
 
