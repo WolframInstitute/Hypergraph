@@ -181,7 +181,7 @@ SimpleHypergraphPlot[h_Hypergraph, plotOpts : OptionsPattern[]] := Enclose @ Blo
     If[size == 0, size = 1];
     vertexLabelOffsets = - 2 Normalize[Mean[Threaded[#] - Nearest[allPoints, #, 5]]] & /@ vertexEmbedding;
     makeEdge[edge_, tag_, symm_, i_, initPrimitive_, lines_ : {}] := Block[{
-        primitive = If[RegionQ[initPrimitive], Identity, DiscretizeGraphics @* ReplaceAll[Arrow[l_] :> l]] @ initPrimitive,
+        primitive = If[RegionQ[initPrimitive], DiscretizeRegion, DiscretizeGraphics @* ReplaceAll[Arrow[l_] :> l]] @ initPrimitive,
         pos,
         edgeTagged, style, lineStyle, label, labelStyle, labelPrimitive
     },
@@ -292,7 +292,7 @@ SimpleHypergraphPlot[h_Hypergraph, plotOpts : OptionsPattern[]] := Enclose @ Blo
                 Switch[dim,
                     2, Sow[addArrows[primitive = FilledCurve[curves]], "Primitive"],
                     3, Block[{pts, region},
-                        pts = MeshCoordinates @ DiscretizeGraphics @ curves;
+                        pts = Catenate[MeshCoordinates @* DiscretizeGraphics /@ curves];
                         region = DiscretizeRegion[#, MaxCellMeasure -> {"Area" -> Area[#] / (Length[pts] + 1)}] & @
                             Polygon[Prepend[First[pts]] /@ Partition[pts[[2 ;; -2]], 2, 1]];
                         Sow[addArrows[primitive = Quiet @ areaGradientDescent[region, .1, 20]], "Primitive"]
