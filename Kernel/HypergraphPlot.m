@@ -133,7 +133,7 @@ SimpleHypergraphPlot[h_Hypergraph, plotOpts : OptionsPattern[]] := Enclose @ Blo
                             ]
                         ]
                     ],
-                    longEdges
+                    Catenate @ Replace[Gather[longEdges], {edge_, ___} /; ! DuplicateFreeQ[edge] :> {edge}, {1}]
                 ]
             ]
         ],
@@ -181,7 +181,7 @@ SimpleHypergraphPlot[h_Hypergraph, plotOpts : OptionsPattern[]] := Enclose @ Blo
     If[size == 0, size = 1];
     vertexLabelOffsets = - 2 Normalize[Mean[Threaded[#] - Nearest[allPoints, #, 5]]] & /@ vertexEmbedding;
     makeEdge[edge_, tag_, symm_, i_, initPrimitive_, lines_ : {}] := Block[{
-        primitive = Chop @ If[RegionQ[initPrimitive], DiscretizeRegion, DiscretizeGraphics @* ReplaceAll[Arrow[l_] :> l]] @ Chop @ initPrimitive,
+        primitive = Chop @ If[RegionQ[initPrimitive], DiscretizeRegion[#, MaxCellMeasure -> 0.1] &, DiscretizeGraphics @* ReplaceAll[Arrow[l_] :> l]] @ Chop @ initPrimitive,
         pos,
         edgeTagged, style, lineStyle, label, labelStyle, labelPrimitive
     },
@@ -281,6 +281,7 @@ SimpleHypergraphPlot[h_Hypergraph, plotOpts : OptionsPattern[]] := Enclose @ Blo
                         AppendTo[counts, # -> c];
                         Lookup[edgeEmbedding, #][[c]]
                     ] & /@ (DirectedEdge[##, edge] & @@@ Partition[edge, 2, 1, If[edgeType === "Cyclic", 1, None]]);
+                    If[! DuplicateFreeQ[edge], points = MapAt[ScalingTransform[ConstantArray[1 + Log10[j], dim], Mean[#]], #, {2 ;; -2}] & /@ points];
                     curves = Catenate[GraphComputation`GraphElementData["Line"][#, None] /. BezierCurve -> BSplineCurve & /@ points];
                     lines = Insert[#[[2]], #[[1, 1, -1]], {1, 1}] & /@ Partition[curves, 2, 1, 1];
                 ];
