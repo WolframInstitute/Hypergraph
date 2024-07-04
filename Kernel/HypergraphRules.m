@@ -27,7 +27,7 @@ ToLabeledEdges[vertexLabels_Association, edges : {___List}, makePattern_ : False
                     Sow[Pattern[#, _] & @ Symbol["\[FormalV]" <> StringDelete[ToString[#1], Except[WordCharacter]]], "VertexPattern"],
                     Sow[Replace[#2, s_Symbol :> Pattern @@ {s, _}], "LabelPattern"]
                 ],
-                Labeled[#1, Labeled[#2, Unique[]]]
+                Labeled[#1, #2]
             ] &, vertexLabels],
         {"VertexPattern", "LabelPattern"}
     ][[2]];

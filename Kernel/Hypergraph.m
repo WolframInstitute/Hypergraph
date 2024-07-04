@@ -155,11 +155,8 @@ hg : Hypergraph[edgeSpec_, opts : OptionsPattern[]] := Enclose @ With[{edges = C
 Hypergraph[he_Hyperedges ? HyperedgesQ, opts : OptionsPattern[]] := Hypergraph[he["VertexList"], he, opts]
 
 
-Hypergraph[vs_List, he_Hyperedges ? HyperedgesQ, opts : OptionsPattern[]] := With[{
-	vertices = Replace[vs, (Labeled | Style | Annotation)[v_, __] :> v, {1}]
-},
-	Hypergraph[Join[vs, DeleteElements[he["VertexList"], vertices]], he, opts] /; ! ContainsAll[vertices, he["VertexList"]]
-]
+Hypergraph[vs_List, he_Hyperedges ? HyperedgesQ, opts : OptionsPattern[]] :=
+	Hypergraph[Union[vs, he["VertexList"]], he, opts] /; ! ContainsAll[vs, he["VertexList"]]
 
 hg : Hypergraph[vs_List, he_Hyperedges ? HyperedgesQ, opts : OptionsPattern[]] /; System`Private`HoldNotValidQ[hg] := With[{
 	vertices = DeleteDuplicates @ Replace[vs, (Labeled | Style | Annotation)[v_, __] :> v, {1}]
