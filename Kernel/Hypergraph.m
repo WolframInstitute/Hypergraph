@@ -231,10 +231,11 @@ applyRules[expr_, rules_, length_Integer, default_] :=
 
 HypergraphProp[hg_, "AbsoluteOptions", patt___] := Block[{
 	vertices = VertexList[hg], edges = EdgeListTagged[hg],
-	opts = Join[Options[hg, patt], Options[Hypergraph]],
+	themeOpts, opts = Join[Options[hg, patt], Options[Hypergraph]],
 	annotationRules, vertexAnnotations, edgeAnnotations,
 	edgeCounts
 },
+	themeOpts = FilterRules[opts, PlotTheme];
 	opts = Normal @ GroupBy[
 		FixedPoint[Replace[#, (PlotTheme -> theme_) :> Splice @ Lookup[$HypergraphPlotThemes, theme, {}], {1}] &, opts],
 		First,
@@ -274,7 +275,8 @@ HypergraphProp[hg_, "AbsoluteOptions", patt___] := Block[{
 			],
 			AssociationThread[edgeAnnotations -> Lookup[annotationRules, edgeAnnotations]]
 		],
-		DeleteDuplicatesBy[First] @ FilterRules[opts, Except[Join[vertexAnnotations, edgeAnnotations]]]
+		DeleteDuplicatesBy[First] @ FilterRules[opts, Except[Join[vertexAnnotations, edgeAnnotations]]],
+		themeOpts
 	]
 ]
 
