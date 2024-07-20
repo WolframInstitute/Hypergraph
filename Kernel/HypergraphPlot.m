@@ -156,7 +156,7 @@ SimpleHypergraphPlot[h_Hypergraph, plotOpts : OptionsPattern[]] := Enclose @ Blo
     ], GraphQ];
     {vertexEmbedding, edgeEmbedding} = First[#, {}] & /@ Reap[plot = GraphPlot[graph], {"v", "e"}][[2]];
 	edgeEmbedding = Join[Merge[edgeEmbedding, Identity], Association[vertexEmbedding][[Key /@ nullEdges]]];
-    vertexEmbedding = Association[vertexEmbedding][[Key /@ vertices]];
+    vertexEmbedding = Association[vertexEmbedding];
     If[ dim == 2 && vertexCoordinates === Automatic,
         With[{vertexRearange =
             Catenate[
@@ -172,6 +172,7 @@ SimpleHypergraphPlot[h_Hypergraph, plotOpts : OptionsPattern[]] := Enclose @ Blo
             edgeEmbedding = Association @ KeyValueMap[#1 -> If[MatchQ[#2, {__Real}], #2, ReplacePart[#2, Thread[{{_, 1}, {_, -1}} -> Lookup[vertexEmbedding, Extract[#1, {{1}, {2}}]]]]] &] @ edgeEmbedding;
         ]
     ];
+    vertexEmbedding = vertexEmbedding[[Key /@ vertices]];
     allPoints = DeleteDuplicates @ DeleteMissing @ Join[Values[vertexEmbedding], Catenate[If[MatchQ[#, {__Real}], {#}, Flatten[#, 1]] & /@ Values[edgeEmbedding]]];
     bounds = Lookup[AbsoluteOptions[graph, PlotRange], PlotRange];
     corner = bounds[[All, 1]];

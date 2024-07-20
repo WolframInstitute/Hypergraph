@@ -179,7 +179,7 @@ hg : Hypergraph[vs_List, he_Hyperedges ? HyperedgesQ, opts : OptionsPattern[]] /
 				#[[1, 2]]
 			] &
 		] 
-	] /; ContainsAll[vertices, he["VertexList"]]
+	] /; ContainsAll[vs, he["VertexList"]]
 ]
 
 
