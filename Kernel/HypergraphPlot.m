@@ -281,10 +281,10 @@ SimpleHypergraphPlot[h_Hypergraph, plotOpts : OptionsPattern[]] := Enclose @ Blo
                     points = With[{c = Lookup[counts, #, 0] + 1},
                         AppendTo[counts, # -> c];
                         Lookup[edgeEmbedding, #][[c]]
-                    ] & /@ (DirectedEdge[##, edge] & @@@ Partition[edge, 2, 1, If[edgeType === "Cyclic", 1, None]]);
+                    ] & /@ (DirectedEdge[##, edge] & @@@ Partition[edge, 2, 1, 1]);
                     If[! DuplicateFreeQ[edge], points = MapAt[ScalingTransform[ConstantArray[1 + Log10[j], dim], Mean[#]], #, {2 ;; -2}] & /@ points];
                     curves = Catenate[GraphComputation`GraphElementData["Line"][#, None] /. BezierCurve -> BSplineCurve & /@ points];
-                    lines = Insert[#[[2]], #[[1, 1, -1]], {1, 1}] & /@ Partition[curves, 2, 1, 1];
+                    lines = Insert[#[[2]], #[[1, 1, -1]], {1, 1}] & /@ If[edgeType === "Cyclic", Identity, Most] @ Partition[curves, 2, 1, -1];
                 ];
                 symm = edgeSymmetries[[i]];
                 addArrows = If[ edgeArrowsQ || MatchQ[symm, "Ordered" | "Directed" | {}],
