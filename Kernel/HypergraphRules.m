@@ -19,7 +19,7 @@ makeVertexLabelPattern[vertex_, label_, makePattern_ : False] := Replace[label, 
     _ :> label
 }]
 
-ToLabeledEdges[vertexLabels_Association, edges : {___List}, makePattern_ : False] := Block[{labels, patterns, varSymbols, labeledEdges},
+ToLabeledEdges[vertexLabels_Association, edges : {___List}, makePattern_ : False, vertexCondition_ : True] := Block[{labels, patterns, varSymbols, labeledEdges},
     {patterns, labels} = Reap[
         varSymbols = Association @ KeyValueMap[#1 ->
             If[ TrueQ[makePattern],
@@ -35,13 +35,16 @@ ToLabeledEdges[vertexLabels_Association, edges : {___List}, makePattern_ : False
     Scan[Sow[#, "VertexPattern"] &, First[patterns, {}]];
     labeledEdges = Replace[edges, varSymbols, {2}];
     If[ TrueQ[makePattern],
-        Condition[labeledEdges, UnsameQ[##]] & @@
-            DeleteDuplicates[First[labels, {}] /. Verbatim[Pattern][label_, _] :> label],
+        If[ TrueQ[vertexCondition],
+            Function[Null, Condition[labeledEdges, UnsameQ[##]], HoldAll] @@
+                DeleteDuplicates[Hold @@ First[labels, {}] /. Verbatim[Pattern][label_, _] :> label],
+            Condition[labeledEdges, True]
+        ],
         labeledEdges
     ]
 ]
 
-ToLabeledEdges[hg_ ? HypergraphQ, makePattern_ : False] := Block[{
+ToLabeledEdges[hg_ ? HypergraphQ, makePattern_ : False, vertexCondition_ : True, edgeCondition_ : False] := Block[{
     vs = VertexList[hg],
     edges = EdgeList[hg],
     taggedEdges = EdgeListTagged[hg],
@@ -53,7 +56,7 @@ ToLabeledEdges[hg_ ? HypergraphQ, makePattern_ : False] := Block[{
 },
     vertexLabels = Association @ Map[Apply[#1 -> makeVertexLabelPattern[#1, #2, makePattern] &], Lookup[opts, VertexLabels]];
     edgeLabels = Values[Lookup[opts, EdgeLabels]];
-    MapAt[
+    labeledEdges = MapAt[
         MapIndexed[
             With[{edge = #1, symm = edgeSymmetry[[#2[[1]]]], tag = edgeTags[[#2[[1]]]],
                 label = Replace[edgeLabels[[#2[[1]]]], Placed[l_, _] :> l]
@@ -61,7 +64,7 @@ ToLabeledEdges[hg_ ? HypergraphQ, makePattern_ : False] := Block[{
                 Labeled[edge,
                     {
                         symm,
-                        Replace[
+                        ReplaceAll[
                             If[makePattern, Replace[label, {None -> _, s_Symbol :> Pattern @@ {s, _}}], label],
                             {"EdgeTag" -> tag, "EdgeSymmetry" -> symm, Automatic | "Name" -> edge}
                         ]
@@ -69,12 +72,17 @@ ToLabeledEdges[hg_ ? HypergraphQ, makePattern_ : False] := Block[{
                 ]
             ] &
         ],
-        ToLabeledEdges[vertexLabels, edges, makePattern],
+        ToLabeledEdges[vertexLabels, edges, makePattern, vertexCondition],
         If[makePattern, {1}, {{}}]
+    ];
+    If[ TrueQ[makePattern] && TrueQ[edgeCondition],
+        Function[Null, ReplaceAt[labeledEdges, x_ :> x && UnsameQ[##], {2}], HoldAll] @@
+            DeleteDuplicates[Hold @@ labeledEdges[[1, All, 2, 2]] /. Verbatim[Pattern][label_, _] :> label],
+        labeledEdges
     ]
 ]
 
-ToLabeledPatternEdges[hg_ ? HypergraphQ] := Block[{
+ToLabeledPatternEdges[hg_ ? HypergraphQ, vertexCondition_ : True, edgeCondition_ : False] := Block[{
     edges = EdgeList[hg],
     simpleEdgeSymmetry
 },
@@ -98,7 +106,7 @@ ToLabeledPatternEdges[hg_ ? HypergraphQ] := Block[{
                 {1}
             ]
         ]
-    ] & @ ToLabeledEdges[hg, True]
+    ] & @ ToLabeledEdges[hg, True, vertexCondition, edgeCondition]
 ]
 
 
@@ -134,7 +142,10 @@ PatternRuleToMultiReplaceRule[rule : _[lhs_List | Verbatim[HoldPattern][lhs_List
 
 
 Options[HypergraphRuleApply] = Join[
-    {"BindingsMethod" -> Automatic, "SymmetryMethod" -> Automatic, "CanonicalizeMethod" -> Automatic, "MatchesMethod" -> Automatic},
+    {
+        "BindingsMethod" -> Automatic, "SymmetryMethod" -> Automatic, "CanonicalizeMethod" -> Automatic, "MatchesMethod" -> Automatic,
+        "DistinctVertexLabel" -> True, "DistinctEdgeLabel" -> False
+    },
     Options[ResourceFunction["MultiReplace"]]
 ]
 
@@ -149,6 +160,8 @@ HypergraphRuleApply[input_, output_, hg_, opts : OptionsPattern[]] := Block[{
         Automatic -> Identity,
         Full -> DeleteDuplicatesBy[Sort /@ #[[{"MatchVertices", "MatchEdgePositions", "NewVertices", "NewEdges", "DeletedVertices"}]] &]
     }],
+    vertexConditionQ = TrueQ[OptionValue["DistinctVertexLabel"]],
+    edgeConditionQ = TrueQ[OptionValue["DistinctEdgeLabel"]],
     patterns, labelPatterns,
     annotationRules, outputAnnotationRules,
     vertexAnnotations, outputVertexAnnotations,
@@ -162,7 +175,7 @@ HypergraphRuleApply[input_, output_, hg_, opts : OptionsPattern[]] := Block[{
     {patterns, labelPatterns} = First[#, {}] & /@ Reap[
         matches = Thread @ Keys @ matchesMethod @ ResourceFunction["MultiReplace"][
             ToLabeledEdges[hg],
-            MapAt[symmetryMethod, ToLabeledPatternEdges[input], {1, All, 2, 1}],
+            MapAt[symmetryMethod, ToLabeledPatternEdges[input, vertexConditionQ, edgeConditionQ], {1, All, 2, 1}],
             {1},
             FilterRules[{opts}, Options[ResourceFunction["MultiReplace"]]],
             "PatternSubstitutions" -> True,
