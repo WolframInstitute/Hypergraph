@@ -144,7 +144,7 @@ PatternRuleToMultiReplaceRule[rule : _[lhs_List | Verbatim[HoldPattern][lhs_List
 Options[HypergraphRuleApply] = Join[
     {
         "BindingsMethod" -> Automatic, "SymmetryMethod" -> Automatic, "CanonicalizeMethod" -> Automatic, "MatchesMethod" -> Automatic,
-        "DistinctVertexLabel" -> True, "DistinctEdgeLabel" -> False
+        "DistinctVertexLabels" -> True, "DistinctEdgeLabels" -> False
     },
     Options[ResourceFunction["MultiReplace"]]
 ]
@@ -160,8 +160,8 @@ HypergraphRuleApply[input_, output_, hg_, opts : OptionsPattern[]] := Block[{
         Automatic -> Identity,
         Full -> DeleteDuplicatesBy[Sort /@ #[[{"MatchVertices", "MatchEdgePositions", "NewVertices", "NewEdges", "DeletedVertices"}]] &]
     }],
-    vertexConditionQ = TrueQ[OptionValue["DistinctVertexLabel"]],
-    edgeConditionQ = TrueQ[OptionValue["DistinctEdgeLabel"]],
+    vertexConditionQ = TrueQ[OptionValue["DistinctVertexLabels"]],
+    edgeConditionQ = TrueQ[OptionValue["DistinctEdgeLabels"]],
     patterns, labelPatterns,
     annotationRules, outputAnnotationRules,
     vertexAnnotations, outputVertexAnnotations,
