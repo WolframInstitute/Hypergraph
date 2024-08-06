@@ -316,8 +316,8 @@ SimpleHypergraphPlot[h_Hypergraph, plotOpts : OptionsPattern[]] := Enclose @ Blo
         },
             edgesWithTags = Thread[{edges, edgeTags}];
             counts = Merge[{Counts[edgesWithTags], First[#] -> Length[#] & /@ GatherBy[edgesWithTags, First /* Sort]}, Identity];
-            MapIndexed[{edgeWithTag, i} |-> With[{j = Lookup[counter, Key[edgeWithTag], 0] + 1},
-                    counter[edgeWithTag] = j;
+            MapIndexed[{edgeWithTag, i} |-> With[{j = Lookup[counter, Key[edgeWithTag[[1]]], 0] + 1},
+                    counter[edgeWithTag[[1]]] = j;
                     renderEdge[edgeWithTag -> counts[edgeWithTag], i[[1]], j]
                 ],
                 edgesWithTags
