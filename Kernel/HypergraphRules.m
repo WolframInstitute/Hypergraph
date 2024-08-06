@@ -154,7 +154,7 @@ HypergraphRuleApply[input_, output_, hg_, opts : OptionsPattern[]] := Block[{
     inputVertices = VertexList[input], outputVertices = VertexList[output],
     inputEdges = EdgeList[input], outputEdges = EdgeListTagged[output],
     bindingsMethod = Replace[OptionValue["BindingsMethod"], {First -> (Take[#, UpTo[1]] &), _ -> Identity}],
-    symmetryMethod = Replace[OptionValue["SymmetryMethod"], {Automatic -> (_ &), _ -> Identity}],
+    symmetryMethod = Replace[OptionValue["SymmetryMethod"], {Automatic -> Identity, _ -> (_ &)}],
     matchesMethod = Replace[OptionValue["MatchesMethod"], {Automatic -> Identity}],
     canonicalizeMethod = Replace[OptionValue["CanonicalizeMethod"], {
         Automatic -> Identity,
