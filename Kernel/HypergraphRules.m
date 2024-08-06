@@ -144,7 +144,7 @@ PatternRuleToMultiReplaceRule[rule : _[lhs_List | Verbatim[HoldPattern][lhs_List
 Options[HypergraphRuleApply] = Join[
     {
         "BindingsMethod" -> Automatic, "SymmetryMethod" -> Automatic, "CanonicalizeMethod" -> Automatic, "MatchesMethod" -> Automatic,
-        "DistinctVertexLabels" -> True, "DistinctEdgeLabels" -> False
+        "DistinctVertexLabels" -> True, "DistinctEdgeLabels" -> True
     },
     Options[ResourceFunction["MultiReplace"]]
 ]
