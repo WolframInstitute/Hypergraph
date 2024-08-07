@@ -122,7 +122,7 @@ CanonicalHypergraph[hg_ ? HypergraphQ, OptionsPattern[]] := Enclose @ Block[{
         Join[emptyEdges, newEdges],
         With[{annotations = KeySort @ KeyTake[Association @ AbsoluteOptions[hg], Join[edgeAnnotations, vertexAnnotations]]},
             annotations // MapAt[
-                Join[Cases[#, HoldPattern[{} -> _]], mapEdgeOptions[Replace[#, iso, 1] &, Cases[#, Except[{} -> _]]][[ordering]]] &,
+                Join[Cases[#, HoldPattern[{} -> _]], Thread[newEdges -> Cases[#, (Except[{}] -> x_) :> x][[ordering]]]] &,
                 {Key[#]} & /@ Intersection[edgeAnnotations, Keys[annotations]]
             ] //
             MapAt[
@@ -218,7 +218,7 @@ CanonicalHypergraphRule[HoldPattern[HypergraphRule[in_Hypergraph, out_Hypergraph
             Join[emptyEdgesIn, newEdgesIn],
             With[{annotations = KeySort @ KeyTake[Association @ AbsoluteOptions[in], Join[edgeAnnotations, vertexAnnotations]]},
                 annotations // MapAt[
-                        Join[Cases[#, HoldPattern[{} -> _]], mapEdgeOptions[Replace[#, iso, {1}] &, Cases[#, Except[{} -> _]]][[orderingIn]]] &,
+                        Join[Cases[#, HoldPattern[{} -> _]], Thread[newEdgesIn -> Cases[#, Except[{}] -> x_ :> x][[orderingIn]]]] &,
                         {Key[#]} & /@ Intersection[edgeAnnotations, Keys[annotations]]
                     ] //
                     MapAt[
@@ -233,7 +233,7 @@ CanonicalHypergraphRule[HoldPattern[HypergraphRule[in_Hypergraph, out_Hypergraph
             Join[emptyEdgesOut, newEdgesOut],
             With[{annotations = KeySort @ KeyTake[Association @ AbsoluteOptions[out], Join[edgeAnnotations, vertexAnnotations]]},
                 annotations // MapAt[
-                        Join[Cases[#, HoldPattern[{} -> _]], mapEdgeOptions[Replace[#, iso, {1}] &, Cases[#, Except[{} -> _]]][[orderingOut]]] &,
+                        Join[Cases[#, HoldPattern[{} -> _]], Thread[newEdgesOut -> Cases[#, Except[{}] -> x_ :> x][[orderingOut]]]] &,
                         {Key[#]} & /@ Intersection[edgeAnnotations, Keys[annotations]]
                     ] //
                     MapAt[
