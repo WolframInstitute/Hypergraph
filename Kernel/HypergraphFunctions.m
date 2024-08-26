@@ -122,7 +122,11 @@ CanonicalHypergraph[hg_ ? HypergraphQ, OptionsPattern[]] := Enclose @ Block[{
         Join[emptyEdges, newEdges],
         With[{annotations = KeySort @ KeyTake[Association @ AbsoluteOptions[hg], Join[edgeAnnotations, vertexAnnotations]]},
             annotations // MapAt[
-                Join[Cases[#, HoldPattern[{} -> _]], Thread[newEdges -> Cases[#, (Except[{}] -> x_) :> x][[ordering]]]] &,
+                Catenate @ Values @ GroupBy[
+                    Join[Cases[#, HoldPattern[{} -> _]], Thread[newEdges -> Cases[#, (Except[{}] -> x_) :> x][[ordering]]]],
+                    First,
+                    Sort
+                 ] &,
                 {Key[#]} & /@ Intersection[edgeAnnotations, Keys[annotations]]
             ] //
             MapAt[
