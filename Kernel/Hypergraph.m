@@ -81,7 +81,12 @@ Hyperedges[1] := Hyperedges[{}]
 
 (he : HoldPattern[Hyperedges[edges___]])["EdgeList"] /; HyperedgesQ[he] := Replace[{edges}, (edge_ -> _) :> Developer`ToList[edge], {1}]
 
-he_Hyperedges["VertexList"] /; HyperedgesQ[he] := DeleteDuplicates @ Catenate @ he["EdgeList"]
+annotationHead = Labeled | Style | Annotation
+stripAnnotations[expr_] := Replace[expr, annotationHead[x_, __] :> x, If[ListQ[expr], 1, {}]]
+
+he_Hyperedges["VertexList"] /; HyperedgesQ[he] := DeleteDuplicates @ stripAnnotations @ Catenate @ he["EdgeList"]
+
+he_Hyperedges["AnnotatedVertexList"] /; HyperedgesQ[he] := Replace[GatherBy[Catenate @ he["EdgeList"], stripAnnotations], {{___, x : annotationHead[__], ___} :> x, {x_, ___} :> x}, 1]
 
 NonCommutativeMultiply[hs___Hyperedges ? HyperedgesQ] ^:= Hyperedges @@ Join @@@ Tuples[HyperEdges @@@ Through[{hs}["EdgeList"]]]
 
@@ -152,21 +157,21 @@ hg : Hypergraph[edgeSpec_, opts : OptionsPattern[]] := Enclose @ With[{edges = C
 	Hypergraph[edges["VertexList"], edges, opts]
 ]
 
-Hypergraph[he_Hyperedges ? HyperedgesQ, opts : OptionsPattern[]] := Hypergraph[he["VertexList"], he, opts]
+Hypergraph[he_Hyperedges ? HyperedgesQ, opts : OptionsPattern[]] := Hypergraph[he["AnnotatedVertexList"], he, opts]
 
 
 Hypergraph[vs_List, he_Hyperedges ? HyperedgesQ, opts : OptionsPattern[]] :=
-	Hypergraph[Union[vs, he["VertexList"]], he, opts] /; ! ContainsAll[vs, he["VertexList"]]
+	Hypergraph[DeleteDuplicatesBy[Join[vs, he["AnnotatedVertexList"]], stripAnnotations], he, opts] /; ! ContainsAll[stripAnnotations[vs], he["VertexList"]]
 
 hg : Hypergraph[vs_List, he_Hyperedges ? HyperedgesQ, opts : OptionsPattern[]] /; System`Private`HoldNotValidQ[hg] := With[{
-	vertices = DeleteDuplicates @ Replace[vs, (Labeled | Style | Annotation)[v_, __] :> v, {1}]
+	vertices = DeleteDuplicates @ stripAnnotations[vs]
 }, With[{
 	annotations = Replace[vs, {
 		Annotation[v_, data__] :> v -> Cases[Flatten[{data}], _Rule | _RuleDelayed],
 		Labeled[v_, label_, ___] :> v -> {VertexLabels -> label},
 		Style[v_, styles__] :> v -> {VertexStyle -> Flatten[{styles}]},
 		v_ :> v -> {}
-	}, {1}],
+	}, 1],
 	edges = he /. (Labeled | Style | Annotation)[v_, __] :> v
 },
 	System`Private`SetNoEntry @ System`Private`HoldSetValid[Hypergraph[vertices, edges, ##]] & @@
@@ -179,7 +184,7 @@ hg : Hypergraph[vs_List, he_Hyperedges ? HyperedgesQ, opts : OptionsPattern[]] /
 				#[[1, 2]]
 			] &
 		] 
-	] /; ContainsAll[vs, he["VertexList"]]
+	] /; ContainsAll[vertices, he["VertexList"]]
 ]
 
 
