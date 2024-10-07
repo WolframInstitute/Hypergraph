@@ -158,7 +158,7 @@ HypergraphDraw[Dynamic[hg_Symbol], dynamicSelection : Dynamic[selection_Symbol] 
 	down[i_] := (
         If[graphicsControlEnteredQ, Return[]];
         With[{tmpPos = mousePosition[]},
-            If[startMousePos =!= None && EuclideanDistance[tmpPos, startMousePos] < 0.01, edgeIndex++, edgeIndex = 1];
+            If[startMousePos =!= None && EuclideanDistance[tmpPos, startMousePos] < 0.01 Mean[Transpose[plotRange]], edgeIndex++, edgeIndex = 1];
             startMousePos = tmpPos
         ];
         edgeId = If[Length[#] == 0, Missing[], #[[ Mod[edgeIndex - 1, Length[#]] + 1 ]]] & @
@@ -566,7 +566,7 @@ HypergraphDraw[Dynamic[hg_Symbol], dynamicSelection : Dynamic[selection_Symbol] 
 
         }, {1}];
         edgeLabelPositions = ConstantArray[Automatic, Length[edgeLabels]];
-        edgeSymmetries = Replace[resetHg["EdgeSymmetry"], Except["Unordered" | "Cyclic" | "Ordered"] -> "Unordered", {1}];
+        edgeSymmetries = Replace[resetHg["EdgeSymmetry"], Except["Unordered" | "Cyclic" | "Ordered" | "Directed"] -> "Unordered", {1}];
         If[ color === None, color = Replace[OptionValue["InitialColor"], Automatic :> FirstCase[{vertexStyles, edgeStyles}, _ ? ColorQ, Hue[0.63, 0.66, 0.81], All]]];
         If[ Not[VertexCount[resetHg] == Length[vertices] == Length[vertexStyles] == Length[vertexLabels] && EdgeCount[resetHg] == Length[edges] == Length[edgeStyles] == Length[edgeSymmetries] == Length[edgeLabels] == Length[edgeLabelPositions]],
             Block[{
