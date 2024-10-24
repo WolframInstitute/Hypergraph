@@ -50,7 +50,8 @@ PacletObject[
         "Documentation",
         "Root" -> "Documentation",
         "Language" -> "English"
-      }
+      },
+      {"AutoCompletionData", "Root" -> "AutoCompletionData"}
     }
   |>
 ]
