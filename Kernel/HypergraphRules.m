@@ -116,7 +116,7 @@ ToPatternRules[lhs : {___List}, rhs : {___List}] := Block[{vs = Union @@ lhs, ws
     Replace[lhs, Pattern[#, _] & /@ varSymbols, {2}] :> Module[##] & [Replace[newVars, varSymbols, {1}], Replace[rhs, varSymbols, {2}]]
 ]
 
-ToPatternRules[HoldPattern[HypergraphRule[input_ ? HypergraphQ, output_ ? HypergraphQ]]] := ToPatternRules[EdgeList[input], EdgeList[output]]
+ToPatternRules[HoldPattern[HypergraphRule[input_ ? HypergraphQ, output_ ? HypergraphQ, ___]]] := ToPatternRules[EdgeList[input], EdgeList[output]]
 
 ToPatternRules[rules : {___HypergraphRule}] := ToPatternRules /@ rules
 
@@ -304,9 +304,9 @@ HypergraphRuleApply[input_, output_, hg_, opts : OptionsPattern[]] := Block[{
     ]
 ]
 
-(rule : HoldPattern[HypergraphRule[input_ ? HypergraphQ, output_ ? HypergraphQ]])[
+(rule : HoldPattern[HypergraphRule[input_ ? HypergraphQ, output_ ? HypergraphQ, ruleOpts___]])[
     hg_ ? HypergraphQ, opts : OptionsPattern[HypergraphRuleApply]
-] /; HypergraphRuleQ[rule] = HypergraphRuleApply[input, output, hg, opts]
+] /; HypergraphRuleQ[rule] = HypergraphRuleApply[input, output, hg, opts, ruleOpts]
 
 
 
@@ -358,21 +358,21 @@ HighlightRule[matches : {___Association}, hg_ ? HypergraphQ, opts : OptionsPatte
 
 
 HypergraphRuleQ[hr_HypergraphRule] := System`Private`HoldValidQ[hr] ||
-    MatchQ[Unevaluated[hr], HoldPattern[HypergraphRule[input_, output_]] /; HypergraphQ[Unevaluated[input]] && HypergraphQ[Unevaluated[output]]]
+    MatchQ[Unevaluated[hr], HoldPattern[HypergraphRule[input_, output_, ___]] /; HypergraphQ[Unevaluated[input]] && HypergraphQ[Unevaluated[output]]]
 
 HypergraphRuleQ[___] := False
 
 Options[HypergraphRule] := Options[Hypergraph]
 
-HoldPattern[HypergraphRule[input_, _] ? HypergraphRuleQ]["Input"] := input
+HoldPattern[HypergraphRule[input_, _, ___] ? HypergraphRuleQ]["Input"] := input
 
-HoldPattern[HypergraphRule[_, output_] ? HypergraphRuleQ]["Output"] := output
+HoldPattern[HypergraphRule[_, output_, ___] ? HypergraphRuleQ]["Output"] := output
 
 (hr : HoldPattern[HypergraphRule[input_, output_, opts : OptionsPattern[]]]) /; ! HypergraphRuleQ[Unevaluated[hr]] :=
     Enclose[
-        System`Private`HoldSetValid @ HypergraphRule[##] & [
-            ConfirmBy[Hypergraph[input, opts], HypergraphQ],
-            ConfirmBy[Hypergraph[output, opts], HypergraphQ]
+        System`Private`HoldSetValid @ HypergraphRule[##, FilterRules[{opts}, Options[HypergraphRuleApply]]] & [
+            ConfirmBy[Hypergraph[input, FilterRules[{opts}, Options[Hypergraph]]], HypergraphQ],
+            ConfirmBy[Hypergraph[output, FilterRules[{opts}, Options[Hypergraph]]], HypergraphQ]
         ]
     ]
 
