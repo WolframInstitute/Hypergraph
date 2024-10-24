@@ -16,7 +16,7 @@ $HypergraphPlotThemes = <|
         EdgeStyle -> Automatic,
         "EdgeLineStyle" -> Automatic,
         VertexStyle -> Automatic,
-        VertexSize -> Automatic,
+        VertexSize -> 0.01,
         VertexShapeFunction -> Automatic
     },
     "WolframModel" -> {

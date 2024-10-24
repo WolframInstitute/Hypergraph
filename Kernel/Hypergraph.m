@@ -22,7 +22,7 @@ $DefaultHypergraphAnnotations = <|
     VertexLabelStyle -> {},
 	VertexSize -> Automatic,
 	VertexCoordinates -> Automatic,
-	VertexShapeFunction -> Function[{AbsolutePointSize[Replace[#3, {Automatic -> 3, {x_, _} :> x}]], Point[#1]}],
+	VertexShapeFunction -> Function[{PointSize[Replace[#3, {Automatic -> 3, {x_, _} :> x}]], Point[#1]}],
 
     EdgeStyle -> {Automatic, Inherited},
 	"EdgeLineStyle" -> Automatic,
