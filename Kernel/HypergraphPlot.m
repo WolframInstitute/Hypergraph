@@ -336,9 +336,7 @@ SimpleHypergraphPlot[h_Hypergraph, plotOpts : OptionsPattern[]] := Enclose @ Blo
             makeVertexLabel[vertex, label, style, coord, Take[offset, UpTo[2]]]
         ), {Keys[vertexEmbedding], Values[vertexEmbedding], vertexLabels, vertexLabelStyle, Lookup[vertexLabelOffsets, Keys[vertexEmbedding]]}]
 	},
-        FilterRules[{opts}, Options[Switch[dim, 2, Graphics, 3, Graphics3D]]],
-        ImageSize -> Medium,
-		Boxed -> False
+        Complement[FilterRules[{opts, Boxed -> False}, #], #] & @ Options[Switch[dim, 2, Graphics, 3, Graphics3D]]
 	]
 ]
 
