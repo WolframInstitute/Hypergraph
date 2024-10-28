@@ -208,9 +208,9 @@ SimpleHypergraphPlot[h_Hypergraph, plotOpts : OptionsPattern[]] := Enclose @ Blo
             Placed[placedLabel_, offset_] :> Text[Replace[placedLabel, None -> ""], pos, offset],
             label_ :> Text[label, pos]
         }];
-        primitive = If[ edgeArrowsQ || MatchQ[symm, "Ordered" | "Directed" | {}],
+        primitive = If[ edgeArrowsQ || MatchQ[symm, "Ordered" | "Directed" | "Cyclic" | {}],
             {   initPrimitive,
-                MapIndexed[{Arrowheads[{{Switch[dim, 3, 0.015, _, 0.02] (Log[#2[[1]]] + 1), .5}}], lineStyle, Arrow[#1]} &, lines]
+                MapIndexed[{Arrowheads[{{If[MatchQ[symm, "Cyclic"], 0.02, Switch[dim, 3, 0.015, _, 0.02] (Log[#2[[1]]] + 1)], .5}}], lineStyle, Arrow[#1]} &, lines]
             },
             initPrimitive
         ] /. _EmptyRegion -> {};
@@ -250,7 +250,7 @@ SimpleHypergraphPlot[h_Hypergraph, plotOpts : OptionsPattern[]] := Enclose @ Blo
                     GraphComputation`GraphElementData["Line"][points[[c]], None][[1]] /. BezierCurve -> BSplineCurve
                 ] & @ edge;
                 symm = edgeSymmetries[[i]];
-                Sow[primitive = If[edgeArrowsQ || MatchQ[symm, "Ordered" | "Directed" | {}], Arrow, Identity] @
+                Sow[primitive = If[edgeArrowsQ || MatchQ[symm, "Ordered" | "Directed" | "Cyclic" | {}], Arrow, Identity] @
                     If[ edgeMethod === "ConcavePolygon" && DuplicateFreeQ[edge] && total == 1,
                         MapAt[#[[{1, -1}]] &, curve, {1}],
                         curve
@@ -263,6 +263,7 @@ SimpleHypergraphPlot[h_Hypergraph, plotOpts : OptionsPattern[]] := Enclose @ Blo
                 }
             ],
             _, Block[{counts = <||>, points, coords = Lookup[vertexEmbedding, edge], curves, ordering, lines, symm},
+                symm = edgeSymmetries[[i]];
                 If[
                     edgeMethod === "ConcavePolygon" && DuplicateFreeQ[edge],
                     With[{c = Lookup[totalCounts, Key[#], 0] + 1},
@@ -270,14 +271,16 @@ SimpleHypergraphPlot[h_Hypergraph, plotOpts : OptionsPattern[]] := Enclose @ Blo
                         {curves, ordering} = ConcavePolygon[coords, c];
                         lines = Prepend[curves[[1]]][Insert[#[[2]], #[[1, 1, -1]], {1, 1}] & /@ Partition[curves, 2, 1]];
                         With[{part = Partition[ordering, 2, 1, 1]},
-                            lines = Most @ Map[
+                            lines = If[MatchQ[symm, "Cyclic"], MapAt[Reverse, {-1, 1}], Most] @ Map[
                                 With[{pos = FirstPosition[part, # | Reverse[#], {1}, Heads -> False]},
-                                    If[OrderedQ[Extract[part, pos]], Identity, MapAt[Reverse, 1]] @ Extract[lines, pos]
+                                    If[OrderedQ[Extract[part, pos]], Identity, MapAt[Reverse, 1]] @
+                                        Extract[lines, pos]
                                 ] &,
                                 Partition[Range[Length[ordering]], 2, 1, 1]
                             ];
                         ]
-                    ] & @ Sort[edge],
+                    ] & @ Sort[edge]
+                    ,
                     points = With[{c = Lookup[counts, #, 0] + 1},
                         AppendTo[counts, # -> c];
                         Lookup[edgeEmbedding, #][[c]]
@@ -286,8 +289,7 @@ SimpleHypergraphPlot[h_Hypergraph, plotOpts : OptionsPattern[]] := Enclose @ Blo
                     curves = Catenate[GraphComputation`GraphElementData["Line"][#, None] /. BezierCurve -> BSplineCurve & /@ points];
                     lines = Insert[#[[2]], #[[1, 1, -1]], {1, 1}] & /@ If[edgeType === "Cyclic", Identity, Most] @ Partition[curves, 2, 1, -1];
                 ];
-                symm = edgeSymmetries[[i]];
-                addArrows = If[ edgeArrowsQ || MatchQ[symm, "Ordered" | "Directed" | {}],
+                addArrows = If[ edgeArrowsQ || MatchQ[symm, "Ordered" | "Directed" | "Cyclic" | {}],
                     {#, Arrow /@ lines} &,
                     Identity
                 ];
