@@ -220,10 +220,12 @@ Hypergraph3D[hg_Hypergraph, opts : OptionsPattern[]] := Hypergraph3D[hg["VertexL
 
 Hypergraph[hg_Hypergraph, opts : OptionsPattern[]] := Hypergraph[VertexList[hg], EdgeListTagged[hg], opts, "LayoutDimension" -> 2, Options[hg]]
 
+HypergraphProp[_, "Properties"] := {"Options", "AbsoluteOptions", "Verteces", "Edges", "VertexList", "EdgeList", "EdgeTags", "EdgeListTagged", "EdgeSymmetry", "FullEdgeSymmetry", "Arity"}
+
 HypergraphProp[Hypergraph[_, _, opts___], "Options"] :=
 	MapAt[Replace[rules : {(_Rule | _RuleDelayed) ...} :> filterRulesByAll[rules]], Flatten[{opts}], {All, 2}]
 
-HypergraphProp[Hypergraph[vertices_, ___], "VertexList"] := vertices
+HypergraphProp[Hypergraph[vertices_, ___], "Vertices" | "VertexList"] := vertices
 
 HypergraphProp[Hypergraph[_, edges_, ___], "Edges"] := edges
 
@@ -294,6 +296,8 @@ HypergraphProp[hg_, "EdgeTags"] := Replace[hg["EdgeListTagged"], {(_ -> tag_) :>
 HypergraphProp[hg_, "EdgeList"] := hg["Edges"]["EdgeList"]
 
 HypergraphProp[hg_, "VertexList"] := hg["Edges"]["VertexList"]
+
+HypergraphProp[hg_, "Arity"] := Length /@ hg["EdgeList"]
 
 
 findMinGenSet[groupGens_, order : _Integer | Automatic : Automatic] :=
