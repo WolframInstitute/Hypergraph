@@ -4,6 +4,7 @@ PackageExport["HyperedgesQ"]
 PackageExport["HypergraphQ"]
 
 PackageExport["Hyperedges"]
+PackageExport["CyclicEdge"]
 PackageExport["Hypergraph"]
 PackageExport["Hypergraph3D"]
 
@@ -29,7 +30,8 @@ $DefaultHypergraphAnnotations = <|
     EdgeLabels -> {"Name", None},
     EdgeLabelStyle -> {},
 	"EdgeSize" -> Automatic,
-    "EdgeSymmetry" -> "Unordered"
+    "EdgeSymmetry" -> "Unordered",
+	"EdgeType" -> "Bag"
 |>
 
 $VertexAnnotations = {VertexStyle, VertexLabels, VertexLabelStyle, VertexSize, VertexCoordinates, VertexShapeFunction};
@@ -67,8 +69,6 @@ makeAnnotationRules[opts_List, keys_ : All] := With[{
 HyperedgesQ[he_Hyperedges] := System`Private`HoldValidQ[he]
 
 HyperedgesQ[___] := False
-
-prepEdge = Replace[{edge : Rule[_List, _] | _List :> edge, rule : Rule[Except[_List], _] :> List @@ rule, edge : Except[_List] :> {edge}}]
 
 Hyperedges[0] := Hyperedges[]
 
@@ -127,17 +127,36 @@ HypergraphQ[___] := False
 
 (* Constructors *)
 
-$EdgePattern = _List | _Rule | Labeled[_List | _Rule, __] | Style[_List | _Rule, __] | Annotation[_List | _Rule, __]
+$EdgeHead = DirectedEdge | UndirectedEdge | CyclicEdge
+$EdgePattern = _List | _Rule | $EdgeHead[__] | Labeled[_List | _Rule | $EdgeHead[__], __] | Style[_List | _Rule | $EdgeHead[__], __] | Annotation[_List | _Rule | $EdgeHead[__], ___]
+
+EdgeType[edge_, type_] := Annotation[edge, "EdgeType" -> type]
+EdgeSymmetry[edge_, type_] := Annotation[edge, "EdgeSymmetry" -> type]
+
+$EdgeHeadSymmetryRules = {DirectedEdge -> "Ordered", UndirectedEdge -> "Unordered", CyclicEdge -> "Cyclic"}
+
+EdgeAnnotate[spec_, data___] := Replace[spec, {
+	Annotation[e_, xs___] :> Replace[EdgeAnnotate[e, data], Annotation[y_, ys___] :> Annotation[y, ys, xs]],
+	Labeled[e_, label_, ___] :> EdgeAnnotate[e, EdgeLabels -> label],
+	Style[e_, styles__] :> EdgeAnnotate[e, EdgeStyle -> Flatten[{styles}]],
+	(head : $EdgeHead)[from_, to_, tag_] :> EdgeAnnotate[EdgeSymmetry[Join[Developer`ToList[from], Developer`ToList[to]] -> tag, Replace[head, $EdgeHeadSymmetryRules]], data],
+	(head : $EdgeHead)[from_, to_] :> EdgeAnnotate[EdgeSymmetry[Join[Developer`ToList[from], Developer`ToList[to]], Replace[head, $EdgeHeadSymmetryRules]], data],
+	(head : $EdgeHead)[from_] :> EdgeAnnotate[EdgeSymmetry[Developer`ToList[from], Replace[head, $EdgeHeadSymmetryRules]], data],
+	Rule[from : Except[_List], to_] :> EdgeAnnotate[DirectedEdge[from, to], data],
+	_ :> Annotation[spec, data]
+}]
+
+prepEdge = Replace[{edge : Rule[_List, _] | _List :> edge, rule : Rule[Except[_List], _] :> List @@ rule, edge : Except[_List] :> {edge}}]
+
+EdgeSpecAnnotation[spec_] := Replace[
+	EdgeAnnotate[spec],
+	Annotation[e_, data___] :> prepEdge[e] -> Cases[Flatten[{data}], _Rule | _RuleDelayed]
+]
 
 extractEdgeAnnotations[edgeSpec : {$EdgePattern ...}] :=  With[{
-	annotations = Replace[edgeSpec, {
-		Annotation[e_, data__] :> prepEdge[e] -> Cases[Flatten[{data}], _Rule | _RuleDelayed],
-		Labeled[e_, label_, ___] :> prepEdge[e] -> {EdgeLabels -> label},
-		Style[e_, styles__] :> prepEdge[e] -> {EdgeStyle -> Flatten[{styles}]},
-		e_ :> prepEdge[e] -> {}
-	}, {1}]
+	annotations = EdgeSpecAnnotation /@ edgeSpec
 },
-	{annotations[[All, 1]], (key |-> key -> Map[#[[1]] -> Lookup[#[[2]], key, getDefault[Lookup[$DefaultHypergraphAnnotations, key]]] &, annotations]) /@ DeleteDuplicates[Keys @ Catenate @ annotations[[All, 2]]]}
+	{annotations[[All, 1]], (key |-> key -> Map[#[[1]] -> Lookup[#[[2]], key, getDefault[Lookup[$DefaultHypergraphAnnotations, key], Inherited]] &, annotations]) /@ DeleteDuplicates[Keys @ Catenate @ annotations[[All, 2]]]}
 ]
 
 filterRulesByAll[rules_] := Take[rules, UpTo[LengthWhile[rules, #[[1]] =!= All &] + 1]]
@@ -150,6 +169,8 @@ Hypergraph[vs_List, edgeSpec : {$EdgePattern ...}, opts : OptionsPattern[]] := B
 Hypergraph[edgeSpec : {$EdgePattern ...}, opts : OptionsPattern[]] := Hypergraph[{}, edgeSpec, opts]
 
 Hypergraph[vs_List, opts : OptionsPattern[]] := Hypergraph[vs, {}, opts]
+
+Hypergraph[g_ ? GraphQ, opts : OptionsPattern[]] := Hypergraph[VertexList[g], EdgeList[g], opts]
 
 Hypergraph[] := Hypergraph[0]
 
@@ -176,7 +197,7 @@ hg : Hypergraph[vs_List, he_Hyperedges ? HyperedgesQ, opts : OptionsPattern[]] /
 },
 	System`Private`SetNoEntry @ System`Private`HoldSetValid[Hypergraph[vertices, edges, ##]] & @@
 		Normal @ GroupBy[
-			Flatten[{(key |-> key -> Map[#[[1]] -> Lookup[#[[2]], key, getDefault[Lookup[$DefaultHypergraphAnnotations, key]]] &, annotations]) /@ DeleteDuplicates[Keys @ Catenate @ annotations[[All, 2]]], opts}],
+			Flatten[{(key |-> key -> Map[#[[1]] -> Lookup[#[[2]], key, getDefault[Lookup[$DefaultHypergraphAnnotations, key], Inherited]] &, annotations]) /@ DeleteDuplicates[Keys @ Catenate @ annotations[[All, 2]]], opts}],
 			First,
 			If[
 				KeyExistsQ[$DefaultHypergraphAnnotations, #[[1, 1]]],
