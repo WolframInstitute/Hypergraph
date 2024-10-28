@@ -14,6 +14,7 @@ PackageExport["ConnectedHypergraphQ"]
 PackageExport["HypergraphArityReduce"]
 PackageExport["HypergraphUnion"]
 PackageExport["HypergraphHadamardProduct"]
+PackageExport["HypergraphToGraph"]
 PackageExport["OrderedHypergraphToGraph"]
 
 PackageScope["CanonicalEdge"]
@@ -389,14 +390,25 @@ HypergraphHadamardProduct[hs___Hypergraph] := Fold[HypergraphHadamardProduct, {h
 
 (* SetReplace`HypergraphToGraph[g, "StructurePreserving"] *)
 
-OrderedHypergraphToGraph[hg_ ? HypergraphQ] := TransitiveReductionGraph @ Graph[
+
+HypergraphToGraph[hg_ ? HypergraphQ, opts : OptionsPattern[]] := Graph[
+    VertexList[hg],
+    Catenate @ MapThread[
+        {edge, symm} |-> Catenate[DirectedEdge @@@ Partition[Permute[edge, #], 2, 1] & /@ GroupElements[PermutationGroup[symm]]],
+        {EdgeList[hg], EdgeSymmetry[hg]}
+    ],
+    opts
+]
+
+OrderedHypergraphToGraph[hg_ ? HypergraphQ, opts : OptionsPattern[]] := TransitiveReductionGraph @ Graph[
     {"Vertex", #} & /@ VertexList[hg],
     Catenate @ MapIndexed[{edge, i} |->
         With[{edges = {"Hyperedge", i[[1]], #} & /@ edge},
             Join[DirectedEdge @@@ Subsets[edges, {2}], # -> {"Vertex", #[[3]]} & /@ edges]
         ],
         EdgeList[hg]
-    ]
+    ],
+    opts
 ]
 
 OrderedHypergraphToGraph[args___] := Enclose @ OrderedHypergraphToGraph[ConfirmBy[Hypergraph[args], HypergraphQ]]
