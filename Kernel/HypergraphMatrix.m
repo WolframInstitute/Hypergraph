@@ -6,9 +6,9 @@ PackageExport["AdjacencyHypergraph"]
 PackageExport["HypergraphIncidenceMatrix"]
 PackageExport["IncidenceHypergraph"]
 
-PackageExport["HyperMatrixQ"]
-PackageExport["HyperMatrix"]
-PackageExport["HyperMatrixGraph"]
+PackageExport["HypermatrixQ"]
+PackageExport["Hypermatrix"]
+PackageExport["HypermatrixGraph"]
 
 PackageExport["HypergraphTransitionMatrix"]
 
@@ -61,45 +61,45 @@ IncidenceHypergraph[mat_] := IncidenceHypergraph[Range[Length[mat]], mat]
 
 
 
-(* HyperMatrix *)
+(* Hypermatrix *)
 
-HyperMatrixQ[_HyperMatrix ? System`Private`HoldValidQ] := True
+HypermatrixQ[_Hypermatrix ? System`Private`HoldValidQ] := True
 
-HyperMatrixQ[___] := False
+HypermatrixQ[___] := False
 
 
-HyperMatrix[vs_List, edges : {(_List | _Rule) ...}, symm : {{___Cycles}...}] := Block[{n, index},
+Hypermatrix[vs_List, edges : {(_List | _Rule) ...}, symm : {{___Cycles}...}] := Block[{n, index},
 	n = Length[vs];
 	index = First /@ PositionIndex[vs];
-	HyperMatrix @@ KeyValueMap[
+	Hypermatrix @@ KeyValueMap[
 		#1 -> If[#1[[1]] == 0, Length[#2], SparseArray[Normal @ Counts[Partition[Lookup[index, Catenate[Replace[#2, (e_ -> _) :> e, {1}]]], #1[[1]]]], Table[n, #1[[1]]]]] &,
 		KeySort @ GroupBy[Thread[{edges, symm}], {Length[Replace[#[[1]], (edge_ -> _) :> edge]], #[[2]]} &, Map[First]]
 	]
 ]
 
-HyperMatrix[hg : {___List}] := HyperMatrix[Union @@ hg, hg]
+Hypermatrix[hg : {___List}] := Hypermatrix[Union @@ hg, hg]
 
-HyperMatrix[hg_Hypergraph] := HyperMatrix[VertexList[hg], EdgeListTagged[hg], EdgeSymmetry[hg]]
+Hypermatrix[hg_Hypergraph] := Hypermatrix[VertexList[hg], EdgeListTagged[hg], EdgeSymmetry[hg]]
 
-hm : HyperMatrix[rules : ({_Integer, {___Cycles}} -> _Integer | _SparseArray) ...] /;
+hm : Hypermatrix[rules : ({_Integer, {___Cycles}} -> _Integer | _SparseArray) ...] /;
 	System`Private`HoldNotValidQ[hm] && Equal @@ Catenate[Dimensions /@ {rules}[[All, 2]]] :=
 	System`Private`HoldSetValid[hm]
 
 
-(hm_HyperMatrix ? HyperMatrixQ)["Association"] := Association @@ hm
+(hm_Hypermatrix ? HypermatrixQ)["Association"] := Association @@ hm
 
-(hm_HyperMatrix ? HyperMatrixQ)["Arrays"] := (List @@ hm)[[All, 2]]
+(hm_Hypermatrix ? HypermatrixQ)["Arrays"] := (List @@ hm)[[All, 2]]
 
-(hm_HyperMatrix ? HyperMatrixQ)["Dimensions"] := Dimensions /@ hm["Arrays"]
+(hm_Hypermatrix ? HypermatrixQ)["Dimensions"] := Dimensions /@ hm["Arrays"]
 
 
-Plus[hms___HyperMatrix ? HyperMatrixQ] ^:= Block[{arrays = Catenate @ Through[{hms}["Arrays"]], dim},
+Plus[hms___Hypermatrix ? HypermatrixQ] ^:= Block[{arrays = Catenate @ Through[{hms}["Arrays"]], dim},
 	dim = Max[Dimensions /@ arrays];
-	HyperMatrix @@ Values[GroupBy[PadRight[#, ConstantArray[dim, ArrayDepth[#]]] & /@ arrays, Dimensions, Total]]
+	Hypermatrix @@ Values[GroupBy[PadRight[#, ConstantArray[dim, ArrayDepth[#]]] & /@ arrays, Dimensions, Total]]
 ]
 
 
-$HyperMatrixIcon = Deploy @ GraphicsRow[
+$HypermatrixIcon = Deploy @ GraphicsRow[
 	ArrayPlot3D[#, Boxed -> False] & /@ {
 		Array[If[#1 == #2 == 3, 1, 0] &, {5, 5, 5}],
 		Array[If[#1 == 3, 1, 0] &, {5, 5, 5}],
@@ -107,16 +107,16 @@ $HyperMatrixIcon = Deploy @ GraphicsRow[
 		ImageSize -> Tiny
 	]
 
-HyperMatrix /: MakeBoxes[hm_HyperMatrix ? HyperMatrixQ, form : TraditionalForm] := With[{
+Hypermatrix /: MakeBoxes[hm_Hypermatrix ? HypermatrixQ, form : TraditionalForm] := With[{
 	boxes = RowBox[ToBoxes[Normal[#], TraditionalForm] & /@ hm["Arrays"]]
 },
 	InterpretationBox[boxes,hm]
 ]
 
-HyperMatrix /: MakeBoxes[hm_HyperMatrix ? HyperMatrixQ, form_] := BoxForm`ArrangeSummaryBox[
-	"HyperMatrix",
+Hypermatrix /: MakeBoxes[hm_Hypermatrix ? HypermatrixQ, form_] := BoxForm`ArrangeSummaryBox[
+	"Hypermatrix",
 	hm,
-	$HyperMatrixIcon,
+	$HypermatrixIcon,
 	{{}},
 	{{BoxForm`SummaryItem[{"Dimensions: ", Row[Dimensions /@ List @@ hm, ";"]}]}},
 	form,
@@ -124,7 +124,7 @@ HyperMatrix /: MakeBoxes[hm_HyperMatrix ? HyperMatrixQ, form_] := BoxForm`Arrang
 ]
 
 
-HyperMatrixGraph[vs_List, hm_List, keys_List] := Block[{n = Length[vs], dims = Dimensions /@ hm, edges},
+HypermatrixGraph[vs_List, hm_List, keys_List] := Block[{n = Length[vs], dims = Dimensions /@ hm, edges},
 	(
 		edges = KeyValueMap[
 			If[IntegerQ[#2] && #2 > 0, Table[vs[[#1]], #2], Nothing] &,
@@ -138,11 +138,11 @@ HyperMatrixGraph[vs_List, hm_List, keys_List] := Block[{n = Length[vs], dims = D
 	) /; Equal @@ Prepend[Catenate[dims], n]
 ]
 
-HyperMatrixGraph[hm_Association] := With[{dims = Catenate[Dimensions /@ hm]},
-	HyperMatrixGraph[Range[First[dims]], Values[hm], Keys[hm]] /; Equal @@ dims
+HypermatrixGraph[hm_Association] := With[{dims = Catenate[Dimensions /@ hm]},
+	HypermatrixGraph[Range[First[dims]], Values[hm], Keys[hm]] /; Equal @@ dims
 ]
 
-HyperMatrixGraph[hm_HyperMatrix ? HyperMatrixQ] := HyperMatrixGraph[hm["Association"]]
+HypermatrixGraph[hm_Hypermatrix ? HypermatrixQ] := HypermatrixGraph[hm["Association"]]
 
 
 
