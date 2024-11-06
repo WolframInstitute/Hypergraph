@@ -144,13 +144,13 @@ CanonicalHypergraph[args___] := CanonicalHypergraph[Hypergraph[args]]
 
 CanonicalHypergraphGraphIsomorphism[edges_] := Enclose @ Catch @ Block[{g = OrderedHypergraphToGraph[edges], cg, iso},
 	cg = Check[CanonicalGraph[g], Throw[ResourceFunction["FindCanonicalHypergraphIsomorphism"][edges]], CanonicalGraph::ngen];
-	iso = Sort @ Confirm @ First[FindGraphIsomorphism[g, cg]];
+	iso = Sort @ Confirm @ First[FindGraphIsomorphism[g, cg], {}];
 	KeyMap[Last] @ KeySelect[iso, MatchQ[{"Vertex", _}]]
 ]
 
 CanonicalHypergraphMultiGraphIsomorphism[edges_] := Enclose @ Catch @ Block[{g = OrderedHypergraphToGraph[edges], mult, iso},
     mult = ResourceFunction["EdgeMultiplicity"][g];
-    iso = Sort @ Confirm @ First @ FindGraphIsomorphism[Keys[mult], CanonicalGraph[Keys[mult]]];
+    iso = Sort @ Confirm @ First[FindGraphIsomorphism[Keys[mult], CanonicalGraph[Keys[mult]]], {}];
 	KeyMap[Last] @ KeySelect[iso, MatchQ[{"Vertex", _}]]
 ]
 

@@ -168,6 +168,9 @@ Hypergraph[vs_List, edgeSpec : {$EdgePattern ...}, opts : OptionsPattern[]] := B
 
 Hypergraph[edgeSpec : {$EdgePattern ...}, opts : OptionsPattern[]] := Hypergraph[{}, edgeSpec, opts]
 
+(* no vertices and empty options case *)
+Hypergraph[edges : {__List}, {}] := Hypergraph[{}, edges]
+
 Hypergraph[vs_List, opts : OptionsPattern[]] := Hypergraph[vs, {}, opts]
 
 Hypergraph[g_ ? GraphQ, opts : OptionsPattern[]] := Hypergraph[VertexList[g], EdgeList[g], opts]
