@@ -162,7 +162,7 @@ HypergraphDraw[Dynamic[hg_Symbol], dynamicSelection : Dynamic[selection_Symbol] 
             startMousePos = tmpPos
         ];
         edgeId = If[Length[#] == 0, Missing[], #[[ Mod[edgeIndex - 1, Length[#]] + 1 ]]] & @
-            MapIndexed[If[RegionDistance[Once[DiscretizeGraphics[#]], startMousePos] < 0.02, #2[[1]], Nothing] &, edgeRegions /. {Arrow[a_] :> a, Offset[r_] :> r / 400}];
+            MapIndexed[If[RegionDistance[Once[DiscretizeGraphics[Graphics[#]]], startMousePos] < 0.02, #2[[1]], Nothing] &, edgeRegions /. {Arrow[a_] :> a, Offset[r_] :> r / 400}];
         vertexId = getVertex[startMousePos];
         If[! MissingQ[vertexId], vertexName = vertexId; vertexLabel = vertexLabels[vertexName]];
         oldVertices = vertices;
