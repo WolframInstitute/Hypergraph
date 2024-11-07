@@ -3,6 +3,7 @@ Package["WolframInstitute`Hypergraph`"]
 PackageExport["HyperedgesQ"]
 PackageExport["HypergraphQ"]
 
+PackageExport["Hyperedge"]
 PackageExport["Hyperedges"]
 PackageExport["CyclicEdge"]
 PackageExport["Hypergraph"]
@@ -128,7 +129,7 @@ HypergraphQ[___] := False
 (* Constructors *)
 
 $EdgeHead = DirectedEdge | UndirectedEdge | CyclicEdge
-$EdgePattern = _List | _Rule | $EdgeHead[__] | Labeled[_List | _Rule | $EdgeHead[__], __] | Style[_List | _Rule | $EdgeHead[__], __] | Annotation[_List | _Rule | $EdgeHead[__], ___]
+$EdgePattern = _Hyperedge | _List | _Rule | $EdgeHead[__] | Labeled[_List | _Rule | $EdgeHead[__], __] | Style[_List | _Rule | $EdgeHead[__], __] | Annotation[_List | _Rule | $EdgeHead[__], ___]
 
 EdgeType[edge_, type_] := Annotation[edge, "EdgeType" -> type]
 EdgeSymmetry[edge_, type_] := Annotation[edge, "EdgeSymmetry" -> type]
@@ -142,6 +143,8 @@ EdgeAnnotate[spec_, data___] := Replace[spec, {
 	(head : $EdgeHead)[from_, to_, tag_] :> EdgeAnnotate[EdgeSymmetry[Join[Developer`ToList[from], Developer`ToList[to]] -> tag, Replace[head, $EdgeHeadSymmetryRules]], data],
 	(head : $EdgeHead)[from_, to_] :> EdgeAnnotate[EdgeSymmetry[Join[Developer`ToList[from], Developer`ToList[to]], Replace[head, $EdgeHeadSymmetryRules]], data],
 	(head : $EdgeHead)[from_] :> EdgeAnnotate[EdgeSymmetry[Developer`ToList[from], Replace[head, $EdgeHeadSymmetryRules]], data],
+	Hyperedge[edge_] :> EdgeAnnotate[edge, data],
+	Hyperedge[edge_, sym_] :> EdgeAnnotate[EdgeSymmetry[edge, sym], data],
 	Rule[from : Except[_List], to_] :> EdgeAnnotate[DirectedEdge[from, to], data],
 	_ :> Annotation[spec, data]
 }]

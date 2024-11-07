@@ -41,6 +41,19 @@ Hypergraph /: MakeBoxes[hg_Hypergraph /; HypergraphQ[Unevaluated[hg]], form : Tr
 ] & @ hg
 
 
+(* Hyperedge *)
+
+Hyperedge /: MakeBoxes[he : Hyperedge[edgeTag_, sym_ : "Unordered"], form_ ] := With[{
+    edge = Replace[edgeTag, (edge_ -> _) :> edge],
+    tag = Replace[edgeTag, {(_ -> tag_) :> tag, _ -> None}]
+}, {
+    boxes = TooltipBox[RowBox[Join[{#1}, Riffle[ToBoxes[#, form] & /@ edge, ","], {#2}] & @@
+        Replace[sym, {"Ordered" | {} -> {"{", "}"}, "Cyclic" -> {"[", "]"}, _ -> {"(", ")"}}]], ToBoxes[If[tag === None, sym, sym -> tag], form]]
+},
+    InterpretationBox[boxes, he]
+]
+
+
 (* mimicking Graph and Tree behaviour *)
 
 SetAttributes[hypergraphBox, HoldAllComplete];

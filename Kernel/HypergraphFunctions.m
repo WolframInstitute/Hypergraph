@@ -7,6 +7,7 @@ PackageExport["IsomorphicHypergraphQ"]
 PackageExport["ToOrderedHypergraph"]
 PackageExport["EdgeSymmetry"]
 PackageExport["EdgeListTagged"]
+PackageExport["HyperedgeList"]
 PackageExport["EdgeMultiplicity"]
 PackageExport["SimpleHypergraph"]
 PackageExport["SimpleHypergraphQ"]
@@ -34,6 +35,13 @@ EdgeList[hg_Hypergraph ? HypergraphQ, patt_] ^:= Cases[hg["EdgeList"], patt]
 EdgeListTagged[hg_Hypergraph ? HypergraphQ] := hg["EdgeListTagged"]
 
 EdgeListTagged[hg_Hypergraph ? HypergraphQ, patt_] := Cases[hg["EdgeListTagged"], patt]
+
+HyperedgeList[hg_Hypergraph ? HypergraphQ] := MapThread[
+    Hyperedge[Replace[#1, (edge_ -> None) :> edge], Replace[#2, "Unordered" -> Sequence[]]] &,
+    {EdgeListTagged[hg], hg["EdgeSymmetry"]}
+]
+
+HyperedgeList[hg_Hypergraph ? HypergraphQ, patt_] := Cases[HyperedgeList[hg], patt]
 
 EdgeCount[hg_Hypergraph ? HypergraphQ, args___] ^:= Length @ EdgeList[hg, args]
 
