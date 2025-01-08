@@ -276,9 +276,16 @@ HypergraphRuleApply[input_, output_, hg_, opts : OptionsPattern[]] := Block[{
                                     (h : (Rule | RuleDelayed))[edge_List, annotation_] :>
                                         h[CanonicalEdge[Replace[edge, origVertexMap, {1}], Lookup[outputSymmetry, Key[edge], {}]], annotation]
                                 },
-                                {1}
+                                    1
                                 ],
-                                DeleteCases[#1, Alternatives @@ matcheEdges | (Alternatives @@ matcheEdges -> _) -> _]
+                                Replace[
+                                    DeleteCases[#1, Alternatives @@ matchEdges | (Alternatives @@ matchEdges -> _) -> _],
+                                    {
+                                        (edge_ -> tag_) :> DeleteElements[edge, deleteOrigVertices] -> tag,
+                                        edge_ :> DeleteElements[edge, deleteOrigVertices]
+                                    },
+                                    1
+                                ]
                             ] &]
                         ],
                         VertexCoordinates -> embedding,
