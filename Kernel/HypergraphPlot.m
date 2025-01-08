@@ -101,7 +101,12 @@ SimpleHypergraphPlot[h_Hypergraph, plotOpts : OptionsPattern[]] := Enclose @ Blo
     {
         vertexStyle, vertexLabels, vertexLabelStyle, vertexSize, vertexCoordinates, vertexShapeFunction,
         edgeStyle, edgeLineStyle, edgeLabels, edgeLabelStyle, edgeSize, edgeSymmetries
-    } = Values /@ Lookup[opts, Join[$VertexAnnotations, $EdgeAnnotations]];
+    } = Values /@ Lookup[opts,
+        {
+            VertexStyle, VertexLabels, VertexLabelStyle, VertexSize, VertexCoordinates, VertexShapeFunction,
+            EdgeStyle, "EdgeLineStyle", EdgeLabels, EdgeLabelStyle, "EdgeSize", "EdgeSymmetry"
+        }
+    ];
     edgeArrowsQ = TrueQ[OptionValue[SimpleHypergraphPlot, opts, "EdgeArrows"]];
     edgeType = OptionValue[SimpleHypergraphPlot, opts, "EdgeType"];
     edgeMethod = OptionValue[SimpleHypergraphPlot, opts, "EdgeMethod"];
