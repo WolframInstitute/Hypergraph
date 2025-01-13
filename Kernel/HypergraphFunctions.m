@@ -90,8 +90,8 @@ Options[CanonicalHypergraph] = {Method -> Automatic, "Annotations" -> False}
 CanonicalHypergraph[hg_ ? HypergraphQ, OptionsPattern[]] := Enclose @ Block[{
 	vs = VertexList[hg], edges = EdgeList[hg], tags = EdgeTags[hg],
     taggedEdgePositions, emptyEdgePositions,
-	orderedEdges, counts, iso, emptyEdges, newEdges, ordering, edgeMap,
-	tagVertices, freeVertices, newFreeVertices,
+	orderedEdges, counts, iso, emptyEdges, newEdges, ordering,
+	tagVertices, freeVertices,
     edgeAnnotations, vertexAnnotations
 },
 	tagVertices = Catenate @ Reap[orderedEdges = MapThread[
@@ -107,18 +107,16 @@ CanonicalHypergraph[hg_ ? HypergraphQ, OptionsPattern[]] := Enclose @ Block[{
     edges = Delete[edges, taggedEdgePositions];
     tags = Delete[tags, Complement[emptyEdgePositions, taggedEdgePositions]];
 	emptyEdges = Cases[edges, {}];
+    freeVertices = DeleteElements[vs, Union @@ edges];
 	iso = Confirm @ Replace[OptionValue[Method], {
         Automatic | "Graph" -> CanonicalHypergraphGraphIsomorphism,
         "MultiGraph" -> CanonicalHypergraphMultiGraphIsomorphism,
         "Combinatorial" -> ResourceFunction["FindCanonicalHypergraphIsomorphism"]
-    }][orderedEdges];
+    }][Join[List /@ freeVertices, orderedEdges]];
     iso = KeySelect[iso, ! MemberQ[tagVertices, #] &];
     newEdges = First @* Sort /@ TakeList[Map[Replace[iso], orderedEdges, {2}], counts];
     ordering = OrderingBy[newEdges, DeleteElements[#, tagVertices] &];
 	newEdges = MapThread[If[#2 === None, #1, Most[#1] -> #2] &, {newEdges[[ordering]], tags[[ordering]]}];
-    freeVertices = DeleteElements[vs, Keys[iso]];
-    newFreeVertices = Max[iso] + Range[Length @ freeVertices];
-    iso = <|iso, Thread[freeVertices -> newFreeVertices]|>;
     If[ TrueQ[OptionValue["Annotations"]],
         edgeAnnotations = $EdgeAnnotations;
         vertexAnnotations = $VertexAnnotations
@@ -165,7 +163,7 @@ CanonicalHypergraphMultiGraphIsomorphism[edges_] := Enclose @ Catch @ Block[{g =
 
 Options[CanonicalHypergraphRule] = {Method -> Automatic, "Annotations" -> False}
 
-CanonicalHypergraphRule[HoldPattern[HypergraphRule[in_Hypergraph, out_Hypergraph]] ? HypergraphRuleQ, OptionsPattern[]] := Enclose @ Block[{
+CanonicalHypergraphRule[HoldPattern[HypergraphRule[in_Hypergraph, out_Hypergraph, ___]] ? HypergraphRuleQ, OptionsPattern[]] := Enclose @ Block[{
 	vsIn = VertexList[in], edgesIn = EdgeList[in], tagsIn = EdgeTags[in], symmIn = EdgeSymmetry[in],
     vsOut = VertexList[out], edgesOut = EdgeList[out], tagsOut = EdgeTags[out], symmOut = EdgeSymmetry[out],
     vs, edges, tags, symmetry,
@@ -175,7 +173,6 @@ CanonicalHypergraphRule[HoldPattern[HypergraphRule[in_Hypergraph, out_Hypergraph
     orderingIn, orderingOut,
     newEdges, newEdgesIn, newEdgesOut,
 	freeVerticesIn, freeVerticesOut,
-    newFreeVerticesIn, newFreeVerticesOut,
     tagVertices,
     edgeAnnotations, vertexAnnotations
 },
@@ -201,11 +198,13 @@ CanonicalHypergraphRule[HoldPattern[HypergraphRule[in_Hypergraph, out_Hypergraph
     tagsOut = Delete[tagsOut, Complement[taggedEdgePositionsOut, taggedEdgePositionsOut]];
 	emptyEdgesIn = Cases[edgesIn, {}];
     emptyEdgesOut = Cases[edgesOut, {}];
+    freeVerticesIn = DeleteElements[vsIn, Union @@ edgesIn];
+    freeVerticesOut = DeleteElements[vsOut, Union @@ edgesOut];
     iso = Confirm @ Replace[OptionValue[Method], {
         Automatic | "Graph" -> CanonicalHypergraphGraphIsomorphism,
         "MultiGraph" -> CanonicalHypergraphMultiGraphIsomorphism,
         "Combinatorial" -> ResourceFunction["FindCanonicalHypergraphIsomorphism"]
-    }][orderedEdges];
+    }][Join[List /@ freeVerticesIn, List /@ freeVerticesOut, orderedEdges]];
     iso = KeySelect[iso, ! MemberQ[tagVertices, #] &];
     newEdges = First @* Sort /@ TakeList[Map[Replace[iso], orderedEdges, {2}], counts];
     {newEdgesIn, newEdgesOut} = TakeDrop[newEdges, Length[edgesIn] + Length[taggedEdgePositionsIn] - Length[emptyEdgesIn]];
@@ -213,11 +212,6 @@ CanonicalHypergraphRule[HoldPattern[HypergraphRule[in_Hypergraph, out_Hypergraph
     orderingOut = Ordering[newEdgesOut];
     newEdgesIn = MapThread[If[#2 === None, #1, Most[#1] -> #2] &, {newEdgesIn[[orderingIn]], tagsIn[[orderingIn]]}];
     newEdgesOut = MapThread[If[#2 === None, #1, Most[#1] -> #2] &, {newEdgesOut[[orderingOut]], tagsOut[[orderingOut]]}];
-    freeVerticesIn = DeleteElements[vsIn, Keys[iso]];
-    freeVerticesOut = DeleteElements[vsOut, Keys[iso]];
-    newFreeVerticesIn = Max[iso] + Range[Length @ freeVerticesIn];
-    newFreeVerticesOut = Max[iso] + Length[freeVerticesIn] + Range[Length @ freeVerticesOut];
-    iso = <|iso, Thread[freeVerticesIn -> newFreeVerticesIn], Thread[freeVerticesOut -> newFreeVerticesOut]|>;
     If[ TrueQ[OptionValue["Annotations"]],
         edgeAnnotations = $EdgeAnnotations;
         vertexAnnotations = $VertexAnnotations
@@ -227,11 +221,11 @@ CanonicalHypergraphRule[HoldPattern[HypergraphRule[in_Hypergraph, out_Hypergraph
     ];
     HypergraphRule[
         Hypergraph[
-            Union[Values[KeySelect[iso, MemberQ[vsIn, #] &]], newFreeVerticesIn],
+            Values[KeySelect[iso, MemberQ[vsIn, #] &]],
             Join[emptyEdgesIn, newEdgesIn],
             With[{annotations = KeySort @ KeyTake[Association @ AbsoluteOptions[in], Join[edgeAnnotations, vertexAnnotations]]},
                 annotations // MapAt[
-                        Join[Cases[#, HoldPattern[{} -> _]], Thread[newEdgesIn -> Cases[#, Except[{}] -> x_ :> x][[orderingIn]]]] &,
+                        Join[Cases[#, HoldPattern[{} -> _]], Thread[newEdgesIn -> Cases[#, (Except[{}] -> x_) :> x][[orderingIn]]]] &,
                         {Key[#]} & /@ Intersection[edgeAnnotations, Keys[annotations]]
                     ] //
                     MapAt[
@@ -242,11 +236,11 @@ CanonicalHypergraphRule[HoldPattern[HypergraphRule[in_Hypergraph, out_Hypergraph
             ]
         ],
         Hypergraph[
-            Union[Values[KeySelect[iso, MemberQ[vsOut, #] &]], newFreeVerticesOut],
+            Values[KeySelect[iso, MemberQ[vsOut, #] &]],
             Join[emptyEdgesOut, newEdgesOut],
             With[{annotations = KeySort @ KeyTake[Association @ AbsoluteOptions[out], Join[edgeAnnotations, vertexAnnotations]]},
                 annotations // MapAt[
-                        Join[Cases[#, HoldPattern[{} -> _]], Thread[newEdgesOut -> Cases[#, Except[{}] -> x_ :> x][[orderingOut]]]] &,
+                        Join[Cases[#, HoldPattern[{} -> _]], Thread[newEdgesOut -> Cases[#, (Except[{}] -> x_) :> x][[orderingOut]]]] &,
                         {Key[#]} & /@ Intersection[edgeAnnotations, Keys[annotations]]
                     ] //
                     MapAt[
