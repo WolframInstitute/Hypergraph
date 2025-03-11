@@ -26,7 +26,10 @@ HoldPattern[Options[hg_Hypergraph ? HypergraphQ]] ^:= hg["Options"]
 HoldPattern[Options[hg_Hypergraph ? HypergraphQ, patt__]] ^:= FilterRules[Options[hg], patt]
 
 HoldPattern[AbsoluteOptions[hg_Hypergraph ? HypergraphQ]] ^:= hg["AbsoluteOptions"]
-HoldPattern[AbsoluteOptions[hg_Hypergraph ? HypergraphQ, patt__]] ^:= FilterRules[AbsoluteOptions[hg], patt]	
+HoldPattern[AbsoluteOptions[hg_Hypergraph ? HypergraphQ, patt__]] ^:= FilterRules[AbsoluteOptions[hg], patt]
+
+AnnotationValue[hg_Hypergraph ? HypergraphQ, key_] ^:= Lookup[AbsoluteOptions[hg], key]
+AnnotationValue[{hg_Hypergraph ? HypergraphQ, items_}, key_] ^:= Lookup[Lookup[AbsoluteOptions[hg], key, {}], items]
 
 EdgeList[hg_Hypergraph ? HypergraphQ] ^:= hg["EdgeList"]
 
