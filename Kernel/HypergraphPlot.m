@@ -187,7 +187,7 @@ SimpleHypergraphPlot[h_Hypergraph, plotOpts : OptionsPattern[]] := Enclose @ Blo
     If[size == 0, size = 1];
     vertexLabelOffsets = - 2 Normalize[Mean[Threaded[#] - Nearest[allPoints, #, 5]]] & /@ vertexEmbedding;
     makeEdge[edge_, tag_, symm_, i_, initPrimitive_, lines_ : {}] := Block[{
-        primitive = Chop @ If[RegionQ[initPrimitive], DiscretizeRegion[#, MaxCellMeasure -> 0.1] &, DiscretizeGraphics @* ReplaceAll[Arrow[l_] :> l]] @ Chop @ initPrimitive,
+        primitive = Chop @ If[RegionQ[initPrimitive], DiscretizeRegion[#, MaxCellMeasure -> 0.1] &, DiscretizeGraphics @* ReplaceAll[Arrow[l_] :> l]] @ initPrimitive,
         pos,
         edgeTagged, style, lineStyle, label, labelStyle, labelPrimitive
     },
