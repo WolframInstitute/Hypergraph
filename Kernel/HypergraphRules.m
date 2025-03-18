@@ -213,7 +213,7 @@ HypergraphRuleApply[input_, output_, hg_, opts : OptionsPattern[]] := Block[{
             Map[matchFreeVertices |-> Block[{
                 binding = Association[
                     initBinding /. Labeled[expr_, _] :> expr,
-                    Thread[Pattern[Evaluate @ Symbol["\[FormalV]" <> ToString[#]], _] & /@ (Length[initBinding] + Range[Length[inputFreeVertices]]) -> matchFreeVertices]
+                    Thread[Extract[patterns, Lookup[PositionIndex[inputVertices], inputFreeVertices]] -> matchFreeVertices]
                 ],
                 origVertexMap,
                 deleteOrigVertices, newEdges,
