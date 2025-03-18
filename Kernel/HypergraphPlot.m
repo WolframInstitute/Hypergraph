@@ -116,8 +116,8 @@ SimpleHypergraphPlot[h_Hypergraph, plotOpts : OptionsPattern[]] := Enclose @ Blo
     longEdges = Cases[edges, {_, _, __}];
     ws = Join[vertices, nullEdges, \[FormalE] /@ Range[Length[longEdges]]];
 
-    vertexCoordinates = Join[Thread[vertices -> vertexCoordinates], Thread[Drop[ws, Length[vertices]] -> Automatic]];
-    vertexCoordinates = Replace[vertexCoordinates, {(_ -> Automatic)...} -> Automatic];
+    vertexCoordinates = MapAt[Verbatim, {All, 1}] @ Join[Thread[vertices -> vertexCoordinates], Thread[Drop[ws, Length[vertices]] -> Automatic]];
+    vertexCoordinates = Replace[vertexCoordinates, {(_ -> Automatic) ...} -> Automatic];
 
 	graph = ConfirmBy[Switch[dim, 2, Graph, 3, Graph3D][
         ws,
