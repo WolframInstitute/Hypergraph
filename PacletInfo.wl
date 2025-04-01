@@ -43,7 +43,8 @@ PacletObject[
           "WolframInstitute`Hypergraph`RandomHypergraph",
           "WolframInstitute`Hypergraph`RandomHypergraphRule",
           "WolframInstitute`Hypergraph`SimpleHypergraphPlot",
-          "WolframInstitute`Hypergraph`SimpleHypergraphPlot3D"
+          "WolframInstitute`Hypergraph`SimpleHypergraphPlot3D",
+          "WolframInstitute`Hypergraph`InsertionBracket"
         }
       },
       {
