@@ -4,8 +4,6 @@ Package["WolframInstitute`Hypergraph`"]
 
 PackageExport["InsertionBracket"]
 
-PackageScope["ShiftedVertexDegree"];
-
 Options[InsertionBracket]={"IsomorphismClass"->"Ordered"}
 InsertionBracket[x___,OptionsPattern[]]:=
 	Switch[
@@ -134,8 +132,8 @@ ShiftedVertexDegree[hg_] := VertexCount[hg] - 1;
 
 
 (* 
-   Inserts Subscript[`hg, n]` into Subscript[`hg, n-1]`  ... into Subscript[`hg, 1]` in all possible ways keeping track
-   of the internal Koszul sign. Returns a list `{hg->sgn,...}` of results of the
+   Inserts `hg_n` into `hg_n-1`  ... into `hg_1` in all possible ways keeping track
+   of the internal Koszul sign. Returns a list `{hg -> sgn,...}` of the results of the
    insertions with sign. 
 *)
 
@@ -243,9 +241,9 @@ CanonicalHypergraphRooted = With[
 
 
 (*
-	Adds a tagged unary edge with the root vertex. Two such hypergraphs
-	are then isomorphic as hypergraphs if and only if they are isomorphic
-	as rooted hypergraphs.
+	Transforms a root vertex into a tagged unary edge.
+	Two rooted hypergraphs are isomorphic if and only if the
+	transformed hypergraphs are isomorphic as hypergraphs.
 *)
 
 convertRootToTaggedUnaryEdge[hg_, tag_] :=
@@ -256,9 +254,7 @@ convertRootToTaggedUnaryEdge[hg_, tag_] :=
   
     
 (*
-	Adds a tagged unary edge with the root vertex. Two such hypergraphs
-	are then isomorphic as hypergraphs if and only if they are isomorphic
-	as rooted hypergraphs.
+	Transforms a tagged unary edge into a root vertex.
 *)
 
 convertTaggedUnaryEdgeToRoot[hg_, tag_] :=
@@ -272,8 +268,8 @@ convertTaggedUnaryEdgeToRoot[hg_, tag_] :=
 
 
 (* 
-   Makes a given vertex `v` the root of `hg`. That is, it swaps
-   `v` with the first vertex in the list of vertices.
+   Makes a given vertex `v` into the root of `hg` by swapping it with
+   the first vertex in the list of vertices.
 *)
 
 makeRoot[hg_Hypergraph, v_] :=
