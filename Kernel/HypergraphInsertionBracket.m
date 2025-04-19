@@ -11,8 +11,9 @@ InsertionBracket[x___,OptionsPattern[]]:=
 		"Ordered",
 		VertexOrderedInsertionBracket[x],
 		"Rooted",
-		RootedInsertionBracket[x]
-		(* TODO: "Tagged" *)
+		RootedInsertionBracket[x],
+		"Tagged",
+		TaggedInsertionBracket[x]
 	];
 
 (*
@@ -137,7 +138,7 @@ ShiftedVertexDegree[hg_] := VertexCount[hg] - 1;
    insertions with sign. 
 *)
 
-VertexOrderedInsertion[input__, OptionsPattern[]] :=
+VertexOrderedInsertion[input__] :=
    With[
       {inputList = List[input]},
       Fold[
@@ -284,3 +285,130 @@ makeRoot[hg_Hypergraph, v_] :=
 *)
 
 getRoot[hg_Hypergraph] := First[VertexList[hg]];
+
+
+(*
+	Tagged insertion bracket.
+*)
+
+TaggedInsertionBracket =
+  MultilinearExtension[
+   Symmetrization[
+    Composition[
+     collectHypergraphsBy[CanonicalHypergraphTagged],
+     EdgeInsertion
+     ],
+    "Parity" -> 1
+    ]
+   ];
+   
+(* 
+   Inserts `hg_n` into `hg_n-1`  ... into `hg_1` in all possible ways.
+   Returns a list `{hg -> 1,...}` of the insertions.
+*)   
+
+EdgeInsertion[input__] :=
+  With[
+    {inputList = List[input]},
+    Fold[
+      {acc, next} |->
+       Map[
+         prev |-> edgeInsertionInner[prev[[1]], next],
+         acc
+       ] // Catenate,
+      {First[inputList] -> 1},
+      Rest[inputList]
+    ]
+  ];
+
+edgeInsertionInner[hg1_, hg2_] :=
+  Module[
+    {vertices1 = VertexList[hg1],
+     vertices2 = VertexList[hg2],
+     edges1 = EdgeList[hg1],
+     edges2 = EdgeList[hg2],
+     copyVertices2, makeCopy, rootEdge, rootEdgeSymmetry, 
+     rootEdgeSymmetryOption, copyRootEdge, complimentaryVertices2, 
+     copyComplimentaryVertices2, copyEdges2},
+    copyVertices2 = Table[Unique["ins"], Length[vertices2]];
+    makeCopy = Thread[vertices2 -> copyVertices2];
+    rootEdge = First[edges2];
+    copyRootEdge = Replace[rootEdge, makeCopy, 2];
+    rootEdgeSymmetry = First[EdgeSymmetry[hg2]];
+    rootEdgeSymmetryOption = First[hg2["EdgeSymmetry"]];
+    complimentaryVertices2 = DeleteElements[vertices2, rootEdge];
+    copyComplimentaryVertices2 =
+      Replace[complimentaryVertices2, makeCopy, 1];
+    copyEdges2 = Replace[edges2, makeCopy, 2];
+    MapApply[
+      {insertEdgeIndex, rootEdgePermutation} |->
+       With[
+         {transform =
+           Thread[edges1[[insertEdgeIndex]] ->
+             Permute[copyRootEdge, rootEdgePermutation]]},
+         Hypergraph[
+           Join[
+             Replace[vertices1, transform, 1],
+             copyComplimentaryVertices2
+           ],
+           Join[
+             Replace[edges1[[1 ;; insertEdgeIndex - 1]], transform, 2],
+             copyEdges2,
+             Replace[edges1[[insertEdgeIndex + 1 ;; -1]], transform, 2]
+           ],
+           "EdgeSymmetry" -> rootEdgeSymmetryOption
+         ]
+       ] -> 1,
+      Tuples[{
+        Flatten@Position[edges1, x_ /; Length[x] == Length[rootEdge], 1],
+        GroupElements[PermutationGroup[rootEdgeSymmetry]]
+      }]
+    ]
+  ];
+
+
+(* 
+   Returns the canonical form of a tagged hypergraph. That is, the
+   canonical form of a hypergraph where the leading edge is swapped with
+   the tagged edge. This is a canonical form since the leading edge can be
+   identified as the edge with the smallest arity and vertices in the lowest
+   lexicographic order.
+*)
+
+CanonicalHypergraphTagged = With[
+   {tag = Unique["root"]},
+   Composition[
+      (convertTaggedEdgeToRootEdge[#, tag] &),
+      CanonicalHypergraph,
+      (convertRootEdgeToTaggedEdge[#, tag] &)
+   ]
+];
+
+
+(*
+	Tags the root edge. The root edge, by our convention, is the first 
+	edge in the list of edges.
+*)
+
+convertRootEdgeToTaggedEdge[hg_, tag_] :=
+   Hypergraph[
+      VertexList[hg],
+      ReplaceAt[EdgeList[hg], x_ :> (x -> tag), 1],
+      "EdgeSymmetry" -> First[hg["EdgeSymmetry"]]
+   ];
+  
+    
+(*
+	Transforms the tagged edge into the root edge.
+*)
+
+convertTaggedEdgeToRootEdge[hg_, tag_] :=
+  Module[
+   { edges=EdgeList[hg],
+     pos = First[First[Position[EdgeListTagged[hg], _ -> tag]]] },
+   Hypergraph[
+         VertexList[hg], 
+         ReplacePart[edges,{1 -> edges[[pos]],pos -> edges[[1]]}],
+         "EdgeSymmetry" -> First[hg["EdgeSymmetry"]]
+   ]
+  ];
