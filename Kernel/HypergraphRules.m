@@ -333,28 +333,34 @@ HighlightRule[matches : {___Association}, hg_ ? HypergraphQ, opts : OptionsPatte
     Map[
         GraphicsRow[{
             SimpleHypergraphPlot[
-                hg,
-                EdgeStyle -> MapAt[#[[1]] -> OptionValue["HighlightLeftEdgeStyle"] &, Lookup[hgOpts, EdgeStyle], #MatchEdgePositions],
-                VertexStyle -> Map[# -> OptionValue["HighlightLeftVertexStyle"] &, #MatchVertices],
+                Hypergraph[
+                    hg,
+                    EdgeStyle -> MapAt[#[[1]] -> OptionValue["HighlightLeftEdgeStyle"] &, Lookup[hgOpts, EdgeStyle], #MatchEdgePositions],
+                    VertexStyle -> Map[# -> OptionValue["HighlightLeftVertexStyle"] &, #MatchVertices]
+                ],
                 plotOpts,
                 PlotRange -> Automatic,
+                PlotRangePadding -> Scaled[.25],
                 $HypergraphRulePlotOptions
             ],
             Graphics[{GrayLevel[0.65], $HypergraphRuleArrow}, ImageSize -> 24],
             SimpleHypergraphPlot[
-                #Hypergraph,
-                EdgeStyle -> Map[
-                    # -> OptionValue["HighlightRightEdgeStyle"] &,
-                    (* output edges always getting spliced at the first position *)
-                    #NewEdges
-                ],
-                VertexStyle -> Map[# -> OptionValue["HighlightRightVertexStyle"] &, #NewVertices],
-                VertexCoordinates -> DeleteCases[
-                    Thread[VertexList[hg] -> HypergraphEmbedding[hg]],
-                    HoldPattern[Evaluate[Alternatives @@ #NewVertices -> _]]
+                Hypergraph[
+                    #Hypergraph,
+                    EdgeStyle -> Map[
+                        # -> OptionValue["HighlightRightEdgeStyle"] &,
+                        (* output edges always getting spliced at the first position *)
+                        #NewEdges
+                    ],
+                    VertexStyle -> Map[# -> OptionValue["HighlightRightVertexStyle"] &, #NewVertices],
+                    VertexCoordinates -> DeleteCases[
+                        Thread[VertexList[hg] -> HypergraphEmbedding[hg]],
+                        HoldPattern[Evaluate[Alternatives @@ #NewVertices -> _]]
+                    ]
                 ],
                 plotOpts,
                 PlotRange -> Automatic,
+                PlotRangePadding -> Scaled[.25],
                 $HypergraphRulePlotOptions
             ]
         }, PlotRangePadding -> 1] &,

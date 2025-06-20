@@ -207,7 +207,11 @@ hg : Hypergraph[vs_List, he_Hyperedges ? HyperedgesQ, opts : OptionsPattern[]] /
 			First,
 			If[
 				KeyExistsQ[$DefaultHypergraphAnnotations, #[[1, 1]]],
-				filterRulesByAll @ Replace[Flatten[#[[All, 2]]], s : Except[_Rule | _RuleDelayed] :> All -> s, {1}],
+				Values @ GroupBy[
+					filterRulesByAll @ Replace[Flatten[#[[All, 2]]], s : Except[_Rule | _RuleDelayed] :> All -> s, {1}],
+					First,
+					FirstCase[#, Except[_ -> Inherited], Last[#]] &
+				],
 				#[[1, 2]]
 			] &
 		] 
