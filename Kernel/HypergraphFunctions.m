@@ -91,7 +91,7 @@ CanonicalEdgeTagged[edge_List -> tag_, symm : {___Cycles}] := CanonicalEdge[edge
 Options[CanonicalHypergraph] = {Method -> Automatic, "Annotations" -> False}
 
 CanonicalHypergraph[hg_ ? HypergraphQ, OptionsPattern[]] := Enclose @ Block[{
-	vs = VertexList[hg], edges = EdgeList[hg], tags = EdgeTags[hg],
+	vs = VertexList[hg], edges = EdgeList[hg], tags = EdgeTags[hg], opts = Options[hg],
     taggedEdgePositions, emptyEdgePositions,
 	orderedEdges, counts, iso, emptyEdges, newEdges, ordering,
 	tagVertices, freeVertices,
@@ -121,8 +121,8 @@ CanonicalHypergraph[hg_ ? HypergraphQ, OptionsPattern[]] := Enclose @ Block[{
     ordering = OrderingBy[newEdges, DeleteElements[#, tagVertices] &];
 	newEdges = MapThread[If[#2 === None, #1, Most[#1] -> #2] &, {newEdges[[ordering]], tags[[ordering]]}];
     If[ TrueQ[OptionValue["Annotations"]],
-        edgeAnnotations = $EdgeAnnotations;
-        vertexAnnotations = $VertexAnnotations
+        edgeAnnotations = Join[$EdgeAnnotations, DeleteDuplicates @ Keys @ Lookup[opts, "EdgeAnnotationRules", {}]];
+        vertexAnnotations = Join[$VertexAnnotations, DeleteDuplicates @ Keys @ Lookup[opts, "VertexAnnotationRules", {}]]
         ,
         edgeAnnotations = {"EdgeSymmetry"};
         vertexAnnotations = {}
