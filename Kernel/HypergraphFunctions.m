@@ -1,3 +1,5 @@
+(* ::Package:: *)
+
 Package["WolframInstitute`Hypergraph`"]
 
 PackageExport["HypergraphIncidence"]
@@ -380,16 +382,15 @@ HypergraphUnion[hs___Hypergraph] := Hypergraph[
 	Union @@ (VertexList /@ {hs}),
 	Union @@ (EdgeList /@ {hs}),
 	With[{ annotations = Merge[AbsoluteOptions /@ {hs}, Identity],
-	 (* The annotations are reversed, so that, in case of duplicates, only annotations from the LAST hypergraph are used. *)
-	  processVertexAnnotations = Reverse @* DeleteDuplicatesBy[First] @* DeleteCases[_ -> None] @* Catenate @* Reverse,
-	  processEdgeAnnotations = Reverse @* DeleteDuplicatesBy[First] @* DeleteCases[_ -> None] @* Catenate @* Reverse },
+	  processVertexAnnotations = DeleteDuplicatesBy[First] @* DeleteCases[_ -> None] @* Catenate,
+	  processEdgeAnnotations = DeleteDuplicatesBy[First] @* DeleteCases[_ -> None] @* Catenate },
 	  annotations // KeyValueMap[
 	     Switch[#1,
 	       Alternatives @@ $VertexAnnotations, #1 -> processVertexAnnotations[#2],
            Alternatives @@ $EdgeAnnotations, #1 -> processEdgeAnnotations[#2],
            "VertexAnnotationRules", #1 -> processVertexAnnotations /@ Merge[ #2, Identity] // Normal,
            "EdgeAnnotationRules", #1 -> processEdgeAnnotations /@ Merge[#2, Identity] // Normal,
-           _, #1 -> Last[#2]
+           _, #1 -> First[#2]
           ]& ]
       ]
     ]
@@ -400,16 +401,15 @@ HypergraphHadamardProduct[h1_Hypergraph, h2_Hypergraph] := Hypergraph[
         If[MissingQ[#[[1]]] || MissingQ[#[[2]]], Nothing, Catenate[Table @@ #]] &
     ],
     With[{ annotations = Merge[Identity] @ {
-             AbsoluteOptions[h1, Join[$VertexAnnotations, {"VertexAnnotationRules"}]],
-             (* Whereas vertex annotations are combined, prefering the last ones on conflict, edge annotations are taken immediately from the second graphs *) 
-             AbsoluteOptions[h2, Join[$VertexAnnotations, $EdgeAnnotations, {"VertexAnnotationRules", "EdgeAnnotationRules"}]]},
-           processVertexAnnotations = Reverse @* DeleteDuplicatesBy[First] @* DeleteCases[_ -> None] @* Catenate @* Reverse},
+             AbsoluteOptions[h1, Join[$VertexAnnotations, $EdgeAnnotations, {"VertexAnnotationRules", "EdgeAnnotationRules"}]],
+             AbsoluteOptions[h2, Join[$VertexAnnotations, {"VertexAnnotationRules"}]]},
+           processVertexAnnotations = DeleteDuplicatesBy[First] @* DeleteCases[_ -> None] @* Catenate },
            annotations // 
              KeyValueMap[
                Switch[#1,
                  Alternatives @@ $VertexAnnotations, #1 -> processVertexAnnotations[#2],
                  "VertexAnnotationRules", #1 -> processVertexAnnotations /@ Merge[#2, Identity] // Normal,
-                 _, #1 -> Last[#2]
+                 _, #1 -> First[#2]
                ]&
              ] 
         ]
