@@ -380,10 +380,10 @@ Hypergraph /: EdgeQ[hg_Hypergraph, edge_Rule] := MemberQ[EdgeListTagged[hg], edg
 
 HypergraphUnion[hs___Hypergraph] := Hypergraph[
 	Union @@ (VertexList /@ {hs}),
-	Union @@ (EdgeList /@ {hs}),
+	Through[Unevaluated @ Plus[hs]["Edges"]],
 	With[{ annotations = Merge[AbsoluteOptions /@ {hs}, Identity],
 	  processVertexAnnotations = DeleteDuplicatesBy[First] @* DeleteCases[_ -> None] @* Catenate,
-	  processEdgeAnnotations = DeleteDuplicatesBy[First] @* DeleteCases[_ -> None] @* Catenate },
+	  processEdgeAnnotations = DeleteCases[_ -> None] @* Catenate },
 	  annotations // KeyValueMap[
 	     Switch[#1,
 	       Alternatives @@ $VertexAnnotations, #1 -> processVertexAnnotations[#2],
