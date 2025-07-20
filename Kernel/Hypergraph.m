@@ -36,7 +36,7 @@ $DefaultHypergraphAnnotations = <|
 |>
 
 $VertexAnnotations = {VertexStyle, VertexLabels, VertexLabelStyle, VertexSize, VertexCoordinates, VertexShapeFunction};
-$EdgeAnnotations = {EdgeStyle, "EdgeLineStyle", EdgeLabels, EdgeLabelStyle, "EdgeSize", "EdgeSymmetry"};
+$EdgeAnnotations = {EdgeStyle, "EdgeLineStyle", EdgeLabels, EdgeLabelStyle, "EdgeSize", "EdgeSymmetry","EdgeType"};
 
 
 getDefault[value_, def_ : None] := Replace[value, {_, default_} | default_ :> Replace[def, None -> default]]
