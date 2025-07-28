@@ -2,26 +2,32 @@
 
 Package["WolframInstitute`Hypergraph`"]
 
-PackageExport["InsertionBracket"]
+PackageExport["HypergraphInsertionBracket"]
+PackageExport["HypergraphInsertionBracketDegree"]
 
-Options[InsertionBracket]={"IsomorphismClass"->"Ordered"}
-InsertionBracket[x___,OptionsPattern[]]:=
+(* TODO
+  1. Support isomorphism classes of rooted graded hypergraphs:
+       - make CanonicalHypergraph return the vertex transformation so that its Koszul sign can be computed
+       - add Koszul sign in convertTaggedUnaryEdgeToRoot (perhaps replace the transposition by cyclic permutation)
+*)
+
+Options[HypergraphInsertionBracket]={"Kind"->"Ordered"}
+HypergraphInsertionBracket[x___,OptionsPattern[]]:=
 	Switch[
-		OptionValue["IsomorphismClass"],
+		OptionValue["Kind"],
 		"Ordered",
-		VertexOrderedInsertionBracket[x],
+		InsertionBracketOrdered[x],
 		"Rooted",
-		RootedInsertionBracket[x],
+		InsertionBracketRooted[x],
 		"Tagged",
-		TaggedInsertionBracket[x]
+		InsertionBracketTagged[x]
 	];
 
 (*
-  Extends `op` to a multi-linear operation on associations.
-  The output `out` of `op` is assumed to be an association and is
-  treated as the trivial association `<| out -> 1 |>` otherwise.
+   Extends `op` to a multi-linear operation on associations.
+   The output `out` of `op` is assumed to be an association and is
+   treated as the trivial association `<| out -> 1 |>` otherwise.
 *)
-
 MultilinearExtension[op_] := Module[
    {opMulti},
    opMulti[first___, x_, last___] /; ! AssociationQ[x] := 
@@ -39,36 +45,29 @@ MultilinearExtension[op_] := Module[
 ];
 
 
-(* 
+(*
    Computes the Koszul sign of a given permutation.
 *)
-
 Options[KoszulSign] = {"Degree" -> Function[x, 0], "Parity" -> 0};
 
-KoszulSign[permutation_, OptionsPattern[]] := Module[
-   {deg = OptionValue["Degree"],
-    par = OptionValue["Parity"],
-    n = Length[permutation],
-    res = 1,
-    i, j},
-   For[i = 1, i < n, i++,
-      For[j = i + 1, j <= n, j++,
-         If[
-            permutation[[i]] > permutation[[j]],
-            res = res * (-1)^(par + deg[i] * deg[j])
-         ]
-      ]
-   ];
-   Return[res];
+KoszulSign[permutation_, OptionsPattern[]] := Module[{
+      deg = OptionValue["Degree"],
+      par = OptionValue["Parity"],
+      n = Length[permutation],
+      factors
+   },
+   factors = Table[ If[permutation[[i]] > permutation[[j]],
+      (-1)^(par + deg[i]*deg[j]), 1 ],
+      {i, 1, n - 1}, {j, i + 1, n} ];
+   Times @@ Flatten @ factors
 ];
 
 
-(* 
+(*
    Symmetrizes `op` in its inputs. The output `out` of `op` is 
    assumed to be an association and is treated as the trivial
    association `<| out -> 1 |>` otherwise.
 *)
-
 Options[Symmetrization] = {"Parity" -> 0, "Degree" -> Function[x, 0]};
 
 Symmetrization[op_, OptionsPattern[]] := 
@@ -91,235 +90,228 @@ Symmetrization[op_, OptionsPattern[]] :=
       ] // DeleteCases[Merge[#, Total], 0] &;
       opSym
    ];
-  
-  
-(* 
-   Graded vertex-insertion bracket.
-*)
 
-VertexOrderedInsertionBracket =
+
+(*
+   Graded insertion bracket on Hypergraphs with ordered graded vertices.
+*)
+InsertionBracketOrdered =
    MultilinearExtension[
       Symmetrization[
          Composition[
-            collectHypergraphsBy[CanonicalHypergraphVertexOrdered],
-            VertexOrderedInsertion
+            CollectHypergraphsBy[CanonicalHypergraphVertexOrdered],
+            HypergraphInsertion
          ],
-         "Degree" -> ShiftedVertexDegree,
+         "Degree" -> HypergraphInsertionBracketDegree,
+         (* antisymmetrization *)
          "Parity" -> 1
       ]
    ];
    
 
-(* 
+(*
    Merges values whose keys agree after applying `f`.
 *)
+CollectHypergraphsBy[f_] := DeleteCases[0] @* Merge[Total] @* Map[f];
 
-collectHypergraphsBy[f_] :=
-   Module[
-      {F},
-      F[hg_Hypergraph] := <|f[hg] -> 1|>;
-      F[rl_Rule] := <|f[rl[[1]]] -> rl[[2]]|>;
-      F[lst_List] := (F /@ lst) // DeleteCases[Merge[#, Total], 0] &;
-      F[as_Association] := F[Normal[as]];
-      F
-   ];
+
+(*
+   |G| = deg(G) - deg(root)
+*)
+HypergraphInsertionBracketDegree[hg_Hypergraph] := With[{ degree = HypergraphVertexDegree[hg] },
+   Total[Values[degree]] - Lookup[degree, First @ VertexList[hg], 0]
+];
 
 
 (* 
-   Suspended vertex degree. 
+   Inserts `hg[n]` into `hg[n-1]` into `hg[n-2]` and so on by root in all possible ways aggregating the insertion sign.
+   Returns a list `{ <| hg -> sgn |>,...}` of all insertion results. 
 *)
-
-ShiftedVertexDegree[hg_] := VertexCount[hg] - 1;
+HypergraphInsertion[input__Hypergraph] := Fold[
+   { toInsertList, target } |-> With[{
+      targetVertices = VertexList[target],
+      targetDegrees = HypergraphVertexDegree[target] },
+      (* Insert each previously obtained hypergraph to the target in all possible ways *)
+      First @ KeyValueMap[ {hg, c} |-> With[{
+         insertedRootDegree = Lookup[HypergraphVertexDegree[hg],getRoot[hg],0] },
+	    Map[
+	       (* previous and external sign *)
+     	       c * If[EvenQ[Lookup[targetDegrees, targetVertices[[#]], 0] * Total[Values[targetDegrees]]], 1, -1] *
+	       (* Insertion with internal sign *)
+	       hypergraphInsertionInner[target, #, hg] &,
+	       (* Insert only at vertices with the same degree as the root *)
+               Select[ Range[Length[targetVertices]], Lookup[targetDegrees, #, 0] == insertedRootDegree & ] 
+	    ]
+         ], #] & /@ toInsertList // Catenate
+   ],
+   (* hg[n] *)
+   { <| Last[List[input]] -> 1 |> },
+   (* hg[n-1], hg[n-2], ..., hg[1] *)
+   Reverse @ Most[List[input]]
+];
 
 
 (* 
-   Inserts `hg_n` into `hg_n-1`  ... into `hg_1` in all possible ways keeping track
-   of the internal Koszul sign. Returns a list `{hg -> sgn,...}` of the results of the
-   insertions with sign. 
-*)
-
-VertexOrderedInsertion[input__] :=
-   With[
-      {inputList = List[input]},
-      Fold[
-         {acc, next} |->
-            Map[
-               prev |-> With[
-                  {vc = VertexCount[prev[[1]]]},
-                  MapAt[
-                     ((-1)^vc*# &),
-                     insertVertexOrderedHypergraphInner[prev[[1]], #, next] & /@ 
-                        Range[vc],
-                     {All, 2}
-                  ]
-               ],
-               acc
-            ] // Catenate,
-         {First[inputList] -> 1},
-         Rest[inputList]
-      ]
-   ];
-
-
-(*  
    Inserts `hg2` into `hg1` at a chosen vertex of index `i` and computes the 
-   Koszul sign of this insertion. Returns `hg->sgn`. 
+   Koszul sign of this insertion. Returns `<| hg->sgn |>`. 
 *)
-
-insertVertexOrderedHypergraphInner[hg1_Hypergraph, i_, hg2_Hypergraph] :=
-   Module[
-      {
-         vertices1 = VertexList[hg1],
-         vertices2 = VertexList[hg2],
-         vc1, vc2,
-         edges1 = EdgeList[hg1],
-         edges2 = EdgeList[hg2],
-         newVertices2
-      },
-      vc1 = Length[vertices1];
-      vc2 = Length[vertices2];
-      newVertices2 = Table[Unique["ins"], Length[vertices2]];
-      Hypergraph[
-         Catenate[{vertices1[[1 ;; i - 1]], newVertices2, vertices1[[i + 1 ;; -1]]}],
-         Catenate[{Replace[edges1, vertices1[[i]] -> newVertices2[[1]], 2],
-            Replace[edges2, Thread[vertices2 -> newVertices2], 2]}]
-      ] -> (-1)^(i - 1 + (vc1 - i)*vc2)
+hypergraphInsertionInner[hg1_Hypergraph, i_, hg2_Hypergraph] := Module[{
+      vertices1 = VertexList[hg1],
+      vertices2 = VertexList[hg2],
+      deg1 = HypergraphVertexDegree[hg1],
+      deg2 = HypergraphVertexDegree[hg2],
+      edges1 = EdgeList[hg1],
+      edges2 = EdgeList[hg2],
+      insertedVertices, embedding,
+      resultingSign, resultingVertices, resultingEdges, resultingDegree,
+      u1, u2, ui
+   },
+   insertedVertices = Table[Unique["ins"], Length[vertices2]];
+   embedding = AssociationThread[vertices2 -> insertedVertices];
+   u1 = vertices1[[1 ;; i - 1]];
+   u2 = vertices1[[i + 1 ;; -1]];
+   ui = vertices1[[i]];
+   resultingSign = If[ EvenQ[
+      Lookup[deg1, ui, 0] * Total[Lookup[deg1, u1]] + Total[Values[deg2]] * Total[Lookup[deg1, u2]]
+      ], 1, -1 ];
+   resultingVertices = Join[
+      vertices1[[1 ;; i - 1]],
+      insertedVertices,
+      vertices1[[i + 1 ;; -1]]
    ];
+   resultingEdges = Join[ 
+      Replace[edges1, ui -> insertedVertices[[1]], {2} ],
+      Map[ Lookup[ embedding, #, # ]&, edges2, {2} ]
+   ];
+   resultingDegree = Merge[{
+      KeyTake[deg1, u1],
+      KeyMap[ Lookup[ embedding, #, # ] &, deg2 ], 
+      KeyTake[deg1, u2]
+   }, First ];
+   <| Hypergraph[
+      resultingVertices,
+      resultingEdges,
+      "VertexAnnotationRules" -> { "Degree" -> Normal @ resultingDegree }
+   ] -> resultingSign |>
+];
+
+(*
+   Returns the vertex degrees of a hypergraph; defaults to 0.
+*)
+HypergraphVertexDegree[h_Hypergraph] := Association@Lookup[Lookup[AbsoluteOptions[h], "VertexAnnotationRules", {}], 
+   "Degree", Thread[VertexList[h] -> 0]];
 
 
-(* 
-   Transforms `hg` into its canonical form as a vertex-ordered hypergraph.
+(*
+   Transforms `<| hg->c |>` into its canonical form as a vertex-ordered hypergraph.
    That is, it renames vertices of `hg` to {1,2,...} in the given order.
 *)
-
-CanonicalHypergraphVertexOrdered[hg_Hypergraph] :=
-   With[
-      {ren = Thread[VertexList[hg] -> Range[VertexCount[hg]]]},
+CanonicalHypergraphVertexOrdered := KeyMap[ hg |-> 
+   Module[{ resultingVertices, resultingEdges, resultingDegree, transformation},
+      resultingVertices = Range[VertexCount[hg]];
+      transformation = AssociationThread[VertexList[hg], resultingVertices];
+      resultingEdges = ( ( ( ( Lookup[transformation, #, #]& ) /@ # ) // Sort )& /@ EdgeList[hg]) // Sort;
+      resultingDegree = KeyMap[ Lookup[transformation, #, #]& , HypergraphVertexDegree[hg]];
       Hypergraph[
-         ren[[All, 2]],
-         Map[
-            Sort[Replace[#, ren, 2]] &,
-            EdgeList[hg]
-         ] // Sort
+         resultingVertices,
+         resultingEdges,
+        "VertexAnnotationRules" -> { "Degree" -> Normal @ resultingDegree }
       ]
-   ];
+   ]
+];
 
 
-(* 
+(*
    Insertion Lie bracket on isomorphism classes of rooted hypergraphs.
 *)
-
-RootedInsertionBracket =
+InsertionBracketRooted =
    With[
       {rootTag = Unique["root"]},
       MultilinearExtension[
          Symmetrization[
             Composition[
-               collectHypergraphsBy[CanonicalHypergraphRooted],
-               MapAt[Abs, #, {All, 2}] &,
-               VertexOrderedInsertion
+               CollectHypergraphsBy[CanonicalHypergraphRooted],
+	       (* TODO support grading for the rooted bracket *)
+               HypergraphInsertionUNGRADED
             ],
             "Parity" -> 1
          ]
       ]
    ];
 
+HypergraphInsertionUNGRADED[input__Hypergraph] := HypergraphInsertion @@ (Hypergraph[VertexList[#],EdgeList[#]]& /@ List[input]);
 
-(* 
+(*
    Returns the canonical form of a rooted hypergraph. That is, the
    canonical form of a hypergraph, which has always vertices `{1,2,...}`,
    with the leading `1` swapped with the root vertex `i`.
 *)
-
-CanonicalHypergraphRooted = With[
-   {tag = Unique["root"]},
+CanonicalHypergraphRooted = With[ {tag = Unique["root"]},
    Composition[
-      (convertTaggedUnaryEdgeToRoot[#, tag] &),
-      CanonicalHypergraph,
-      (convertRootToTaggedUnaryEdge[#, tag] &)
+      convertTaggedUnaryEdgeToRoot[tag],
+      KeyMap[CanonicalHypergraph],
+      convertRootToTaggedUnaryEdge[tag]
    ]
 ];
 
 
 (*
-	Transforms a root vertex into a tagged unary edge.
-	Two rooted hypergraphs are isomorphic if and only if the
-	transformed hypergraphs are isomorphic as hypergraphs.
+   Transforms a root vertex into a tagged unary edge.
+   Two rooted hypergraphs are isomorphic if and only if the
+   transformed hypergraphs are isomorphic as hypergraphs.
 *)
-
-convertRootToTaggedUnaryEdge[hg_, tag_] :=
+convertRootToTaggedUnaryEdge[tag_] := KeyMap[ hg |-> 
    Hypergraph[
       VertexList[hg], 
-      Join[EdgeList[hg], {{getRoot[hg]} -> tag}]
-   ];
+      Join[EdgeList[hg], {{ getRoot[hg] } -> tag}]
+   ]
+];
   
     
 (*
-	Transforms a tagged unary edge into a root vertex.
+   Transforms a tagged unary edge into a root vertex.
 *)
-
-convertTaggedUnaryEdgeToRoot[hg_, tag_] :=
-   makeRoot[
+convertTaggedUnaryEdgeToRoot[tag_] := KeyMap[ hg |->
+   Module[ { edges = EdgeListTagged[hg] , vertices = VertexList[hg], root, first}, 
+      root = First @ FirstCase[ EdgeListTagged[hg], (x_ -> tag) :> x ];
+      first = First[vertices];
       Hypergraph[
-         VertexList[hg], 
-         DeleteCases[EdgeListTagged[hg], _ -> tag, {1}]
-      ],
-      First[FirstCase[EdgeListTagged[hg], (x_ -> tag) :> x]]
-   ];
+           Replace[vertices, { first -> root, root -> first }, {1} ], 
+           DeleteCases[edges, _ -> tag, {1} ]
+         ]
+   ]
+];
 
-
-(* 
-   Makes a given vertex `v` into the root of `hg` by swapping it with
-   the first vertex in the list of vertices.
-*)
-
-makeRoot[hg_Hypergraph, v_] :=
-   Hypergraph[
-      Replace[#, {First[#] -> v, v -> First[#]}, {1}] &@VertexList[hg],
-      EdgeList[hg]
-   ];
-
-
-(* 
+(*
    Returns the root of a hypergraph.
 *)
-
 getRoot[hg_Hypergraph] := First[VertexList[hg]];
 
 
 (*
-	Tagged insertion bracket.
+   Tagged insertion bracket.
 *)
-
-TaggedInsertionBracket =
+InsertionBracketTagged =
   MultilinearExtension[
    Symmetrization[
     Composition[
-     collectHypergraphsBy[CanonicalHypergraphTagged],
+     CollectHypergraphsBy[CanonicalHypergraphTagged],
      EdgeInsertion
      ],
     "Parity" -> 1
     ]
    ];
-   
-(* 
+
+(*
    Inserts `hg_n` into `hg_n-1`  ... into `hg_1` in all possible ways.
    Returns a list `{hg -> 1,...}` of the insertions.
-*)   
-
-EdgeInsertion[input__] :=
-  With[
-    {inputList = List[input]},
-    Fold[
-      {acc, next} |->
-       Map[
-         prev |-> edgeInsertionInner[prev[[1]], next],
-         acc
-       ] // Catenate,
-      {First[inputList] -> 1},
-      Rest[inputList]
-    ]
-  ];
+*)
+EdgeInsertion[input__Hypergraph] := Fold[
+   { toInsertList, target } |->
+   ( First @ KeyValueMap[ {hg, c} |-> Map[Times[c,#]&, edgeInsertionInner[target, hg] ], # ] ) & /@ toInsertList // Catenate,
+   { <| Last[List[input]] -> 1 |> },
+   Reverse @ Most[List[input]]
+];
 
 edgeInsertionInner[hg1_, hg2_] :=
   Module[
@@ -346,7 +338,7 @@ edgeInsertionInner[hg1_, hg2_] :=
          {transform =
            Thread[edges1[[insertEdgeIndex]] ->
              Permute[copyRootEdge, rootEdgePermutation]]},
-         Hypergraph[
+         <| Hypergraph[
            Join[
              Replace[vertices1, transform, 1],
              copyComplimentaryVertices2
@@ -357,8 +349,8 @@ edgeInsertionInner[hg1_, hg2_] :=
              Replace[edges1[[insertEdgeIndex + 1 ;; -1]], transform, 2]
            ],
            "EdgeSymmetry" -> rootEdgeSymmetryOption
-         ]
-       ] -> 1,
+         ] -> 1 |>
+       ],
       Tuples[{
         Flatten@Position[edges1, x_ /; Length[x] == Length[rootEdge], 1],
         GroupElements[PermutationGroup[rootEdgeSymmetry]]
@@ -367,48 +359,43 @@ edgeInsertionInner[hg1_, hg2_] :=
   ];
 
 
-(* 
+(*
    Returns the canonical form of a tagged hypergraph. That is, the
    canonical form of a hypergraph where the leading edge is swapped with
    the tagged edge. This is a canonical form since the leading edge can be
    identified as the edge with the smallest arity and vertices in the lowest
    lexicographic order.
 *)
-
 CanonicalHypergraphTagged = With[
    {tag = Unique["root"]},
    Composition[
-      (convertTaggedEdgeToRootEdge[#, tag] &),
-      CanonicalHypergraph,
-      (convertRootEdgeToTaggedEdge[#, tag] &)
+      convertTaggedEdgeToRootEdge[tag],
+      KeyMap[CanonicalHypergraph],
+      convertRootEdgeToTaggedEdge[tag]
    ]
 ];
 
 
 (*
-	Tags the root edge. The root edge, by our convention, is the first 
-	edge in the list of edges.
+   Tags the root edge. The root edge, by our convention, is the first 
+   edge in the list of edges.
 *)
-
-convertRootEdgeToTaggedEdge[hg_, tag_] :=
-   Hypergraph[
+convertRootEdgeToTaggedEdge[tag_] := KeyMap[ hg |-> Hypergraph[
       VertexList[hg],
-      ReplaceAt[EdgeList[hg], x_ :> (x -> tag), 1],
+      ReplaceAt[EdgeList[hg], x_ :> (x -> tag), {1}],
       "EdgeSymmetry" -> First[hg["EdgeSymmetry"]]
-   ];
-  
-    
-(*
-	Transforms the tagged edge into the root edge.
-*)
+   ]
+];
 
-convertTaggedEdgeToRootEdge[hg_, tag_] :=
-  Module[
-   { edges=EdgeList[hg],
-     pos = First[First[Position[EdgeListTagged[hg], _ -> tag]]] },
-   Hypergraph[
+(*
+   Transforms the tagged edge into the root edge.
+*)
+convertTaggedEdgeToRootEdge[tag_] := KeyMap[ hg |->
+   With[{ edges=EdgeList[hg], pos = First[First[Position[EdgeListTagged[hg], _ -> tag]]] },
+      Hypergraph[
          VertexList[hg], 
          ReplacePart[edges,{1 -> edges[[pos]],pos -> edges[[1]]}],
          "EdgeSymmetry" -> First[hg["EdgeSymmetry"]]
-   ]
-  ];
+      ]
+  ]
+];

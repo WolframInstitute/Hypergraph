@@ -4,10 +4,10 @@ PacletObject[
   <|
     "Name" -> "WolframInstitute/Hypergraph",
     "Description" -> "Hypergraph tools",
-    "Creator" -> "Nikolay Murzin and Carlos Zapata Carratal\[AAcute]",
+    "Creator" -> "Nikolay Murzin and Carlos Zapata Carratal\[AAcute] and Pavel H\[AAcute]jek",
     "License" -> "MIT",
     "PublisherID" -> "WolframInstitute",
-    "Version" -> "1.2.1",
+    "Version" -> "1.2.2",
     "WolframVersion" -> "13.2+",
     "PrimaryContext" -> "WolframInstitute`Hypergraph`",
     "Extensions" -> {
@@ -44,7 +44,8 @@ PacletObject[
           "WolframInstitute`Hypergraph`RandomHypergraphRule",
           "WolframInstitute`Hypergraph`SimpleHypergraphPlot",
           "WolframInstitute`Hypergraph`SimpleHypergraphPlot3D",
-          "WolframInstitute`Hypergraph`InsertionBracket"
+          "WolframInstitute`Hypergraph`HypergraphInsertionBracket",
+          "WolframInstitute`Hypergraph`HypergraphInsertionBracketDegree"
         }
       },
       {
