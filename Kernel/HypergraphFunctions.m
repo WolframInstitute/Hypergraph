@@ -96,8 +96,7 @@ CanonicalHypergraph[hg_ ? HypergraphQ, OptionsPattern[]] := Enclose @ Block[{
 	vs = VertexList[hg], edges = EdgeList[hg], tags = EdgeTags[hg],
     taggedEdgePositions, emptyEdgePositions,
 	orderedEdges, counts, iso, emptyEdges, newEdges, ordering,
-	tagVertices, freeVertices,
-    edgeAnnotations, vertexAnnotations
+	tagVertices, freeVertices
 },
 	tagVertices = Catenate @ Reap[orderedEdges = MapThread[
 		{edge, tag, symm} |-> With[{tagVertex = If[tag === None, None, Sow[Unique[]]]},
