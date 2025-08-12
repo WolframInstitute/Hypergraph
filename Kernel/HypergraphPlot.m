@@ -362,8 +362,9 @@ SimpleHypergraphPlot[h_Hypergraph, plotOpts : OptionsPattern[]] := Enclose @ Blo
 ]
 
 
-SimpleHypergraphPlot3D[h_, opts___] := SimpleHypergraphPlot[h, "LayoutDimension" -> 3, opts]
+SimpleHypergraphPlot3D[h_, opts___] := SimpleHypergraphPlot[Hypergraph[h, "LayoutDimension" -> 3], opts]
 
 
-HypergraphEmbedding[hg_Hypergraph ? HypergraphQ] := First[Reap[SimpleHypergraphPlot[hg], "Vertex"][[2]], {}]
+HypergraphEmbedding[hg_Hypergraph ? HypergraphQ, d : 2 | 3 | Automatic : Automatic, opts___] :=
+    First[Reap[SimpleHypergraphPlot[If[d === Automatic, hg, Hypergraph[hg, "LayoutDimension" -> d]], opts], "Vertex"][[2]], {}]
 
