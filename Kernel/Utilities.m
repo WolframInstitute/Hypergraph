@@ -97,7 +97,7 @@ LinkedHypergraph[hg_, opts : OptionsPattern[]] := With[{
             {All, 2}
         ],
         Sequence @@ FilterRules[{opts}, Options[Hypergraph]],
-        PlotTheme -> "WolframModel",
+        PlotTheme -> Automatic,
         "EdgeSymmetry" -> "Ordered",
         "EdgeLineStyle" -> Directive[Arrowheads[{{0.03, .5}}], Opacity[.7], Hue[0.63, 0.7, 0.5]], VertexLabelStyle -> _ -> FontSize -> 8, VertexLabels -> Automatic
     ]

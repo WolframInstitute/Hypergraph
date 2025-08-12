@@ -1,1 +1,1 @@
-{PlotTheme -> {"Automatic", "\"WolframModel\"", "\"Dark\""}}
+{PlotTheme -> {"Automatic", "\"Colored\"", "\"Dark\""}}

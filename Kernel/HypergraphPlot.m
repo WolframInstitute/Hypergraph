@@ -12,25 +12,41 @@ PackageScope["$HypergraphPlotThemes"]
 
 
 $HypergraphPlotThemes = <|
-    Automatic -> {
+    "Colored" -> {
         EdgeStyle -> Automatic,
         "EdgeLineStyle" -> Automatic,
         VertexStyle -> Automatic,
         VertexSize -> 0.01,
         VertexShapeFunction -> Automatic
     },
-    "WolframModel" -> {
-        EdgeStyle -> {
-            {} -> Directive[Opacity[.4], Hue[0.63, 0.7, 0.5]],
-            {_, _} -> Directive[Arrowheads[{{0.03, .5}}], Opacity[.7], Hue[0.63, 0.7, 0.5]],
-            _ -> Directive[Opacity[0.1], Hue[0.63, 0.66, 0.81]]
+    Automatic -> If[$VersionNumber >= 14.3,
+        {
+            EdgeStyle -> {
+                {} -> LightDarkSwitched[Opacity[.4, Hue[0.63, 0.7, 0.5]], White],
+                {_, _} -> Directive[Arrowheads[{{0.03, .5}}], LightDarkSwitched[Opacity[.7, Hue[0.63, 0.7, 0.5]], White]],
+                _ -> LightDarkSwitched[Opacity[0.1, Hue[0.63, 0.66, 0.81]], White]
+            },
+            EdgeLabelStyle -> LightDarkSwitched[Hue[0.63, 0.7, 0.5], White],
+            "EdgeLineStyle" -> LightDarkSwitched[Opacity[.7, Hue[0.63, 0.7, 0.5]], White],
+            VertexStyle -> Directive[LightDarkSwitched[Hue[0.63, 0.26, 0.89], White], EdgeForm[LightDarkSwitched[Opacity[0.95, Hue[0.63, 0.7, 0.33]], White]]],
+            VertexLabelStyle -> LightDarkSwitched[Black, White],
+            VertexSize -> 0.01,
+            VertexShapeFunction -> Function[If[Length[#1] == 3, Sphere[#1, #3], Disk[#1, Offset[200 #3]]]],
+            Background -> LightDarkSwitched[White, None]
         },
-        EdgeLabelStyle -> Hue[0.63, 0.7, 0.5],
-        "EdgeLineStyle" -> Directive[Opacity[.7], Hue[0.63, 0.7, 0.5]],
-        VertexStyle -> Directive[Hue[0.63, 0.26, 0.89], EdgeForm[Directive[Hue[0.63, 0.7, 0.33], Opacity[0.95]]]],
-        VertexSize -> 0.01,
-        VertexShapeFunction -> Function[If[Length[#1] == 3, Sphere[#1, #3], Disk[#1, Offset[200 #3]]]]
-    },
+        {
+            EdgeStyle -> {
+                {} -> Directive[Opacity[.4], Hue[0.63, 0.7, 0.5]],
+                {_, _} -> Directive[Arrowheads[{{0.03, .5}}], Opacity[.7], Hue[0.63, 0.7, 0.5]],
+                _ -> Directive[Opacity[0.1], Hue[0.63, 0.66, 0.81]]
+            },
+            EdgeLabelStyle -> Hue[0.63, 0.7, 0.5],
+            "EdgeLineStyle" -> Directive[Opacity[.7], Hue[0.63, 0.7, 0.5]],
+            VertexStyle -> Directive[Hue[0.63, 0.26, 0.89], EdgeForm[Directive[Hue[0.63, 0.7, 0.33], Opacity[0.95]]]],
+            VertexSize -> 0.01,
+            VertexShapeFunction -> Function[If[Length[#1] == 3, Sphere[#1, #3], Disk[#1, Offset[200 #3]]]]
+        }  
+    ],
     "Dark" -> {
         VertexStyle -> White,
         EdgeStyle -> White,
@@ -48,7 +64,7 @@ $HypergraphPlotThemes = <|
         "EdgeLineStyle" -> Directive[Arrowheads[{{0.03, .5}}], Opacity[.7], Hue[0.63, 0.7, 0.5]],
         VertexLabelStyle -> _ -> FontSize -> 8,
         VertexLabels -> {_HoldForm -> None, _ -> Automatic},
-        PlotTheme -> "WolframModel"
+        PlotTheme -> Automatic
     }
 |>
 
@@ -76,7 +92,7 @@ Options[SimpleHypergraphPlot] := Join[Options[Hypergraph], Options[Graphics], Op
 SimpleHypergraphPlot[h : {___List}, args___] := SimpleHypergraphPlot[Hypergraph[h], args]
 
 SimpleHypergraphPlot[h_Hypergraph, plotOpts : OptionsPattern[]] := Enclose @ Block[{
-    graph, plot,
+    graph,
     vertexEmbedding, edgeEmbedding,
     vertices = VertexList[h], edges = EdgeList[h], edgeTags = EdgeTags[h], taggedEdges = EdgeListTagged[h],
     nullEdges, longEdges, ws,
@@ -159,7 +175,7 @@ SimpleHypergraphPlot[h_Hypergraph, plotOpts : OptionsPattern[]] := Enclose @ Blo
         VertexLabels -> {_ -> Automatic, \[FormalE][_] -> None},
         GraphLayout -> {"SpringEmbedding", "EdgeWeighted" -> True}
     ], GraphQ];
-    {vertexEmbedding, edgeEmbedding} = First[#, {}] & /@ Reap[plot = GraphPlot[graph], {"v", "e"}][[2]];
+    {vertexEmbedding, edgeEmbedding} = First[#, {}] & /@ Reap[ConfirmMatch[GraphPlot[graph], Switch[dim, 2, _Graphics, 3, _Graphics3D]], {"v", "e"}][[2]];
 	edgeEmbedding = Join[Merge[edgeEmbedding, Identity], Association[vertexEmbedding][[Key /@ nullEdges]]];
     vertexEmbedding = Association[vertexEmbedding];
     If[ dim == 2 && vertexCoordinates === Automatic,

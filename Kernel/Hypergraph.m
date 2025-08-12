@@ -226,7 +226,7 @@ hg_Hypergraph[prop_String, args___] := HypergraphProp[hg, prop, args]
 
 
 Options[Hypergraph] := Join[{
-	PlotTheme -> "WolframModel",
+	PlotTheme -> Automatic,
 	ColorFunction -> ColorData[97],
 	"LayoutDimension" -> 2,
     "EdgeArrows" -> False,
