@@ -5,6 +5,10 @@ Package["WolframInstitute`Hypergraph`"]
 PackageExport["HypergraphInsertionBracket"]
 PackageExport["HypergraphInsertionBracketDegree"]
 PackageExport["HypergraphInsertion"]
+PackageExport["convertTaggedUnaryEdgeToRoot"]
+PackageExport["CanonicalHypergraphGraded"]
+PackageExport["convertRootToTaggedUnaryEdge"]
+PackageExport["KoszulSign"]
 
 (* TODO: graded rooted Lie bracket does not work on mixed degrees --- bug or conceptual error? *)
 
@@ -53,9 +57,9 @@ KoszulSign[permutation_, OptionsPattern[]] := Module[{
       n = Length[permutation],
       factors
    },
-   factors = Table[ If[permutation[[i]] > permutation[[j]],
-      (-1)^(par + deg[i]*deg[j]), 1 ],
-      {i, 1, n - 1}, {j, i + 1, n} ];
+   factors = Table[ With[ { pi = permutation[[i]], pj = permutation[[j]] },
+         If[ pi > pj, (-1)^(par + deg[pi]*deg[pj]),1 ] ],
+         {i, 1, n - 1}, {j, i + 1, n} ];
    Times @@ Flatten @ factors
 ];
 
@@ -130,7 +134,7 @@ HypergraphInsertion[input__Hypergraph] := Fold[
       targetDegrees = HypergraphVertexDegree[target] },
       (* Insert each previously obtained hypergraph to the target in all possible ways *)
       First @ KeyValueMap[ {hg, c} |-> With[{
-         insertedRootDegree = Lookup[HypergraphVertexDegree[hg],getRoot[hg],0] },
+         insertedRootDegree = Lookup[HypergraphVertexDegree[hg], First[VertexList[hg]],0] },
 	    Map[
 	       (* previous and external sign *)
      	       c * If[EvenQ[Lookup[targetDegrees, targetVertices[[#]], 0] * Total[Values[targetDegrees]]], 1, -1] *
@@ -241,24 +245,28 @@ InsertionBracketRooted =
 *)
 CanonicalHypergraphRooted = With[ {tag = Unique["root"]},
    Composition[
+      (* removeTagsGradedRooted[tag], *)
       convertTaggedUnaryEdgeToRoot[tag],
-      CanonicalHypergraphWithSign,
+      CanonicalHypergraphGraded,
       convertRootToTaggedUnaryEdge[tag]
+      (* addTagsGradedRooted[tag] *)
    ]
 ];
 
-CanonicalHypergraphWithSign = First @* KeyValueMap[ { hg, c } |->
+CanonicalHypergraphGraded = First @* KeyValueMap[ { hg, c } |->
    Module[ {
       originalVertices = VertexList[hg], transformedVertices,
       originalDegrees = HypergraphVertexDegree[hg], transformedDegrees,
       uniqueKey = CreateUUID["vertex-order-"],
+      degreeTag = Unique["degree"],
       chg, permutation, transformedVertexAnnotationRules
    },
    originalVertexOrder = Thread[originalVertices->Range[Length[originalVertices]]];
+   degreeTagList = KeyValueMap[ { #1 } -> degreeTag[#2] &, Select[originalDegrees, # =!= 0 &] ];
    chg = CanonicalHypergraph[
 	    Hypergraph[
 	       originalVertices,
-	       EdgeListTagged[hg],
+	       Join[EdgeListTagged[hg],degreeTagList],
 	       "VertexAnnotationRules" -> {
                   "Degree" -> Normal @ originalDegrees,
 		  uniqueKey -> originalVertexOrder
@@ -266,17 +274,17 @@ CanonicalHypergraphWithSign = First @* KeyValueMap[ { hg, c } |->
 	    ], "Annotations"->True
 	 ];
    transformedVertexAnnotationRules = Association @ Lookup[ Association @ AbsoluteOptions[chg], "VertexAnnotationRules"];
-   transformedDegrees = Lookup[transformedVertexAnnotationRules, "Degree"];
+   transformedDegrees = Lookup[transformedVertexAnnotationRules, "Degree"] // Sort;
    transformedVertexOrder = Lookup[transformedVertexAnnotationRules, uniqueKey];
    transformedVertices = VertexList[chg];
    permutation =  Replace[ transformedVertices, transformedVertexOrder, {1}];
    <| Hypergraph[
          transformedVertices,
-         EdgeListTagged[chg],
-         "VertexAnnotationRules" -> {"Degree" -> transformedDegrees // Sort}
+	 DeleteCases[ EdgeListTagged[chg], _ -> degreeTag[_], {1} ],
+         "VertexAnnotationRules" -> {"Degree" -> transformedDegrees}
       ] -> c * KoszulSign[
                   permutation,
-		  "Degree" -> (i |-> originalDegrees[originalVertices[[i]]] )
+		  "Degree" -> Function[i,originalDegrees[originalVertices[[i]]]]
 	       ] |>
    ]
 ];
@@ -287,11 +295,13 @@ CanonicalHypergraphWithSign = First @* KeyValueMap[ { hg, c } |->
    transformed hypergraphs are isomorphic as hypergraphs.
 *)
 convertRootToTaggedUnaryEdge[tag_] := KeyMap[ hg |-> 
+  Module[{ vertices = VertexList[hg]},
    Hypergraph[
-      VertexList[hg], 
-      Join[EdgeListTagged[hg], {{ getRoot[hg] } -> tag}],
+      vertices, 
+      Join[EdgeListTagged[hg], {{ First[vertices] } -> tag}],
       "VertexAnnotationRules" -> { "Degree" -> Normal @ HypergraphVertexDegree[hg] }
    ]
+  ]
 ];
   
     
@@ -321,11 +331,53 @@ convertTaggedUnaryEdgeToRoot[tag_] := KeyValueMap[ {hg, c} |->
    ]
 ];
 
-(*
-   Returns the root of a hypergraph.
-*)
-getRoot[hg_Hypergraph] := First[VertexList[hg]];
 
+(*
+   Transforms a root vertex into a tagged unary edge.
+   Two rooted hypergraphs are isomorphic if and only if the
+   transformed hypergraphs are isomorphic as hypergraphs.
+*)
+addTagsGradedRooted[tag_] := KeyMap[ hg |-> 
+   Module[{ vertices = VertexList[hg], root,
+	    degree = HypergraphVertexDegree[hg], 
+	    degreeTagList, rootTagList },
+      root = First[vertices];
+      rootTagList = {{ root } -> tag};
+      degreeTagList = KeyValueMap[ { #1 } -> tag[#2] &, Select[degree, # =!= 0 &] ];
+      Hypergraph[
+         VertexList[hg], 
+         Join[EdgeListTagged[hg], rootTagList, degreeTagList],
+         "VertexAnnotationRules" -> { "Degree" -> Normal @ degree }
+      ]
+   ]
+];
+
+
+(*
+   Transforms a tagged unary edge into a root vertex.
+*)
+removeTagsGradedRooted[tag_] := KeyValueMap[ {hg, c} |->
+   Module[{
+      edges = EdgeListTagged[hg],
+      vertices = VertexList[hg],
+      degree = HypergraphVertexDegree[hg],
+      vertexCount, rootVertex, rootVertexIndex,
+      cyclicPermutation
+   }, 
+   vertexCount = Length[vertices];
+   rootVertex = First @ FirstCase[ edges, (e_ -> tag) :> e ];
+   rootVertexIndex = First @ FirstPosition[ vertices, rootVertex ];
+   cyclicPermutation = Mod[Range[rootVertexIndex, rootVertexIndex + vertexCount - 1] - 1, vertexCount] + 1;
+   <| Hypergraph[
+	 vertices[[cyclicPermutation]],
+         DeleteCases[edges, Alternatives[_ -> tag, _ -> tag[_]], {1} ],
+	 "VertexAnnotationRules" -> { "Degree" -> Normal @ degree }
+      ] -> c * KoszulSign[
+                  cyclicPermutation,
+		  "Degree" -> ( i |-> degree[vertices[[i]]] )
+	       ] |>
+   ]
+];
 
 (*
    Tagged insertion bracket.
@@ -397,14 +449,6 @@ edgeInsertionInner[hg1_, hg2_] :=
     ]
   ];
 
-
-(*
-   Returns the canonical form of a tagged hypergraph. That is, the
-   canonical form of a hypergraph where the leading edge is swapped with
-   the tagged edge. This is a canonical form since the leading edge can be
-   identified as the edge with the smallest arity and vertices in the lowest
-   lexicographic order.
-*)
 CanonicalHypergraphTagged = With[
    {tag = Unique["root"]},
    Composition[
@@ -415,10 +459,6 @@ CanonicalHypergraphTagged = With[
 ];
 
 
-(*
-   Tags the root edge. The root edge, by our convention, is the first 
-   edge in the list of edges.
-*)
 convertRootEdgeToTaggedEdge[tag_] := KeyMap[ hg |-> Hypergraph[
       VertexList[hg],
       ReplaceAt[EdgeList[hg], x_ :> (x -> tag), {1}],
@@ -426,9 +466,6 @@ convertRootEdgeToTaggedEdge[tag_] := KeyMap[ hg |-> Hypergraph[
    ]
 ];
 
-(*
-   Transforms the tagged edge into the root edge.
-*)
 convertTaggedEdgeToRootEdge[tag_] := KeyMap[ hg |->
    With[{ edges=EdgeList[hg], pos = First[First[Position[EdgeListTagged[hg], _ -> tag]]] },
       Hypergraph[
