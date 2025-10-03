@@ -1,37 +1,94 @@
 
 Package["WolframInstitute`Hypergraph`"]
 
+PackageExport["HypergraphLargeQ"]
+PackageExport["SetHypergraphSummaryThresholds"]
+
 PackageScope["$HypergraphRuleArrow"]
 PackageScope["$HypergraphRulePlotOptions"]
+PackageScope["$HypergraphIcon"]
+PackageScope["$HypergraphSummaryThresholds"]
+
+(* Summary box configuration *)
+$HypergraphIcon := HypergraphIcon =
+    SimpleHypergraphPlot[{{1, 2, 3}, {3, 4, 5, 6}, {5, 2}, {3, 4}, {1, 2}, {6, 1}, {2}}, Background -> None]
+
+(* Thresholds for displaying summary box instead of full plot *)
+$HypergraphSummaryThresholds = <|
+    "MaxVertices" -> 32,
+    "MaxEdges" -> 128,
+    "MaxTotalElements" -> 196
+|>;
+
+(* Utility function to determine if a hypergraph should use summary display *)
+HypergraphLargeQ[hg_Hypergraph ? HypergraphQ] := With[{
+    vertexCount = VertexCount[hg],
+    edgeCount = EdgeCount[hg]
+},
+    vertexCount > $HypergraphSummaryThresholds["MaxVertices"] ||
+    edgeCount > $HypergraphSummaryThresholds["MaxEdges"] ||
+    (vertexCount + edgeCount) > $HypergraphSummaryThresholds["MaxTotalElements"]
+]
+
+HypergraphLargeQ[___] := False
+
+(* Function to configure summary thresholds *)
+SetHypergraphSummaryThresholds[rules___Rule] := (
+    AssociateTo[$HypergraphSummaryThresholds, rules]
+)
 
 
 
 (* Hypergraph *)
 
-Hypergraph /: MakeBoxes[hg_Hypergraph /; HypergraphQ[Unevaluated[hg]], form : StandardForm] := With[{
-    boxId = SymbolName[Unique["Hypergraph"]]
-},
-    {
-	boxes = Block[{BoxForm`$UseTextFormattingWhenConvertingInput = False},
-        ToBoxes[
-            Insert[
-                SimpleHypergraphPlot[#, BaseStyle -> {
-                        GraphicsHighlightColor -> Red,
-                        ComponentwiseContextMenu -> {"GraphicsBox" -> {MenuItem["Draw", KernelExecute[
-                                MathLink`CallFrontEnd[FrontEnd`BoxReferenceReplace[FE`BoxReference[EvaluationNotebook[], boxId], ToBoxes[HypergraphDraw[hg]]]]
-                            ], MenuEvaluator -> Automatic]}
-                        }
-                    }
-                ],
-                BoxID -> boxId,
-                -1
-            ],
-            form
-        ]
+Hypergraph /: MakeBoxes[hg_Hypergraph /; HypergraphQ[Unevaluated[hg]], form : StandardForm] := 
+    If[
+        HypergraphLargeQ[hg],
+        
+        (* Large hypergraph: show summary box *)
+  
+        BoxForm`ArrangeSummaryBox[
+            "Hypergraph",
+            hg,
+            $HypergraphIcon,
+            {
+                {BoxForm`SummaryItem[{"Vertices: ", VertexCount[hg]}]},
+                {BoxForm`SummaryItem[{"Edges: ", EdgeCount[hg]}]}
+            },
+            {
+                {BoxForm`SummaryItem[{"Max arity: ", Max[hg["Arity"]]}]},
+                {BoxForm`SummaryItem[{"Edge symmetries: ", CountDistinct[hg["EdgeSymmetry"]]}]}
+            },
+            form,
+            "Interpretable" -> Automatic
+        ],
+        
+        (* Small hypergraph: show graphical plot *)
+        With[{
+            boxId = SymbolName[Unique["Hypergraph"]]
+        },
+            {
+            boxes = Block[{BoxForm`$UseTextFormattingWhenConvertingInput = False},
+                ToBoxes[
+                    Insert[
+                        SimpleHypergraphPlot[#, BaseStyle -> {
+                                GraphicsHighlightColor -> Red,
+                                ComponentwiseContextMenu -> {"GraphicsBox" -> {MenuItem["Draw", KernelExecute[
+                                        MathLink`CallFrontEnd[FrontEnd`BoxReferenceReplace[FE`BoxReference[EvaluationNotebook[], boxId], ToBoxes[HypergraphDraw[hg]]]]
+                                    ], MenuEvaluator -> Automatic]}
+                                }
+                            }
+                        ],
+                        BoxID -> boxId,
+                        -1
+                    ],
+                    form
+                ]
+            ]
+        },
+            hypergraphBox[boxes, #]
+        ] & @ hg
     ]
-},
-	hypergraphBox[boxes, #]
-] & @ hg
 
 Hypergraph /: MakeBoxes[hg_Hypergraph /; HypergraphQ[Unevaluated[hg]], form : TraditionalForm] := With[{
 	edgeBoxes = ToBoxes[#["Edges"], form],
