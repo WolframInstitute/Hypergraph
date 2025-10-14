@@ -21,10 +21,10 @@ makeVertexLabelPattern[vertex_, label_, makePattern_ : False] := Replace[label, 
 
 ToLabeledEdges[vertexLabels_Association, edges : {___List}, makePattern_ : False, vertexCondition_ : True] := Block[{labels, patterns, varSymbols, labeledEdges},
     {patterns, labels} = Reap[
-        varSymbols = Association @ KeyValueMap[#1 ->
+        varSymbols = KeyValueMap[#1 ->
             If[ TrueQ[makePattern],
                 Labeled[
-                    Sow[Pattern[#, _] & @ Symbol["\[FormalV]" <> StringDelete[ToString[#1], Except[WordCharacter]]], "VertexPattern"],
+                    Sow[Pattern[#, _] & @ Symbol["\[FormalV]" <> ToString[Hash[#1]]], "VertexPattern"],
                     Sow[Replace[#2, s_Symbol :> Pattern @@ {s, _}], "LabelPattern"]
                 ],
                 Labeled[#1, #2]
@@ -54,7 +54,7 @@ ToLabeledEdges[hg_ ? HypergraphQ, makePattern_ : False, vertexCondition_ : True,
     edgeTags = EdgeTags[hg],
     edgeLabels
 },
-    vertexLabels = Association @ Map[Apply[#1 -> makeVertexLabelPattern[#1, #2, makePattern] &], Lookup[opts, VertexLabels]];
+    vertexLabels = Association @ MapThread[#1 -> makeVertexLabelPattern[#1, #2, makePattern] &, {vs, Replace[vs, Lookup[opts, VertexLabels], 1]}];
     edgeLabels = Values[Lookup[opts, EdgeLabels]];
     labeledEdges = MapAt[
         MapIndexed[
@@ -271,18 +271,18 @@ HypergraphRuleApply[input_, output_, hg_, opts : OptionsPattern[]] := Block[{
                         Normal @ Map[DeleteDuplicates] @ MapAt[Function[Null, Unevaluated[#] /. bindingRules, HoldAll], Key[EdgeLabels]] @ Merge[{edgeAnnotations, outputEdgeAnnotations},
                            Apply[Join[
                                 Replace[#2, {
-                                    (h : (Rule | RuleDelayed))[e : (edge_List -> tag_), annotation_] :>
-                                        h[CanonicalEdge[Replace[edge, origVertexMap, {1}], Lookup[outputSymmetry, Key[e], {}]] -> (tag /. bindingRules), annotation],
-                                    (h : (Rule | RuleDelayed))[edge_List, annotation_] :>
-                                        h[CanonicalEdge[Replace[edge, origVertexMap, {1}], Lookup[outputSymmetry, Key[edge], {}]], annotation]
+                                    (h : (Rule | RuleDelayed))[e : (he_[edge_List -> tag_]), annotation_] :>
+                                        h[he @ CanonicalEdge[Replace[edge, origVertexMap, {1}], Lookup[outputSymmetry, Key[e], {}]] -> (tag /. bindingRules), annotation],
+                                    (h : (Rule | RuleDelayed))[he_[edge_List], annotation_] :>
+                                        h[he @ CanonicalEdge[Replace[edge, origVertexMap, {1}], Lookup[outputSymmetry, Key[edge], {}]], annotation]
                                 },
                                     1
                                 ],
                                 Replace[
                                     DeleteCases[#1, Alternatives @@ matchEdges | (Alternatives @@ matchEdges -> _) -> _],
                                     {
-                                        (edge_ -> tag_) :> DeleteElements[edge, deleteOrigVertices] -> tag,
-                                        edge_ :> DeleteElements[edge, deleteOrigVertices]
+                                        (h_[edge_ -> tag_]) :> h[DeleteElements[edge, deleteOrigVertices] -> tag],
+                                        h_[edge_] :> h[DeleteElements[edge, deleteOrigVertices]]
                                     },
                                     1
                                 ]

@@ -118,6 +118,7 @@ CanonicalHypergraph[hg_ ? HypergraphQ, OptionsPattern[]] := Enclose @ Block[{
         "Combinatorial" -> ResourceFunction["FindCanonicalHypergraphIsomorphism"]
     }][Join[List /@ freeVertices, orderedEdges]];
     iso = KeySelect[iso, ! MemberQ[tagVertices, #] &];
+    Sow[iso, "Isomorphism"];
     newEdges = First @* Sort /@ TakeList[Map[Replace[iso], orderedEdges, {2}], counts];
     ordering = OrderingBy[newEdges, DeleteElements[#, tagVertices] &];
 	newEdges = MapThread[If[#2 === None, #1, Most[#1] -> #2] &, {newEdges[[ordering]], tags[[ordering]]}];

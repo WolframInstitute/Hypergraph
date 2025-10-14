@@ -199,7 +199,7 @@ hg : Hypergraph[vs_List, he_Hyperedges ? HyperedgesQ, opts : OptionsPattern[]] /
 		Style[v_, styles__] :> v -> {VertexStyle -> Flatten[{styles}]},
 		v_ :> v -> {}
 	}, 1],
-	edges = he /. (Labeled | Style | Annotation)[v_, __] :> v
+	edges = Replace[he, (Labeled | Style | Annotation)[v_, __] :> v, 1]
 },
 	System`Private`SetNoEntry @ System`Private`HoldSetValid[Hypergraph[vertices, edges, ##]] & @@
 		Normal @ GroupBy[
@@ -264,7 +264,7 @@ HypergraphProp[Hypergraph[_, edges_, ___], "Edges"] := edges
 applyRules[expr_, rules_, length_Integer, default_] :=
 	Map[
 		FirstCase[#, Except[Inherited], default, {1}] &,
-		Thread @ Values @ GroupBy[rules, First, PadRight[#, length, Replace[#, {} -> Inherited]] & @ReplaceList[expr, Replace[#, h_[All, rhs_] :> h[_, rhs], {1}], length] &]
+		Thread @ Values @ GroupBy[rules, First, PadRight[#, length, Replace[#, {} -> Inherited]] & @ ReplaceList[expr, Replace[#, h_[All, rhs_] :> h[_, rhs], {1}], length] &]
 	] // PadRight[#, length, {default}] &
 
 HypergraphProp[hg_, "AbsoluteOptions", patt___] := Block[{
@@ -286,18 +286,18 @@ HypergraphProp[hg_, "AbsoluteOptions", patt___] := Block[{
 	Join[
 		KeyValueMap[
 			{name, rules} |-> With[{
-				default = getDefault[Lookup[$DefaultHypergraphAnnotations, name, None], Lookup[rules, _, None]]
+				default = getDefault[Lookup[$DefaultHypergraphAnnotations, name, None], First[Lookup[rules, {_, All}, Nothing], None]]
 			},
-				name -> Map[v |-> (v -> First @ applyRules[v, rules, 1, default]), vertices]
+				name -> Map[v |-> (Verbatim[v] -> First @ applyRules[v, rules, 1, default]), vertices]
 			],
 			AssociationThread[vertexAnnotations -> Lookup[annotationRules, vertexAnnotations]]
 		],
 		KeyValueMap[
 			{name, rules} |-> With[{
-				default = getDefault[Lookup[$DefaultHypergraphAnnotations, name, None], Lookup[rules, _, None]]
+				default = getDefault[Lookup[$DefaultHypergraphAnnotations, name, None], First[Lookup[rules, {_, All}, Nothing], None]]
 			},
-				name -> Permute[#, FindPermutation[#[[All, 1]], edges]] & @ Catenate @ KeyValueMap[
-					{e, count} |-> (e -> # & /@ If[	MatchQ[e, _Rule],
+				name -> MapAt[Verbatim, {All, 1}] @ Permute[#, FindPermutation[#[[All, 1]], edges]] & @ Catenate @ KeyValueMap[
+					{e, count} |-> (e -> # & /@ If[MatchQ[e, _Rule],
 						PadRight[
 							Join[
 								DeleteCases[applyRules[e, rules, count, default], default],

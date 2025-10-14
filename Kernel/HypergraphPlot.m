@@ -231,7 +231,7 @@ SimpleHypergraphPlot[h_Hypergraph, plotOpts : OptionsPattern[]] := Enclose @ Blo
         }];
         primitive = If[ edgeArrowsQ || MatchQ[symm, "Ordered" | "Directed" | "Cyclic" | {}],
             {   initPrimitive,
-                MapIndexed[{Arrowheads[{{If[MatchQ[symm, "Cyclic"], 0.02, Switch[dim, 3, 0.015, _, 0.02] (Log[#2[[1]]] + 1)], .5}}], lineStyle, Arrow[#1]} &, lines]
+                MapIndexed[{Arrowheads[{{Replace[#2[[1]], {1 -> Small, 2 -> Medium, _ -> Large}], .5}}], lineStyle, Arrow[#1]} &, lines]
             },
             initPrimitive
         ] /. _EmptyRegion -> {};
