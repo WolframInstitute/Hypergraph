@@ -180,7 +180,7 @@ SimpleHypergraphPlot[h_Hypergraph, plotOpts : OptionsPattern[]] := Enclose @ Blo
     vertexEmbedding = Association[vertexEmbedding];
     If[ dim == 2 && vertexCoordinates === Automatic,
         With[{vertexRearange =
-            Catenate[
+            Association @ Catenate[
                 Block[{points = Lookup[vertexEmbedding, #], center, ordering},
                     center = Mean[points];
                     ordering = OrderingBy[points, ArcTan @@ (# - center) &];
@@ -195,7 +195,7 @@ SimpleHypergraphPlot[h_Hypergraph, plotOpts : OptionsPattern[]] := Enclose @ Blo
     ];
     vertexEmbedding = vertexEmbedding[[Key /@ vertices]];
     allPoints = DeleteDuplicates @ DeleteMissing @ Join[Values[vertexEmbedding], Catenate[If[MatchQ[#, {__Real}], {#}, Flatten[#, 1]] & /@ Values[edgeEmbedding]]];
-    bounds = Lookup[AbsoluteOptions[graph, PlotRange], PlotRange];
+    bounds = CoordinateBounds[allPoints];
     corner = bounds[[All, 1]];
     center = Mean /@ bounds;
     range = #2 - #1 & @@@ bounds;

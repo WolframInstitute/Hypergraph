@@ -97,7 +97,7 @@ Options[CanonicalHypergraph] = {Method -> Automatic, "Annotations" -> False}
 CanonicalHypergraph[hg_ ? HypergraphQ, OptionsPattern[]] := Enclose @ Block[{
 	vs = VertexList[hg], edges = EdgeList[hg], tags = EdgeTags[hg],
     taggedEdgePositions, emptyEdgePositions,
-	orderedEdges, counts, iso, emptyEdges, newEdges, ordering,
+	orderedEdges, counts, iso, emptyEdges, newVertices, newEdges, ordering,
 	tagVertices, freeVertices
 },
 	tagVertices = Catenate @ Reap[orderedEdges = MapThread[
@@ -113,6 +113,7 @@ CanonicalHypergraph[hg_ ? HypergraphQ, OptionsPattern[]] := Enclose @ Block[{
     edges = Delete[edges, taggedEdgePositions];
     tags = Delete[tags, Complement[emptyEdgePositions, taggedEdgePositions]];
 	emptyEdges = Cases[edges, {}];
+    edges = Delete[edges, emptyEdgePositions];
     freeVertices = DeleteElements[vs, Union @@ edges];
 	iso = Confirm @ Replace[OptionValue[Method], {
         Automatic | "Graph" -> CanonicalHypergraphGraphIsomorphism,
@@ -124,30 +125,34 @@ CanonicalHypergraph[hg_ ? HypergraphQ, OptionsPattern[]] := Enclose @ Block[{
     newEdges = First @* Sort /@ TakeList[Map[Replace[iso], orderedEdges, {2}], counts];
     ordering = OrderingBy[newEdges, DeleteElements[#, tagVertices] &];
 	newEdges = MapThread[If[#2 === None, #1, Most[#1] -> #2] &, {newEdges[[ordering]], tags[[ordering]]}];
+    newVertices = Sort[Values[iso]];
     Hypergraph[
-        Sort[Values[iso]],
+        newVertices,
         Join[emptyEdges, newEdges],
-        With[{ annotations = KeySort @ KeyTake[
-                    Association @ AbsoluteOptions[hg],
-                    If[ TrueQ[OptionValue["Annotations"]],
-                        Join[$VertexAnnotations, $EdgeAnnotations, {"VertexAnnotationRules", "EdgeAnnotationRules"}],
-                        {"EdgeSymmetry"}
-                      ] ],
-               processVertexAnnotations = Sort @ mapVertexOptions[Replace[#, iso] &, #] &,
-               processEdgeAnnotations =  Catenate @ Values @ GroupBy[
-                    Join[Cases[#, HoldPattern[{} -> _]], Thread[newEdges -> Cases[#, (Except[{}] -> x_) :> x][[ordering]]]],
-                    First,
-                    Sort
-                 ]& },               
-             annotations // KeyValueMap[
-                  Switch[#1,
+        With[{
+            annotations = KeySort @ KeyTake[
+                Association @ AbsoluteOptions[hg],
+                If[ TrueQ[OptionValue["Annotations"]],
+                    Join[$VertexAnnotations, $EdgeAnnotations, {"VertexAnnotationRules", "EdgeAnnotationRules"}],
+                    {"EdgeSymmetry"}
+                ]
+            ],
+            processVertexAnnotations = Sort @ mapVertexOptions[Replace[#, iso] &, Thread[vs -> Replace[vs, #, 1]]] &,
+            processEdgeAnnotations =  Catenate @ Values @ GroupBy[
+                Join[Thread[emptyEdges -> Replace[emptyEdges, #, 1]], Thread[newEdges -> Replace[edges, #, 1][[ordering]]]],
+                First,
+                Sort
+            ] &
+        },               
+            annotations // KeyValueMap[
+                Switch[#1,
                     Alternatives @@ $VertexAnnotations, #1 -> processVertexAnnotations[#2],
                     Alternatives @@ $EdgeAnnotations, #1 -> processEdgeAnnotations[#2],
-                    "VertexAnnotationRules", #1 -> MapAt[ processVertexAnnotations, #2, {All,2} ],
-                    "EdgeAnnotationRules", #1 -> MapAt[ processEdgeAnnotations, #2, {All,2} ],
+                    "VertexAnnotationRules", #1 -> MapAt[processVertexAnnotations, #2, {All,2}],
+                    "EdgeAnnotationRules", #1 -> MapAt[processEdgeAnnotations, #2, {All,2}],
                     _, Nothing
-                  ]&
-               ]
+                ] &
+            ]
         ]
    ]
 ]

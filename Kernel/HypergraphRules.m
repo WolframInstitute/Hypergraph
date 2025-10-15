@@ -375,11 +375,15 @@ HypergraphRuleQ[hr_HypergraphRule] := System`Private`HoldValidQ[hr] ||
 
 HypergraphRuleQ[___] := False
 
-Options[HypergraphRule] := Options[Hypergraph]
+Options[HypergraphRule] := Join[Options[HypergraphRuleApply], Options[Hypergraph]]
 
 HoldPattern[HypergraphRule[input_, _, ___] ? HypergraphRuleQ]["Input"] := input
 
 HoldPattern[HypergraphRule[_, output_, ___] ? HypergraphRuleQ]["Output"] := output
+
+HypergraphRule[hr_HypergraphRule ? HypergraphRuleQ, opts : OptionsPattern[]] := With[{hOpts = FilterRules[{opts}, Options[Hypergraph]]},
+    HypergraphRule[Hypergraph[hr["Input"], hOpts], Hypergraph[hr["Output"], hOpts], FilterRules[{opts}, Except[Options[Hypergraph]]]]
+]
 
 (hr : HoldPattern[HypergraphRule[input_, output_, opts : OptionsPattern[]]]) /; ! HypergraphRuleQ[Unevaluated[hr]] :=
     Enclose[
