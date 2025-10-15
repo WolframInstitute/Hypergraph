@@ -264,7 +264,7 @@ HypergraphProp[Hypergraph[_, edges_, ___], "Edges"] := edges
 applyRules[expr_, rules_, length_Integer, default_] :=
 	Map[
 		FirstCase[#, Except[Inherited], default, {1}] &,
-		Thread @ Values @ GroupBy[rules, First, PadRight[#, length, Replace[#, {} -> Inherited]] & @ ReplaceList[expr, Replace[#, h_[All, rhs_] :> h[_, rhs], {1}], length] &]
+		Thread @ Values @ GroupBy[rules, First, PadRight[#, length, Replace[#, {} -> Inherited]] & @ ReplaceList[expr, MapAt[Replace[x : Except[_Verbatim | All] :> Verbatim[x]], {All, 1}] @ Replace[#, h_[All, rhs_] :> h[_, rhs], {1}], length] &]
 	] // PadRight[#, length, {default}] &
 
 HypergraphProp[hg_, "AbsoluteOptions", patt___] := Block[{

@@ -157,7 +157,6 @@ $HypergraphRulePlotOptions = {
     FrameTicks -> None,
     PlotRangePadding -> Scaled[0.1],
     ImagePadding -> 3,
-    AspectRatio -> 1,
     ImageSize -> Tiny
 };
 

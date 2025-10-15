@@ -212,7 +212,7 @@ HypergraphRuleApply[input_, output_, hg_, opts : OptionsPattern[]] := Block[{
         Catenate @ Map[initBinding |-> (
             Map[matchFreeVertices |-> Block[{
                 binding = Association[
-                    initBinding /. Labeled[expr_, _] :> expr,
+                    Replace[initBinding, Labeled[expr_, _] :> expr, 1],
                     Thread[Extract[patterns, Lookup[PositionIndex[inputVertices], inputFreeVertices]] -> matchFreeVertices]
                 ],
                 origVertexMap,

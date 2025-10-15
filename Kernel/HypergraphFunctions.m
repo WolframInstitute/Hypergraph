@@ -30,6 +30,8 @@ HoldPattern[Options[hg_Hypergraph ? HypergraphQ, patt__]] ^:= FilterRules[Option
 HoldPattern[AbsoluteOptions[hg_Hypergraph ? HypergraphQ]] ^:= hg["AbsoluteOptions"]
 HoldPattern[AbsoluteOptions[hg_Hypergraph ? HypergraphQ, patt__]] ^:= FilterRules[AbsoluteOptions[hg], patt]
 
+HoldPattern[OptionValue[hg_Hypergraph ? HypergraphQ, names_]] ^:= OptionValue[AbsoluteOptions[hg], names]
+
 Hypergraph /: AnnotationValue[hg_Hypergraph ? HypergraphQ, key_] := Lookup[AbsoluteOptions[hg], key]
 (* AnnotationValue[{hg_Hypergraph ? HypergraphQ, items_}, key_] := Lookup[Lookup[AbsoluteOptions[hg], key, {}], items] *)
 
@@ -365,10 +367,16 @@ Hypergraph /: VertexAdd[hg_Hypergraph, vertices_List, opts : OptionsPattern[]] :
 Hypergraph /: VertexAdd[hg_Hypergraph, vertex_, opts : OptionsPattern[]] := VertexAdd[hg, {vertex}, opts]
 
 
-Hypergraph /: EdgeAdd[hg_Hypergraph, edges : {(_List | _Rule) ...}, opts : OptionsPattern[]] :=
+Hypergraph /: EdgeAdd[hg_Hypergraph, edges_List, opts : OptionsPattern[]] :=
     Hypergraph[VertexList[hg], Join[EdgeListTagged[hg], edges], opts, hg["Options"]]
 
 Hypergraph /: EdgeAdd[hg_Hypergraph, edge_, opts : OptionsPattern[]] := EdgeAdd[hg, {edge}, opts]
+
+
+Hypergraph /: EdgeDelete[hg_Hypergraph, edges_List, opts : OptionsPattern[]] :=
+    Hypergraph[VertexList[hg], DeleteCases[EdgeListTagged[hg], Alternatives @@ edges], opts, hg["Options"]]
+
+Hypergraph /: EdgeDelete[hg_Hypergraph, edge_, opts : OptionsPattern[]] := EdgeDelete[hg, {edge}, opts]
 
 
 Hypergraph /: VertexQ[hg_Hypergraph, vertex_] := MemberQ[VertexList[hg], vertex]

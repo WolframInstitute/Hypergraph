@@ -537,36 +537,21 @@ HypergraphDraw[Dynamic[hg_Symbol], dynamicSelection : Dynamic[selection_Symbol] 
         vertexLabelOffsets = Lookup[reap, "VertexLabelOffset", {}];
         flash = 0;
 	    vertices = DeleteCases[
-            Join[Association @ Replace[Lookup[resetOpts, VertexCoordinates], Except[KeyValuePattern[_ -> {_ ? NumericQ, _ ? NumericQ}]] -> <||>], vertices],
+            Join[AssociationThread[vs, Replace[vs, Lookup[resetOpts, VertexCoordinates], 1]], vertices],
             Automatic | None
         ];
         nullEdges = <||>;
-        vertexLabels = Association @ Replace[Lookup[resetOpts, VertexLabels],
-            {
-                (v_ -> Automatic) :> v -> v,
-                v_ :> v
-            }
-        ];
+        vertexLabels = AssociationThread[vs, Replace[vs, Lookup[resetOpts, VertexLabels], 1]];
         edges = EdgeList[resetHg];
         vertexSelection = Select[vertexSelection, MemberQ[vs, First[#]] &];
         edgeSelection = Take[edgeSelection, UpTo[Length[edges]]];
-        edgeStyles = Replace[Lookup[resetOpts, EdgeStyle], {
-            (_ -> Automatic) :> color,
-            ({_, _, __} -> style_) :> (If[color === None, color = FirstCase[style, _ ? ColorQ, None]]; style),
-            (_ -> style_) :> style
-        }, {1}];
-        vertexStyles = Association @ Replace[Lookup[resetOpts, VertexStyle], {
-            (v_ -> Automatic) :> v -> interfaceColor,
-            (v_ -> style_) :> (If[color === None, color = FirstCase[style, _ ? ColorQ, None]]; v -> style)
-        }, {1}];
-        vertexLabelStyles = Association @ Lookup[resetOpts, VertexLabelStyle];
-        edgeLabels = Replace[Lookup[resetOpts, EdgeLabels], {
-            (e_ -> Automatic) :> e,
-            (_ -> label_) :> label
-
-        }, {1}];
+        edgeStyles = Replace[edges, Lookup[resetOpts, EdgeStyle], 1];
+        vertexStyles = AssociationThread[vs -> Replace[vs, Lookup[resetOpts, VertexStyle], 1]];
+        If[color === None, color = FirstCase[vertexStyles, _ ? ColorQ, None, All]];
+        vertexLabelStyles = AssociationThread[vs -> Replace[vs, Lookup[resetOpts, VertexLabelStyle], 1]];
+        edgeLabels = Replace[edges, Lookup[resetOpts, EdgeLabels], 1];
         edgeLabelPositions = ConstantArray[Automatic, Length[edgeLabels]];
-        edgeSymmetries = Replace[resetHg["EdgeSymmetry"], Except["Unordered" | "Cyclic" | "Ordered" | "Directed"] -> "Unordered", {1}];
+        edgeSymmetries = Replace[resetHg["EdgeSymmetry"], Except["Unordered" | "Cyclic" | "Ordered" | "Directed"] -> "Unordered", 1];
         If[ color === None, color = Replace[OptionValue["InitialColor"], Automatic :> FirstCase[{vertexStyles, edgeStyles}, _ ? ColorQ, Hue[0.63, 0.66, 0.81], All]]];
         If[ Not[VertexCount[resetHg] == Length[vertices] == Length[vertexStyles] == Length[vertexLabels] && EdgeCount[resetHg] == Length[edges] == Length[edgeStyles] == Length[edgeSymmetries] == Length[edgeLabels] == Length[edgeLabelPositions]],
             Block[{
@@ -686,6 +671,7 @@ HypergraphDraw[Dynamic[hg_Symbol], dynamicSelection : Dynamic[selection_Symbol] 
             FrameTicks -> None,
             ContentSelectable -> False,
             ContextMenu -> {},
+            (* PlotLabel -> Dynamic[actions], *)
             FilterRules[AbsoluteOptions[hg], Options[Graphics]],
             ImageSize -> Scaled[.33]
         ], Selectable :> CurrentValue["ShiftKey"], ShowSelection -> True], {
