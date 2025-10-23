@@ -102,9 +102,8 @@ SimpleHypergraphPlot[h_Hypergraph, plotOpts : OptionsPattern[]] := Enclose @ Blo
     vertexCoordinates, vertexLabelOffsets, vertexShapeFunction,
     allPoints, bounds, corner, center, range, size, dim,
     opts = FilterRules[{
-        FilterRules[{plotOpts}, Except[Options[Hypergraph]]],
         AbsoluteOptions[Hypergraph[h, FilterRules[{Options[h], plotOpts}, Options[Hypergraph]]]],
-        Options[Hypergraph]
+        FilterRules[{plotOpts}, Join[Options[Graphics], Options[Graphics3D]]]
     },
         Options[SimpleHypergraphPlot]
     ],

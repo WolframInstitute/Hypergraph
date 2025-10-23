@@ -70,7 +70,7 @@ Hypergraph /: MakeBoxes[hg_Hypergraph /; HypergraphQ[Unevaluated[hg]], form : St
             {
             boxes = Block[{BoxForm`$UseTextFormattingWhenConvertingInput = False},
                 ToBoxes[
-                    Insert[
+                    Show[
                         SimpleHypergraphPlot[#, BaseStyle -> {
                                 GraphicsHighlightColor -> Red,
                                 ComponentwiseContextMenu -> {"GraphicsBox" -> {MenuItem["Draw", KernelExecute[
@@ -79,8 +79,7 @@ Hypergraph /: MakeBoxes[hg_Hypergraph /; HypergraphQ[Unevaluated[hg]], form : St
                                 }
                             }
                         ],
-                        BoxID -> boxId,
-                        -1
+                        BoxID -> boxId
                     ],
                     form
                 ]
@@ -156,13 +155,12 @@ $HypergraphRulePlotOptions = {
     Frame -> True,
     FrameTicks -> None,
     PlotRangePadding -> Scaled[0.1],
-    ImagePadding -> 3,
-    ImageSize -> Tiny
-};
+    ImagePadding -> 3
+}
 
 HypergraphRule /: MakeBoxes[hr_HypergraphRule /; HypergraphRuleQ[Unevaluated[hr]], form : StandardForm] := With[{boxId = SymbolName[Unique["HypergraphRule"]]}, With[{
     boxes = Block[{BoxForm`$UseTextFormattingWhenConvertingInput = False}, ToBoxes[
-        Insert[BoxID -> boxId, -1] @ GraphicsRow[{
+        Show[GraphicsRow[{
             SimpleHypergraphPlot[#["Input"], $HypergraphRulePlotOptions],
             Graphics[{GrayLevel[0.65], $HypergraphRuleArrow}, ImageSize -> 24],
             SimpleHypergraphPlot[#["Output"], $HypergraphRulePlotOptions]
@@ -170,12 +168,12 @@ HypergraphRule /: MakeBoxes[hr_HypergraphRule /; HypergraphRuleQ[Unevaluated[hr]
             PlotRangePadding -> 1,
             BaseStyle -> {
                 GraphicsHighlightColor -> Blue,
+                GraphicsBoxOptions -> {ImageSize -> Medium},
                 ComponentwiseContextMenu -> {"GraphicsBox" -> {MenuItem["Draw", KernelExecute[
                     MathLink`CallFrontEnd[FrontEnd`BoxReferenceReplace[FE`BoxReference[EvaluationNotebook[], boxId], ToBoxes[HypergraphRuleDraw[hr]]]]],
                     MenuEvaluator -> Automatic]}}
-            },
-            ImageSize -> Medium
-        ],
+            }
+        ], BoxID -> boxId],
         form
     ]]
 },

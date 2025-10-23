@@ -194,10 +194,10 @@ hg : Hypergraph[vs_List, he_Hyperedges ? HyperedgesQ, opts : OptionsPattern[]] /
 	vertices = DeleteDuplicates @ stripAnnotations[vs]
 }, With[{
 	annotations = Replace[vs, {
-		Annotation[v_, data__] :> v -> Cases[Flatten[{data}], _Rule | _RuleDelayed],
-		Labeled[v_, label_, ___] :> v -> {VertexLabels -> label},
-		Style[v_, styles__] :> v -> {VertexStyle -> Flatten[{styles}]},
-		v_ :> v -> {}
+		Annotation[v_, data__] :> Verbatim[v] -> Cases[Flatten[{data}], _Rule | _RuleDelayed],
+		Labeled[v_, label_, ___] :> Verbatim[v] -> {VertexLabels -> label},
+		Style[v_, styles__] :> Verbatim[v] -> {VertexStyle -> Flatten[{styles}]},
+		v_ :> Verbatim[v] -> {}
 	}, 1],
 	edges = Replace[he, (Labeled | Style | Annotation)[v_, __] :> v, 1]
 },
@@ -236,7 +236,7 @@ Options[Hypergraph] := Join[{
 	"EdgeSize" -> Automatic,
 	"EdgeSymmetry" -> Automatic
 },
-	FilterRules[Options[Graph], Except[PlotTheme]]
+	FilterRules[Options[Graph], Except[{BaseStyle, PlotTheme}]]
 ]
 
 Options[Hypergraph3D] := Options[Hypergraph]
@@ -263,14 +263,14 @@ HypergraphProp[Hypergraph[_, edges_, ___], "Edges"] := edges
 
 applyRules[expr_, rules_, length_Integer, default_] :=
 	Map[
-		FirstCase[#, Except[Inherited], default, {1}] &,
+		FirstCase[#, Except[Inherited], default, 1] &,
 		Thread @ Values @ GroupBy[rules, First, PadRight[#, length, Replace[#, {} -> Inherited]] & @
-			ReplaceList[expr, Replace[#, h_[lhs_, rhs_] :> h[If[lhs === All, _, If[lhs === expr, Verbatim[expr], lhs]], rhs], {1}], length] &]
+			ReplaceList[expr, Replace[#, h_[lhs_, rhs_] :> h[If[lhs === All, _, If[lhs === expr || lhs === rhs, Verbatim[lhs], lhs]], rhs], 1], length] &]
 	] // PadRight[#, length, {default}] &
 
 HypergraphProp[hg_, "AbsoluteOptions", patt___] := Block[{
 	vertices = VertexList[hg], edges = EdgeListTagged[hg],
-	themeOpts, opts = Join[Options[hg, patt], Options[Hypergraph]],
+	themeOpts, opts = Join[Options[hg, patt], Options[Hypergraph, patt]],
 	annotationRules, vertexAnnotations, edgeAnnotations,
 	edgeCounts
 },

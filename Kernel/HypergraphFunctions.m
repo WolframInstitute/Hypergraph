@@ -312,18 +312,24 @@ HypergraphArityReduce[hg_ ? HypergraphQ, arity_Integer ? Positive] := With[{
 ]
 
 
-Hypergraph /: VertexReplace[hg_Hypergraph, rules_, opts : OptionsPattern[]] := Hypergraph[
-    DeleteDuplicates @ Replace[VertexList[hg], rules, {1}],
-    Hyperedges @@ (Replace[{(edge_ -> tag_) :> Replace[edge, rules, {1}] -> tag, edge_ :> Replace[edge, rules, {1}]}] /@ EdgeListTagged[hg]),
-    opts,
-    Replace[
-        hg["Options"], {
-            (opt : (VertexStyle | VertexLabels | VertexLabelStyle | VertexCoordinates) -> annotation_List) :>
-                opt -> Replace[annotation, {(h : Rule | RuleDelayed)[v_, a_] :> h[Replace[v, rules], a]}, {1}],
-            (opt : (EdgeStyle | EdgeLabels | EdgeLabelStyle | "EdgeSymmetry") -> annotation_List) :>
-                opt -> Replace[annotation, {(h : Rule | RuleDelayed)[e_, a_] :> h[Replace[e, rules, {1}], a]}, {1}]
-        },
-        {1}
+Hypergraph /: VertexReplace[hg_Hypergraph, rules_, opts : OptionsPattern[]] := With[{vertices = VertexList[hg]}, {
+    newVertices = Replace[vertices, rules, 1],
+    newEdges = (Replace[{(edge_ -> tag_) :> Replace[edge, rules, 1] -> tag, edge_ :> Replace[edge, rules, 1]}] /@ EdgeListTagged[hg])
+}, 
+    Hypergraph[
+        DeleteDuplicates @ newVertices,
+        newEdges,
+        opts,
+        Replace[
+            AbsoluteOptions[hg],
+            {
+                (opt : Alternatives @@ $VertexAnnotations -> annotation_List) :>
+                    opt -> Extract[Thread[newVertices -> annotation[[All, 2]]], Values @ KeySelect[PositionIndex[vertices], MemberQ[newVertices, Verbatim[#]] &]],
+                (opt : Alternatives @@ $EdgeAnnotations -> annotation_List) :>
+                    opt -> Thread[newEdges -> annotation[[All, 2]]]
+            },
+            1
+        ]
     ]
 ]
 

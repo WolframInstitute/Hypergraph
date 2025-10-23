@@ -9,7 +9,7 @@ Options[HypergraphDraw] := Join[{
     "InitialColor" -> Automatic,
     "EdgeLabels" -> {"f", "g", "h"},
     "VertexLabels" -> {"A", "B", "C"},
-    "InterfaceColor" -> Black,
+    "InterfaceColor" -> LightDarkSwitched[Black, White],
     "HideReturn" -> False
 }, Options[Hypergraph]]
 
@@ -153,7 +153,8 @@ HypergraphDraw[Dynamic[hg_Symbol], dynamicSelection : Dynamic[selection_Symbol] 
             Dividers -> {None, {1, 2, 3}}
         ],
         Button[Style["❌", 8], NotebookDelete @ attachedCell, ImageSize -> Tiny, Appearance -> "Palette"],
-        {{Top, Right}}
+        {{Top, Right}},
+        BaseStyle -> {FontColor -> interfaceColor}
     ];
 	down[i_] := (
         If[graphicsControlEnteredQ, Return[]];
@@ -681,7 +682,7 @@ HypergraphDraw[Dynamic[hg_Symbol], dynamicSelection : Dynamic[selection_Symbol] 
                 attachedCell = AttachCell[EvaluationCell[],
                     ExpressionCell[
                         makePalette[],
-                        StripOnInput -> True, Background -> White, CellFrameColor -> LightBlue, CellFrameMargins -> 0, CellFrame -> 0
+                        StripOnInput -> True, Background -> LightDarkSwitched[White, Black], CellFrameColor -> LightBlue, CellFrameMargins -> 0, CellFrame -> 0
                     ],
                     {Left, Bottom}, Offset[MousePosition["GraphicsAbsolute"] + {10, 0}, Automatic], {Left, Center},
                     RemovalConditions -> {"EvaluatorQuit", "ParentChanged", "MouseClickOutside"}
