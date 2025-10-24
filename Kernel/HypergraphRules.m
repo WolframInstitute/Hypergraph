@@ -57,7 +57,7 @@ ToLabeledEdges[hg_ ? HypergraphQ, makePattern_ : False, vertexCondition_ : True,
     edgeTags = EdgeTags[hg],
     edgeLabels
 },
-    vertexLabels = Association @ MapThread[#1 -> makeVertexLabelPattern[#1, #2, makePattern] &, {vs, Replace[vs, Lookup[opts, VertexLabels], 1]}];
+    vertexLabels = Association @ MapThread[#1 -> makeVertexLabelPattern[#1, #2, makePattern] &, {vs, Lookup[opts, VertexLabels][[All, 2]]}];
     edgeLabels = Values[Lookup[opts, EdgeLabels]];
     labeledEdges = MapAt[
         MapIndexed[
@@ -284,13 +284,13 @@ HypergraphRuleApply[input_, output_, hg_, opts : OptionsPattern[]] := Block[{
                         FilterRules[hg["Options"],
                             Except[VertexStyle | VertexLabels | VertexLabelStyle | VertexCoordinates | EdgeStyle | EdgeLabels | EdgeLabelStyle | "EdgeSymmetry"]
                         ],
-                        Normal @ Map[DeleteDuplicates] @ MapAt[Function[Null, ReplaceAt[Unevaluated[#], bindingRules, {All, 2}], HoldAll], Key[VertexLabels]] @ Merge[{vertexAnnotations, outputVertexAnnotations},
+                        Normal @ Map[DeleteDuplicates] @ MapAt[Function[Null, Unevaluated[#] /. bindingRules, HoldAll], Key[VertexLabels]] @ Merge[{vertexAnnotations, outputVertexAnnotations},
                            Apply[Join[
                                 Catenate[Thread[#, List, 1] & /@ MapAt[List @* ReleaseHold, {All, 1}] @ Thread[holdOutputVertices -> Lookup[#2, newOutputVertices]]],
                                 DeleteCases[#1, (Rule | RuleDelayed)[Alternatives @@ deleteOrigVertices, _]]
                             ] &]
                         ],
-                        Normal @ Map[DeleteDuplicates] @ MapAt[Function[Null, ReplaceAt[Unevaluated[#], bindingRules, {All, 2}], HoldAll], Key[EdgeLabels]] @ Merge[{edgeAnnotations, outputEdgeAnnotations},
+                        Normal @ Map[DeleteDuplicates] @ MapAt[Function[Null, Unevaluated[#] /. bindingRules, HoldAll], Key[EdgeLabels]] @ Merge[{edgeAnnotations, outputEdgeAnnotations},
                            Apply[Join[
                                 Replace[#2,
                                     {
