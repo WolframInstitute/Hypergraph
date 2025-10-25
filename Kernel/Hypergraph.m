@@ -42,9 +42,12 @@ $EdgeAnnotations = {EdgeStyle, "EdgeLineStyle", EdgeLabels, EdgeLabelStyle, "Edg
 getDefault[value_, def_ : None] := Replace[value, {_, default_} | default_ :> Replace[def, None -> default]]
 
 makeAnnotationRules[opts_List, keys_ : All] := With[{
-	customAnnotations = Flatten @ Values @ FilterRules[opts, {"VertexAnnotationRules", "EdgeAnnotationRules"}]
+	customAnnotations = Join[
+		FilterRules[opts, Join[Lookup[opts, "VertexAnnotations", {}], Lookup[opts, "EdgeAnnotations", {}]]],
+		Flatten @ Values @ FilterRules[opts, {"VertexAnnotationRules", "EdgeAnnotationRules"}]
+	]
 }, {
-	annotations = Join[FilterRules[opts, Except["VertexAnnotationRules" | "EdgeAnnotationRules"]], customAnnotations]
+	annotations = Join[FilterRules[opts, Except["VertexAnnotations" | "EdgeAnnotations" | "VertexAnnotationRules" | "EdgeAnnotationRules"]], customAnnotations]
 },
 	KeyValueMap[
 		#1 -> With[{automatic = Replace[#2, {automatic_, _} | automatic_ :> automatic], default = getDefault[#2]},
@@ -83,10 +86,13 @@ Hyperedges[1] := Hyperedges[{}]
 (he : HoldPattern[Hyperedges[edges___]])["EdgeList"] /; HyperedgesQ[he] := Replace[{edges}, (edge_ -> _) :> Developer`ToList[edge], {1}]
 
 annotationHead = Labeled | Style | Annotation
-stripAnnotations[edge_ -> tag_] := stripAnnotations[edge] -> tag
-stripAnnotations[expr_] := Replace[expr, annotationHead[x_, __] :> x, If[ListQ[expr], 1, {}]]
 
-he_Hyperedges["VertexList"] /; HyperedgesQ[he] := DeleteDuplicates @ stripAnnotations @ Catenate @ he["EdgeList"]
+stripAnnotations[v_] := Replace[v, annotationHead[x_, __] :> stripAnnotations[x]]
+
+edgeStripAnnotations[edge_List -> tag_] := stripAnnotations /@ edge -> tag
+edgeStripAnnotations[edge_List] := stripAnnotations /@ edge
+
+he_Hyperedges["VertexList"] /; HyperedgesQ[he] := DeleteDuplicates[stripAnnotations /@ Catenate @ he["EdgeList"]]
 
 he_Hyperedges["AnnotatedVertexList"] /; HyperedgesQ[he] := Replace[GatherBy[Catenate @ he["EdgeList"], stripAnnotations], {{___, x : annotationHead[__], ___} :> x, {x_, ___} :> x}, 1]
 
@@ -138,15 +144,22 @@ EdgeSymmetry[edge_, type_] := Annotation[edge, "EdgeSymmetry" -> type]
 $EdgeHeadSymmetryRules = {DirectedEdge -> "Ordered", UndirectedEdge -> "Unordered", CyclicEdge -> "Cyclic"}
 
 EdgeAnnotate[spec_, data___] := Replace[spec, {
-	Annotation[e_, xs___] :> Replace[EdgeAnnotate[e, data], Annotation[y_, ys___] :> Annotation[y, ys, xs]],
-	Labeled[e_, label_, ___] :> EdgeAnnotate[e, EdgeLabels -> label],
-	Style[e_, styles__] :> EdgeAnnotate[e, EdgeStyle -> Flatten[{styles}]],
+	Annotation[e_, xs___] :> EdgeAnnotate[e, data, Sequence @@ Cases[Flatten[{xs}], _Rule | _RuleDelayed]],
+	Labeled[e_, label_, ___] :> EdgeAnnotate[e, data, EdgeLabels -> label],
+	Style[e_, styles__] :> EdgeAnnotate[e, data, EdgeStyle -> Flatten[{styles}]],
 	(head : $EdgeHead)[from_, to_, tag_] :> EdgeAnnotate[EdgeSymmetry[Join[Developer`ToList[from], Developer`ToList[to]] -> tag, Replace[head, $EdgeHeadSymmetryRules]], data],
 	(head : $EdgeHead)[from_, to_] :> EdgeAnnotate[EdgeSymmetry[Join[Developer`ToList[from], Developer`ToList[to]], Replace[head, $EdgeHeadSymmetryRules]], data],
 	(head : $EdgeHead)[from_] :> EdgeAnnotate[EdgeSymmetry[Developer`ToList[from], Replace[head, $EdgeHeadSymmetryRules]], data],
 	Hyperedge[edge_] :> EdgeAnnotate[edge, data],
 	Hyperedge[edge_, sym_] :> EdgeAnnotate[EdgeSymmetry[edge, sym], data],
 	Rule[from : Except[_List], to_] :> EdgeAnnotate[DirectedEdge[from, to], data],
+	_ :> Annotation[spec, data]
+}]
+
+VertexAnnotate[spec_, data___] := Replace[spec, {
+	Annotation[v_, xs___] :> VertexAnnotate[v, data, Sequence @@ Cases[Flatten[{xs}], _Rule | _RuleDelayed], data],
+	Labeled[v_, label_, ___] :> VertexAnnotate[v, data, VertexLabels -> label],
+	Style[v_, styles__] :> VertexAnnotate[v, data, VertexStyle -> Flatten[{styles}]],
 	_ :> Annotation[spec, data]
 }]
 
@@ -157,17 +170,22 @@ EdgeSpecAnnotation[spec_] := Replace[
 	Annotation[e_, data___] :> prepEdge[e] -> Cases[Flatten[{data}], _Rule | _RuleDelayed]
 ]
 
+VertexSpecAnnotation[spec_] := Replace[
+	VertexAnnotate[spec],
+	Annotation[v_, data___] :> v -> Cases[Flatten[{data}], _Rule | _RuleDelayed]
+]
+
 extractEdgeAnnotations[edgeSpec : {$EdgePattern ...}] :=  With[{
 	annotations = EdgeSpecAnnotation /@ edgeSpec
 },
-	{annotations[[All, 1]], (key |-> key -> Map[stripAnnotations[#[[1]]] -> Lookup[#[[2]], key, getDefault[Lookup[$DefaultHypergraphAnnotations, key], Inherited]] &, annotations]) /@ DeleteDuplicates[Keys @ Catenate @ annotations[[All, 2]]]}
+	{annotations[[All, 1]], (key |-> key -> Map[edgeStripAnnotations[#[[1]]] -> Lookup[#[[2]], key, getDefault[Lookup[$DefaultHypergraphAnnotations, key], Inherited]] &, annotations]) /@ DeleteDuplicates[Keys @ Catenate @ annotations[[All, 2]]]}
 ]
 
 filterRulesByAll[rules_] := Take[rules, UpTo[LengthWhile[rules, #[[1]] =!= All &] + 1]]
 
 Hypergraph[vs_List, edgeSpec : {$EdgePattern ...}, opts : OptionsPattern[]] := Block[{edges, annotations},
 	{edges, annotations} = extractEdgeAnnotations[edgeSpec];
-	Hypergraph[vs, Hyperedges @@ edges, annotations, opts]
+	Hypergraph[vs, Hyperedges @@ edges, annotations, opts, If[# === {}, {}, "EdgeAnnotations" -> #] & @ Union[Keys[annotations]]]
 ]
 
 Hypergraph[edgeSpec : {$EdgePattern ...}, opts : OptionsPattern[]] := Hypergraph[{}, edgeSpec, opts]
@@ -189,19 +207,19 @@ Hypergraph[he_Hyperedges ? HyperedgesQ, opts : OptionsPattern[]] := Hypergraph[h
 	
 
 hg : Hypergraph[vs_List, he_Hyperedges ? HyperedgesQ, opts : OptionsPattern[]] /; System`Private`HoldNotValidQ[hg] := With[{
-	vertices = DeleteDuplicates @ Join[stripAnnotations[vs], he["VertexList"]]
+	vertices = DeleteDuplicates @ Join[stripAnnotations /@ vs, he["VertexList"]]
 }, With[{
-	annotations = Replace[Join[vs, he["AnnotatedVertexList"]], {
-		Annotation[v_, data__] :> Verbatim[v] -> Cases[Flatten[{data}], _Rule | _RuleDelayed],
-		Labeled[v_, label_, ___] :> Verbatim[v] -> {VertexLabels -> label},
-		Style[v_, styles__] :> Verbatim[v] -> {VertexStyle -> Flatten[{styles}]},
-		v_ :> Verbatim[v] -> {}
-	}, 1],
-	edges = Hyperedges @@ (stripAnnotations /@ he["EdgeList"])
+	annotations = VertexSpecAnnotation /@ Join[vs, he["AnnotatedVertexList"]],
+	edges = Hyperedges @@ (edgeStripAnnotations /@ he["EdgeList"])
 },
 	System`Private`SetNoEntry @ System`Private`HoldSetValid[Hypergraph[vertices, edges, ##]] & @@
 		Normal @ GroupBy[
-			Flatten[{(key |-> key -> Map[#[[1]] -> Lookup[#[[2]], key, getDefault[Lookup[$DefaultHypergraphAnnotations, key], Inherited]] &, annotations]) /@ DeleteDuplicates[Keys @ Catenate @ annotations[[All, 2]]], opts}],
+			Flatten[{
+				(key |-> key -> Map[#[[1]] -> Lookup[#[[2]], key, getDefault[Lookup[$DefaultHypergraphAnnotations, key], Inherited]] &, annotations]) /@
+					DeleteDuplicates[Keys @ Catenate @ annotations[[All, 2]]],
+				opts,
+				If[# === {}, {}, "VertexAnnotations" -> #] & [Union @@ Keys /@ Values[annotations]]
+			}],
 			First,
 			If[
 				KeyExistsQ[$DefaultHypergraphAnnotations, #[[1, 1]]],
@@ -280,9 +298,13 @@ HypergraphProp[hg_, "AbsoluteOptions", patt___] := Block[{
 	];
 	annotationRules = makeAnnotationRules[opts];
 	edgeCounts = Counts[edges];
-	vertexAnnotations = Join[$VertexAnnotations, DeleteDuplicates @ Keys @ Lookup[opts, "VertexAnnotationRules", {}]];
-	edgeAnnotations = Join[$EdgeAnnotations, DeleteDuplicates @ Keys @ Lookup[opts, "EdgeAnnotationRules", {}]];
+	vertexAnnotations = Join[$VertexAnnotations, DeleteDuplicates @ Join[Lookup[opts, "VertexAnnotations", {}], Keys @ Lookup[opts, "VertexAnnotationRules", {}]]];
+	edgeAnnotations = Join[$EdgeAnnotations, DeleteDuplicates @ Join[Lookup[opts, "EdgeAnnotations", {}], Keys @ Lookup[opts, "EdgeAnnotationRules", {}]]];
 	Join[
+		{
+			"VertexAnnotations" -> Complement[vertexAnnotations, $VertexAnnotations],
+			"EdgeAnnotations" -> Complement[edgeAnnotations, $EdgeAnnotations]
+		},
 		KeyValueMap[
 			{name, rules} |-> With[{
 				default = getDefault[Lookup[$DefaultHypergraphAnnotations, name, None], First[Lookup[rules, {_, All}, Nothing], None]]
@@ -312,7 +334,7 @@ HypergraphProp[hg_, "AbsoluteOptions", patt___] := Block[{
 			],
 			AssociationThread[edgeAnnotations -> Lookup[annotationRules, edgeAnnotations]]
 		],
-		DeleteDuplicatesBy[First] @ FilterRules[opts, Except[Join[vertexAnnotations, edgeAnnotations]]],
+		DeleteDuplicatesBy[First] @ FilterRules[opts, Except[Join[vertexAnnotations, edgeAnnotations, {"VertexAnnotations", "EdgeAnnotations", "VertexAnnotationRules", "EdgeAnnotationRules"}]]],
 		themeOpts
 	]
 ]

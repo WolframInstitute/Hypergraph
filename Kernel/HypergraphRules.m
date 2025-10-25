@@ -205,11 +205,11 @@ HypergraphRuleApply[input_, output_, hg_, opts : OptionsPattern[]] := Block[{
     ];
 
     {vertexAnnotations, outputVertexAnnotations} = Map[
-        Apply[{vs, rules} |-> Map[Thread[vs -> #[[All, 2]]] &, KeyTake[rules, {VertexStyle, VertexLabelStyle, VertexLabels}]]],
+        Apply[{vs, rules} |-> Map[Thread[vs -> #[[All, 2]]] &, KeyTake[rules, Join[$VertexAnnotations, Lookup[annotationRules, "VertexAnnotations", {}]]]]],
         {{vertices, annotationRules}, {newOutputVertices, outputAnnotationRules}}
     ];
     {edgeAnnotations, outputEdgeAnnotations} = Map[
-        Apply[{edges, rules} |-> Map[Thread[edges -> #[[All, 2]]] &, KeyTake[rules, {EdgeStyle, EdgeLabelStyle, "EdgeSymmetry", EdgeLabels}]]],
+        Apply[{edges, rules} |-> Map[Thread[edges -> #[[All, 2]]] &, KeyTake[rules, Join[$EdgeAnnotations, Lookup[annotationRules, "EdgeAnnotations", {}]]]]],
         {{edges, annotationRules}, {newOutputEdges, outputAnnotationRules}}
     ];
     
@@ -266,13 +266,13 @@ HypergraphRuleApply[input_, output_, hg_, opts : OptionsPattern[]] := Block[{
                 deleteOrigVertices = Replace[deleteVertices, origVertexMap, 1];
                 (* Hold to handle Sequence multi arity matches *)
                 origVertexMap = Hold /@ origVertexMap;
-                newEdges = Replace[newOutputEdges,
+                edgeArities = First[#, {}] & @ Reap[newEdges = Replace[newOutputEdges,
                     {
-                        e : (edge_ -> tag_) :> ReleaseHold @ CanonicalEdge[Replace[edge, origVertexMap, 1], Lookup[outputSymmetry, Key[e], {}]] -> (tag /. bindingRules),
-                        edge_ :> ReleaseHold @ CanonicalEdge[Replace[edge, origVertexMap, 1], Lookup[outputSymmetry, Key[edge], {}]]
+                        e : (edge_ -> tag_) :> ((Sow[Length /@ #]; ReleaseHold[#]) & @ CanonicalEdge[Replace[edge, origVertexMap, 1], Lookup[outputSymmetry, Key[e], {}]]) -> (tag /. bindingRules),
+                        edge_ :> ((Sow[Length /@ #]; ReleaseHold[#]) & @ CanonicalEdge[Replace[edge, origVertexMap, 1], Lookup[outputSymmetry, Key[edge], {}]])
                     },
                     1
-                ];
+                ]][[2]];
                 holdOutputVertices = Replace[newOutputVertices, origVertexMap, 1];
                 <| "Hypergraph" -> Hypergraph[
                         Union[DeleteElements[vertices, deleteOrigVertices], ReleaseHold @ holdOutputVertices],
@@ -280,9 +280,6 @@ HypergraphRuleApply[input_, output_, hg_, opts : OptionsPattern[]] := Block[{
                             Replace[Delete[edges, pos], {(edge_ -> tag_) :> DeleteElements[edge, deleteOrigVertices] -> tag, edge_ :> DeleteElements[edge, deleteOrigVertices]}, 1],
                             Splice @ newEdges,
                             Min[pos, Length[edges] + 1]
-                        ],
-                        FilterRules[hg["Options"],
-                            Except[VertexStyle | VertexLabels | VertexLabelStyle | VertexCoordinates | EdgeStyle | EdgeLabels | EdgeLabelStyle | "EdgeSymmetry"]
                         ],
                         Normal @ Map[DeleteDuplicates] @ MapAt[Function[Null, Unevaluated[#] /. bindingRules, HoldAll], Key[VertexLabels]] @ Merge[{vertexAnnotations, outputVertexAnnotations},
                            Apply[Join[
@@ -312,7 +309,8 @@ HypergraphRuleApply[input_, output_, hg_, opts : OptionsPattern[]] := Block[{
                             ] &]
                         ],
                         VertexCoordinates -> embedding,
-                        PlotLabel -> (Lookup[output["Options"], PlotLabel, None] /. bindingRules)
+                        PlotLabel -> (Lookup[outputAnnotationRules, PlotLabel, None] /. bindingRules),
+                        FilterRules[annotationRules, Except[Join[vertexAnnotations, edgeAnnotations]]]
                     ],
                     "MatchVertices" -> Join[matchFreeVertices, matchVertices],
                     "MatchEdges" -> matchEdges,
@@ -321,7 +319,8 @@ HypergraphRuleApply[input_, output_, hg_, opts : OptionsPattern[]] := Block[{
                     "NewEdges" -> newEdges,
                     "DeletedVertices" -> deleteOrigVertices,
                     "RuleVertexMap" -> Replace[origVertexMap, Hold[p_] :> p, 1],
-                    "Bindings" -> bindingRules
+                    "Bindings" -> bindingRules,
+                    "EdgeArities" -> edgeArities
                 |>
             ],
                 Catenate[Permutations /@ Subsets[Complement[vertices, matchVertices], {Length[inputFreeVertices]}]]
