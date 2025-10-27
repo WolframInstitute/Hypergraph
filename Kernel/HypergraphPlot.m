@@ -70,7 +70,7 @@ $HypergraphPlotThemes = <|
 
 makeVertexLabel[vertex_, label_, defaultStyle_, pos_, labelOffset_ : {0, .01}] := With[{style = Replace[defaultStyle, Automatic | None -> Black]},
     Replace[label /. "Name" -> vertex, {
-        None -> Nothing,
+        None | Inherited -> Nothing,
         Automatic :> Text[Style[vertex, style], pos, labelOffset],
         Placed[placedLabel_, offset_] :> If[offset === Tooltip, Tooltip[Text[" ", pos], Style[placedLabel, style]], Text[Style[placedLabel, style], pos, offset]],
         l_ :> Text[Style[l, style], pos, labelOffset]
@@ -218,12 +218,12 @@ SimpleHypergraphPlot[h_Hypergraph, plotOpts : OptionsPattern[]] := Enclose @ Blo
             Replace[edgeStyle[[i]], {Automatic | Inherited -> defStyle, l_List :> Directive @@ l}]
         ];
         lineStyle = With[{defStyle = Directive[colorFunction[i], EdgeForm[Transparent]]},
-            Replace[edgeLineStyle[[i]], {Automatic -> defStyle, l_List :> Directive @@ l}]
+            Replace[edgeLineStyle[[i]], {Automatic | Inherited -> defStyle, l_List :> Directive @@ l}]
         ];
         label = edgeLabels[[i]]; 
-        labelStyle = Replace[edgeLabelStyle[[i]], Automatic | None -> Black];
+        labelStyle = Replace[edgeLabelStyle[[i]], Automatic | Inherited | None -> Black];
         labelPrimitive = Replace[label /. {"Name" -> edge, "EdgeTag" -> tag, "EdgeSymmetry" -> symm}, {
-            None -> {},
+            None | Inherited -> {},
             Automatic :> Text[edge, pos],
             Placed[placedLabel_, offset_] :> Text[Replace[placedLabel, None -> ""], pos, offset],
             label_ :> Text[label, pos]
@@ -347,7 +347,7 @@ SimpleHypergraphPlot[h_Hypergraph, plotOpts : OptionsPattern[]] := Enclose @ Blo
         ],
         Opacity[1],
         MapThread[{vertex, style, vsf, sz, coord} |->
-            {Replace[style, l_List :> Directive @@ l], vsf[coord, vertex, Replace[sz, {Automatic :> 0.01 size, x_ ? NumericQ :> If[dim == 3, 1 / 3, 1] {x, x}}]]},
+            {Replace[style, {l_List :> Directive @@ l, None | Inherited -> Nothing}], vsf[coord, vertex, Replace[sz, {Automatic :> 0.01 size, x_ ? NumericQ :> If[dim == 3, 1 / 3, 1] {x, x}}]]},
             {Keys[vertexEmbedding], vertexStyle, vertexShapeFunction, vertexSize, Values[vertexEmbedding]}
         ],
         MapThread[{vertex, coord, label, style, offset} |-> (

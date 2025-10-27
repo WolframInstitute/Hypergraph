@@ -172,7 +172,7 @@ EdgeSpecAnnotation[spec_] := Replace[
 
 VertexSpecAnnotation[spec_] := Replace[
 	VertexAnnotate[spec],
-	Annotation[v_, data___] :> v -> Cases[Flatten[{data}], _Rule | _RuleDelayed]
+	Annotation[v_, data___] :> Verbatim[v] -> Cases[Flatten[{data}], _Rule | _RuleDelayed]
 ]
 
 extractEdgeAnnotations[edgeSpec : {$EdgePattern ...}] :=  With[{
