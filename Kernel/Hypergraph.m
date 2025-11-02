@@ -368,15 +368,16 @@ HypergraphProp[hg_, "FullEdgeSymmetry"] := With[{
 	cycles = Replace[
 		hg["EdgeSymmetry"],
 		{
-			"Directed" | "Ordered" :> ({} &),
-			"Cyclic" :> ({Cycles[{Range[Length[#]]}]} &),
+			"Directed" | "Ordered" :> ({Cycles[{}]} &),
+			"Cyclic" :> (GroupElements[PermutationGroup[{Cycles[{Range[Length[#]]}]}]] &),
+			"Generators"[cycles : {___Cycles}] :> (findMinGenSet[cycles] &),
 			cycles : {___Cycles} :> (cycles &),
-			_ :> (Cycles[{#}] & /@ Subsets[Range[Length[#]], {2}] &)
+			_ :> (GroupElements[PermutationGroup[Cycles[{#}] & /@ Subsets[Range[Length[#]], {2}]]] &)
 		},
 		{1}
 	]
 },
-	MapThread[findMinGenSet[#1[#2]] &, {cycles, EdgeList[hg]}]
+	MapThread[#1[#2] &, {cycles, EdgeList[hg]}]
 ]
 
 

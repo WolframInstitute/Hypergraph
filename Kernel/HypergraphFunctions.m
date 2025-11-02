@@ -78,7 +78,7 @@ mapEdgeOptions[f_, opt_] := Replace[Flatten[{opt}], {((edge_List -> tag_) -> v_)
 mapVertexOptions[f_, opt_] := Replace[Flatten[{opt}], (vertex_ -> v_) :> f[vertex] -> v, {1}]
 
 
-CanonicalEdges[edge_List | (edge_List -> _), symm : {___Cycles}] := Sort[Permute[edge, #] & /@ GroupElements[PermutationGroup[symm]]]
+CanonicalEdges[edge_List | (edge_List -> _), symm : {___Cycles}] := Sort[Permute[edge, #] & /@ Replace[symm, {} -> {Cycles[{}]}]]
 
 CanonicalEdgesTagged[edge_List, symm : {___Cycles}] := CanonicalEdges[edge, symm]
 
@@ -106,7 +106,7 @@ CanonicalHypergraph[hg_ ? HypergraphQ, OptionsPattern[]] := Enclose @ Block[{
     edgeAnnotations = Join[$EdgeAnnotations, Lookup[opts, "EdgeAnnotations", {}]];
 	tagVertices = Catenate @ Reap[orderedEdges = MapThread[
 		{edge, tag, symm} |-> With[{tagVertex = If[tag === None, None, Sow[Unique[]]]},
-            If[edge === {}, If[tag === None, Nothing, {{tagVertex}}], If[tag === None, Identity, Append[tagVertex]] @ Permute[edge, #] & /@ GroupElements[PermutationGroup[symm]]]
+            If[edge === {}, If[tag === None, Nothing, {{tagVertex}}], If[tag === None, Identity, Append[tagVertex]] @ Permute[edge, #] & /@ symm]
         ],
 		{edges, tags, EdgeSymmetry[hg]}
 	]][[2]];
@@ -199,7 +199,7 @@ CanonicalHypergraphRule[HoldPattern[HypergraphRule[in_Hypergraph, out_Hypergraph
     symmetry = Join[symmIn, symmOut];
 	tagVertices = Catenate @ Reap[orderedEdges = MapThread[
 		{edge, tag, symm} |-> With[{tagVertex = If[tag === None, None, Sow[Unique[]]]},
-            If[edge === {}, If[tag === None, Nothing, {{tagVertex}}], If[tag === None, Identity, Append[tagVertex]] @ Permute[edge, #] & /@ GroupElements[PermutationGroup[symm]]]
+            If[edge === {}, If[tag === None, Nothing, {{tagVertex}}], If[tag === None, Identity, Append[tagVertex]] @ Permute[edge, #] & /@ symm]
         ],
 		{edges, tags, symmetry}
 	]][[2]];
@@ -288,7 +288,7 @@ IsomorphicHypergraphQ[hg1_ ? HypergraphQ, hg2_ ? HypergraphQ] :=
 ToOrderedHypergraph[hg_ ? HypergraphQ] := Hypergraph[
 	VertexList[hg],
 	Catenate @ MapThread[
-		{edge, tag, symm} |-> (If[tag === None, #, # -> tag] & @ Permute[edge, #] & /@ GroupElements[PermutationGroup[symm]]),
+		{edge, tag, symm} |-> (If[tag === None, #, # -> tag] & @ Permute[edge, #] & /@ symm),
 		{EdgeList[hg], EdgeTags[hg], EdgeSymmetry[hg]}
 	],
 	"EdgeSymmetry" -> "Ordered",
@@ -455,7 +455,7 @@ HypergraphHadamardProduct[hs___Hypergraph] := Fold[HypergraphHadamardProduct, {h
 HypergraphToGraph[hg_ ? HypergraphQ, opts : OptionsPattern[]] := Graph[
     VertexList[hg],
     Catenate @ MapThread[
-        {edge, symm} |-> Catenate[DirectedEdge @@@ Partition[Permute[edge, #], 2, 1] & /@ GroupElements[PermutationGroup[symm]]],
+        {edge, symm} |-> Catenate[DirectedEdge @@@ Partition[Permute[edge, #], 2, 1] & /@ symm],
         {EdgeList[hg], EdgeSymmetry[hg]}
     ],
     opts

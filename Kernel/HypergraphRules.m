@@ -61,14 +61,15 @@ ToLabeledEdges[hg_ ? HypergraphQ, makePattern_ : False, vertexCondition_ : True,
     edgeLabels = Values[Lookup[opts, EdgeLabels]];
     labeledEdges = MapAt[
         MapIndexed[
-            With[{edge = #1, symm = edgeSymmetry[[#2[[1]]]], tag = edgeTags[[#2[[1]]]],
-                label = Replace[edgeLabels[[#2[[1]]]], Placed[l_, _] :> l]
+            With[{
+                edge = #1, symm = edgeSymmetry[[#2[[1]]]], tag = edgeTags[[#2[[1]]]],
+                label = Replace[edgeLabels[[#2[[1]]]], Placed[(l_ -> tags_) | l_, _] | (l_ -> tags_) :> {l, tags}]
             },
-                Labeled[edge,
+                Labeled[Thread[Labeled[edge, PadRight[Last[label, {}], Length[edge], If[makePattern, _, Automatic]]]],
                     {
                         symm,
                         ReplaceAll[
-                            If[makePattern, Replace[label, {None -> _, s_Symbol :> Pattern @@ {s, _}}], label],
+                            If[makePattern, Replace[label[[1]], {None -> _, s_Symbol :> Pattern @@ {s, _}}], label[[1]]],
                             {"EdgeTag" -> tag, "EdgeSymmetry" -> symm, Automatic | "Name" -> edge}
                         ]
                     }
@@ -100,7 +101,7 @@ ToLabeledPatternEdges[hg_ ? HypergraphQ, vertexCondition_ : True, edgeCondition_
             MapAt[
                 SubsetMap[
                     MapIndexed[With[{edge = #1, symm = Flatten[edgeSymmetry[[#2]]]}, Replace[
-                        Alternatives @@ (Permute[edge, #] & /@ GroupElements[PermutationGroup[symm]]),
+                        Alternatives @@ (Permute[edge, #] & /@ symm),
                         Verbatim[Alternatives][x_] :> x
                     ]] &],
                     {All, 1}
@@ -281,13 +282,13 @@ HypergraphRuleApply[input_, output_, hg_, opts : OptionsPattern[]] := Block[{
                             Splice @ newEdges,
                             Min[pos, Length[edges] + 1]
                         ],
-                        Normal @ Map[DeleteDuplicates] @ MapAt[Function[Null, Unevaluated[#] /. bindingRules, HoldAll], Key[VertexLabels]] @ Merge[{vertexAnnotations, outputVertexAnnotations},
+                        Normal @ Map[DeleteDuplicates] @ MapAt[Function[Null, Unevaluated[#] /. bindingRules, HoldAll], {Key[VertexLabels], All, 2}] @ Merge[{vertexAnnotations, outputVertexAnnotations},
                            Apply[Join[
                                 Catenate[Thread[#, List, 1] & /@ MapAt[List @* ReleaseHold, {All, 1}] @ Thread[holdOutputVertices -> Lookup[#2, newOutputVertices]]],
                                 DeleteCases[#1, (Rule | RuleDelayed)[Alternatives @@ deleteOrigVertices, _]]
                             ] &]
                         ],
-                        Normal @ Map[DeleteDuplicates] @ MapAt[Function[Null, Unevaluated[#] /. bindingRules, HoldAll], Key[EdgeLabels]] @ Merge[{edgeAnnotations, outputEdgeAnnotations},
+                        Normal @ Map[DeleteDuplicates] @ MapAt[Function[Null, Unevaluated[#] /. bindingRules, HoldAll], {Key[EdgeLabels], All, 2}] @ Merge[{edgeAnnotations, outputEdgeAnnotations},
                            Apply[Join[
                                 Replace[#2,
                                     {

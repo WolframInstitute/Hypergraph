@@ -444,7 +444,7 @@ edgeInsertionInner[hg1_, hg2_] :=
        ],
       Tuples[{
         Flatten@Position[edges1, x_ /; Length[x] == Length[rootEdge], 1],
-        GroupElements[PermutationGroup[rootEdgeSymmetry]]
+        rootEdgeSymmetry
       }]
     ]
   ];
