@@ -195,6 +195,7 @@ SimpleHypergraphPlot[h_Hypergraph, plotOpts : OptionsPattern[]] := Enclose @ Blo
     vertexEmbedding = vertexEmbedding[[Key /@ vertices]];
     allPoints = DeleteDuplicates @ DeleteMissing @ Join[Values[vertexEmbedding], Catenate[If[MatchQ[#, {__Real}], {#}, Flatten[#, 1]] & /@ Values[edgeEmbedding]]];
     bounds = CoordinateBounds[allPoints];
+    bounds = With[{diff = Abs[#2 - #1] & @@@ bounds}, {range = Max[diff]}, MapThread[If[Chop[#1] == 0, #2 + range {-1, 1} / 2, #2] &, {diff, bounds}]];
     corner = bounds[[All, 1]];
     center = Mean /@ bounds;
     range = #2 - #1 & @@@ bounds;
@@ -356,7 +357,7 @@ SimpleHypergraphPlot[h_Hypergraph, plotOpts : OptionsPattern[]] := Enclose @ Blo
             makeVertexLabel[vertex, label, style, coord, Take[offset, UpTo[2]]]
         ), {Keys[vertexEmbedding], Values[vertexEmbedding], vertexLabels, vertexLabelStyle, Lookup[vertexLabelOffsets, Keys[vertexEmbedding]]}]
 	},
-        Complement[FilterRules[{opts, Boxed -> False}, #], #] & @ Options[Switch[dim, 2, Graphics, 3, Graphics3D]]
+        Complement[FilterRules[{opts, Boxed -> False, PlotRange -> bounds, PlotRangePadding -> Scaled[.2]}, #], #] & @ Options[Switch[dim, 2, Graphics, 3, Graphics3D]]
 	]
 ]
 

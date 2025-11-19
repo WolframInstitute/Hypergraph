@@ -154,15 +154,16 @@ $HypergraphRuleArrow = FilledCurve[
 $HypergraphRulePlotOptions = {
     Frame -> True,
     FrameTicks -> None,
-    PlotRangePadding -> Scaled[0.1],
+    PlotRangePadding -> Scaled[0.2],
+    AspectRatio -> 1,
     ImagePadding -> 3
 }
 
 HypergraphRule /: MakeBoxes[hr_HypergraphRule /; HypergraphRuleQ[Unevaluated[hr]], form : StandardForm] := With[{boxId = SymbolName[Unique["HypergraphRule"]]}, With[{
     boxes = Block[{BoxForm`$UseTextFormattingWhenConvertingInput = False}, ToBoxes[
         Show[GraphicsRow[{
-            SimpleHypergraphPlot[#["Input"], $HypergraphRulePlotOptions],
-            Graphics[{GrayLevel[0.65], $HypergraphRuleArrow}, ImageSize -> 24],
+            SimpleHypergraphPlot[#["Input"], $HypergraphRulePlotOptions, PlotLabel -> With[{cond = hr["Condition"]}, If[MatchQ[cond, Hold[True]], None, HoldForm @@ cond]]],
+            Graphics[{GrayLevel[0.65], $HypergraphRuleArrow}, ImageSize -> 16],
             SimpleHypergraphPlot[#["Output"], $HypergraphRulePlotOptions]
         },
             PlotRangePadding -> 1,
