@@ -11,6 +11,10 @@ PackageScope["PatternRuleToMultiReplaceRule"]
 
 
 
+$SequencePattern = _BlankSequence | _BlankNullSequence |
+    Verbatim[Pattern][_, _BlankSequence | _BlankNullSequence |
+        Verbatim[Pattern][_, _BlankSequence | _BlankNullSequence]]
+
 makeVertexLabelPattern[vertex_, label_, makePattern_ : False] := Replace[label, {
     None :> If[TrueQ[makePattern], _, None],
     Automatic | Placed[Automatic, _] :> If[TrueQ[makePattern], Pattern[#, _] & @ Symbol["\[FormalL]" <> StringDelete[ToString[vertex, InputForm], Except[WordCharacter]]], vertex],
@@ -63,11 +67,16 @@ ToLabeledEdges[hg_ ? HypergraphQ, makePattern_ : False, vertexCondition_ : True,
         MapIndexed[
             With[{
                 edge = #1, symm = edgeSymmetry[[#2[[1]]]], tag = edgeTags[[#2[[1]]]],
-                label = Replace[edgeLabels[[#2[[1]]]], Placed[(l_ -> tags_List) | l_, _] | (l_ -> tags_List) | l_ :> {l, First[{tags}, {}]}]
+                label = Replace[edgeLabels[[#2[[1]]]], Placed[(l_ -> tags_List) | l_, _] | (l_ -> tags_List) | l_ :> {l, First[{tags}, {}]}],
+                isSeq = TrueQ[makePattern] && AnyTrue[#1, MatchQ[$SequencePattern]]
             },
-                Labeled[Thread[Labeled[edge, PadRight[label[[2]], Length[edge], If[makePattern, _, Automatic]]]],
+                Labeled[
+                    MapThread[
+                        If[TrueQ[makePattern] && MatchQ[#1, $SequencePattern], #1, Labeled[#1, #2]] &,
+                        {edge, PadRight[label[[2]], Length[edge], If[makePattern, _, Automatic]]}
+                    ],
                     {
-                        symm,
+                        If[isSeq, _, symm],
                         ReplaceAll[
                             If[makePattern, Replace[label[[1]], {None -> _, s_Symbol :> Pattern @@ {s, _}}], label[[1]]],
                             {"EdgeTag" -> tag, "EdgeSymmetry" -> symm, Automatic | "Name" -> edge}
@@ -91,6 +100,7 @@ ToLabeledPatternEdges[hg_ ? HypergraphQ, vertexCondition_ : True, edgeCondition_
     simpleEdgeSymmetry
 },
     simpleEdgeSymmetry = Replace[edges, Replace[Flatten[{EdgeSymmetry[hg]}], {Automatic -> _ -> "Unordered", s : Except[_Rule] :> _ -> s}, {1}], {1}];
+    simpleEdgeSymmetry = MapThread[If[MemberQ[#1, $SequencePattern], "Unordered", #2] &, {edges, simpleEdgeSymmetry}];
     Which[
         AllTrue[simpleEdgeSymmetry, MatchQ["Unordered" | "Undirected"]],
         MapAt[{OrderlessPatternSequence @@ #} &, #, {1, All, 1}],
@@ -180,7 +190,10 @@ HypergraphRuleApply[input_, output_, cond_, hg_, opts : OptionsPattern[]] := Blo
         matches = Thread @ Keys @ matchesMethod @ ResourceFunction["MultiReplace"][
             ToLabeledEdges[hg],
             MapAt[symmetryMethod, ToLabeledPatternEdges[input, vertexConditionQ, edgeConditionQ], {1, All, 2, 1}] //
-                If[MatchQ[cond, Hold[True]], Identity, patt |-> Function[Null, patt /; ##, HoldAll] @@ cond],
+                If[ MatchQ[cond, Hold[True]],
+                    Identity,
+                    patt |-> Function[Null, Condition @@ Replace[patt, {Verbatim[Condition][p_, c_] :> Hold[p, c && ##], p_ :> Hold[p, ##]}], HoldAll] @@ cond
+                ],
             {1},
             FilterRules[{opts}, Options[ResourceFunction["MultiReplace"]]],
             "PatternSubstitutions" -> True,
@@ -229,7 +242,7 @@ HypergraphRuleApply[input_, output_, cond_, hg_, opts : OptionsPattern[]] := Blo
         Catenate @ Map[initBinding |-> (
             Map[matchFreeVertices |-> Block[{
                 binding = Association[
-                    Replace[initBinding, {Labeled[expr_, _] :> expr, seq_Sequence :> RuleCondition[Sequence @@ Replace[{seq}, Labeled[expr_, _] :> expr, 1]]}, 1],
+                    Replace[initBinding, {Labeled[Labeled[expr_, _], _] | Labeled[expr_, _] :> expr, seq_Sequence :> RuleCondition[Sequence @@ Replace[{seq}, Labeled[Labeled[expr_, _], _] | Labeled[expr_, _] :> expr, 1]]}, 1],
                     Thread[Extract[patterns, freeVertexPositions] -> matchFreeVertices]
                 ],
                 origVertexMap,
