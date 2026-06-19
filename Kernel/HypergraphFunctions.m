@@ -430,7 +430,7 @@ HypergraphHadamardProduct[h1_Hypergraph, h2_Hypergraph] := Hypergraph[
         If[MissingQ[#[[1]]] || MissingQ[#[[2]]], Nothing, Catenate[Table @@ #]] &
     ],
     With[{
-        annotations = Merge[AbsoluteOptions /@ {hs}, Identity],
+        annotations = Merge[AbsoluteOptions /@ {h1, h2}, Identity],
         processVertexAnnotations = DeleteDuplicatesBy[First] @* DeleteCases[_ -> None] @* Catenate
     }, {
         vertexAnnotations = Join[$VertexAnnotations, Union @ Catenate[Lookup[annotations, "VertexAnnotations", {}]]]
