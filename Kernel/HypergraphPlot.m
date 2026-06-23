@@ -131,6 +131,12 @@ SimpleHypergraphPlot[h_Hypergraph, plotOpts : OptionsPattern[]] := Enclose @ Blo
     longEdges = Cases[edges, {_, _, __}];
     ws = Join[vertices, nullEdges, \[FormalE] /@ Range[Length[longEdges]]];
 
+    (* Pad/truncate the coordinate list to one entry per (deduplicated) vertex, filling
+       with Automatic. AbsoluteOptions can over-produce one entry per incidence for a
+       hypergraph with shared vertices; without this, Thread[vertices -> vertexCoordinates]
+       fails (Thread::tdlen) and aborts the whole plot. Padding with Automatic leaves the
+       surplus/missing vertices to be laid out automatically while honoring the rest. *)
+    If[ ListQ[vertexCoordinates], vertexCoordinates = PadRight[vertexCoordinates, Length[vertices], Automatic]];
     vertexCoordinates = MapAt[Verbatim, {All, 1}] @ Join[Thread[vertices -> vertexCoordinates], Thread[Drop[ws, Length[vertices]] -> Automatic]];
     vertexCoordinates = Replace[vertexCoordinates, {(_ -> Automatic) ...} -> Automatic];
 
