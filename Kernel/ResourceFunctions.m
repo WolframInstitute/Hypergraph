@@ -1,9 +1,10 @@
 Package["WolframInstitute`Hypergraph`"]
 
-PackageExport["RandomHypergraphRule"]
-PackageExport["EnumerateHypergraphRules"]
+PackageExport[RandomHypergraphRule]
+PackageExport[EnumerateHypergraphRules]
+PackageExport[EnumerateWolframModelRules]
 
-PackageScope["maxConnectedAtoms"]
+PackageScope[maxConnectedAtoms]
 
 
 
@@ -225,11 +226,10 @@ miserProductMinimalQ[parts_List, F_List] := Block[{groupsPerPart = Split /@ part
     ]
 ]
 
-(* candidate ordering used by the previous implementation: masks enumerated by binary counting
-   over first-occurrence indicators, then mixed-radix counting over the reused-slot values *)
-legacyEnumerationKey[F_List] := Block[{bits = Boole @ MapThread[#1 == #2 + 1 &, {Rest[F], Most @ FoldList[Max, F]}]},
-    Join[bits, Pick[Rest[F], bits, 0]]
-]
+(* candidate ordering used by the reference implementation: masks enumerated by binary counting
+   over first-occurrence indicators, then mixed-radix counting over the reused-slot values;
+   the key has fixed length so that canonical order compares element-wise across atom counts *)
+legacyEnumerationKey[F_List] := Join[Boole @ MapThread[#1 == #2 + 1 &, {Rest[F], Most @ FoldList[Max, F]}], Rest[F]]
 
 (* edge/part layout of an arity-descending signature; a part is a maximal run of equal-arity
    edges on one side, matching the SplitBy[..., Length] parts of xFindCanonicalWolframModel *)
@@ -654,17 +654,26 @@ fastEnumerateWolframModelRules[signature_Rule, {s_Integer ? Positive, type : Aut
 ]
 
 
+(* An explicit integer s selects the rules with exactly s distinct atoms: the slices that
+   EnumerateOrderedHypergraphs accumulates itself. Automatic matches the resource function
+   default and returns all rules with up to maxConnectedAtoms[signature, type] atoms, in the
+   same order as the reference enumeration. *)
+
 EnumerateWolframModelRules[signature_, type : (Automatic | None | All) : Automatic] :=
-    EnumerateWolframModelRules[signature, {maxConnectedAtoms[signature, type], type}]
+    EnumerateWolframModelRules[signature, {Automatic, type}]
 
 EnumerateWolframModelRules[signature_, s : _Integer ? Positive | Automatic : Automatic] := EnumerateWolframModelRules[signature, {s, Automatic}]
 
-EnumerateWolframModelRules[signature_Rule, {s : _Integer ? Positive | Automatic : Automatic, type : Automatic | None | All}] := With[{
-    n = Replace[s, Automatic :> maxConnectedAtoms[signature, type]]
+EnumerateWolframModelRules[signature_Rule, {Automatic, type : Automatic | None | All}] := With[{
+    n = maxConnectedAtoms[signature, type]
 },
-    Which[
-        ! IntegerQ[n] || n < 1, {},
-        n > 62, slowEnumerateWolframModelRules[signature, {n, type}], (* beyond bitmask capacity *)
-        True, fastEnumerateWolframModelRules[signature, {n, type}]
+    If[ ! IntegerQ[n] || n < 1,
+        {},
+        With[{rules = Catenate @ Table[EnumerateWolframModelRules[signature, {s, type}], {s, n}]},
+            rules[[Ordering[legacyEnumerationKey[Flatten[List @@ #]] & /@ rules]]]
+        ]
     ]
 ]
+
+EnumerateWolframModelRules[signature_Rule, {s_Integer ? Positive, type : Automatic | None | All}] :=
+    If[s > 62, slowEnumerateWolframModelRules, fastEnumerateWolframModelRules][signature, {s, type}] (* slow path beyond bitmask capacity *)
