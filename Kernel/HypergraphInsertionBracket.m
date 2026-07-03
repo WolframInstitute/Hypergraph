@@ -5,10 +5,11 @@ Package["WolframInstitute`Hypergraph`"]
 PackageExport["HypergraphInsertionBracket"]
 PackageExport["HypergraphInsertionBracketDegree"]
 PackageExport["HypergraphInsertion"]
-PackageExport["convertTaggedUnaryEdgeToRoot"]
 PackageExport["CanonicalHypergraphGraded"]
-PackageExport["convertRootToTaggedUnaryEdge"]
 PackageExport["KoszulSign"]
+
+PackageScope["convertTaggedUnaryEdgeToRoot"]
+PackageScope["convertRootToTaggedUnaryEdge"]
 
 (* TODO: graded rooted Lie bracket does not work on mixed degrees --- bug or conceptual error? *)
 
