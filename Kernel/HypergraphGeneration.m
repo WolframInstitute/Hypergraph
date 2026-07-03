@@ -52,16 +52,26 @@ EnumerateHypergraphs[s : _Integer ? Positive | Automatic | All | {_Integer ? Pos
 
 Options[RandomHypergraph] := Join[{"Simple" -> True, "Connected" -> All}, Options[Hypergraph]]
 
-RandomHypergraph[s : _Integer ? Positive | Automatic : Automatic, sig_, opts : OptionsPattern[]] := Block[{
-    hg,
-    simple = Replace[OptionValue["Simple"], Except[All | True | False] -> True],
-    connected = Replace[OptionValue["Connected"], Except[All | True | False] -> True]
-},
-    Until[
-        Switch[simple, All, True, True, SimpleHypergraphQ[hg], False, ! SimpleHypergraphQ[hg]] &&
-            Switch[connected, All, True, True, ConnectedHypergraphQ[hg], False, ! ConnectedHypergraphQ[hg]],
+RandomHypergraph::unsat = "Failed to generate a hypergraph with \"Simple\" -> `1` and \"Connected\" -> `2` for signature `3` in `4` attempts."
 
-        hg = Hypergraph[ResourceFunction["RandomHypergraph"][{s, sig}]]
+RandomHypergraph[s : _Integer ? Positive | Automatic : Automatic, sig_, opts : OptionsPattern[]] := Block[{
+    hg, simpleOK, connectedOK,
+    simple = Replace[OptionValue["Simple"], Except[All | True | False] -> True],
+    connected = Replace[OptionValue["Connected"], Except[All | True | False] -> True],
+    attempts = 0, maxAttempts = 1000
+},
+    (* rejection sampling; the cap turns unsatisfiable constraints
+       (e.g. repeated arity-0 edges can never be simple) into a message instead of a hang *)
+    While[
+        hg = Hypergraph[ResourceFunction["RandomHypergraph"][{s, sig}]];
+        simpleOK = Switch[simple, All, True, True, SimpleHypergraphQ[hg], False, ! SimpleHypergraphQ[hg]];
+        connectedOK = Switch[connected, All, True, True, ConnectedHypergraphQ[hg], False, ! ConnectedHypergraphQ[hg]];
+        ! (simpleOK && connectedOK)
+        ,
+        If[ ++attempts >= maxAttempts,
+            Message[RandomHypergraph::unsat, simple, connected, sig, maxAttempts];
+            Return[$Failed, Block]
+        ]
     ];
     Hypergraph[hg, FilterRules[{opts}, Options[Hypergraph]]]
 ]
