@@ -2,3 +2,15 @@
 build/
 
 Documentation/English/SearchIndex/
+
+# Documentation notebooks are generated from docs/*.md by build_docs.wls
+Documentation/English/Guides/*.nb
+Documentation/English/ReferencePages/Symbols/*.nb
+Documentation/English/Tutorials/*.nb
+ResourceDefinition.nb
+
+# doc migration backups
+docs-backup-*/
+
+# docs build logs
+*.log
