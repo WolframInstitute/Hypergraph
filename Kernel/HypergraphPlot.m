@@ -363,7 +363,9 @@ SimpleHypergraphPlot[h_Hypergraph, plotOpts : OptionsPattern[]] := Enclose @ Blo
             makeVertexLabel[vertex, label, style, coord, Take[offset, UpTo[2]]]
         ), {Keys[vertexEmbedding], Values[vertexEmbedding], vertexLabels, vertexLabelStyle, Lookup[vertexLabelOffsets, Keys[vertexEmbedding]]}]
 	},
-        Complement[FilterRules[{opts, Boxed -> False, PlotRange -> bounds, PlotRangePadding -> Scaled[.2]}, #], #] & @ Options[Switch[dim, 2, Graphics, 3, Graphics3D]]
+        (* in 3D the edge surfaces contract away from the embedding points (areaGradientDescent),
+           so the embedding bounds overestimate the content: let Graphics3D fit the primitives *)
+        Complement[FilterRules[{opts, Boxed -> False, Switch[dim, 2, PlotRange -> bounds, 3, PlotRange -> All], PlotRangePadding -> Scaled[.2]}, #], #] & @ Options[Switch[dim, 2, Graphics, 3, Graphics3D]]
 	]
 ]
 
