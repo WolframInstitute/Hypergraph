@@ -17,12 +17,12 @@ RelatedGuides: [HypergraphFunctionality]
 
 ## Details & Options
 
-- Inserting a hypergraph *hg'* at a vertex *v* of a hypergraph *hg* identifies *v* with the root of *hg'*, which by convention is the first vertex in [VertexList]()[*hg'*].
-- For two hypergraphs, the bracket sums the insertions of *hg2* into *hg1* at every vertex of *hg1*, minus the insertions of *hg1* into *hg2* at every vertex of *hg2*, each term carrying a sign from the Koszul convention applied to the (graded) vertex being replaced.
-- For *n* hypergraphs, the bracket sums consecutive insertions of all *n* arguments over every permutation of their order, each term signed by the permutation's parity together with the Koszul sign of the insertion.
-- Terms are collected up to isomorphism: results that agree after canonicalization are merged by adding their coefficients, and terms whose coefficients cancel to 0 are dropped from the resulting association.
-- Insertion at a vertex only happens when that vertex's "Degree" annotation (see [HypergraphInsertionBracketDegree]()) matches the degree of the root of the inserted hypergraph; every vertex defaults to degree 0, so plain hypergraphs (with no degree annotations) insert at every vertex.
-- For *n* = 2, the bracket satisfies the antisymmetry of a graded Lie bracket: swapping the two arguments negates the result.
+- The bracket is an association representing the signed sum of all consecutive insertions, collected modulo isomorphism. For vertex insertion, a term has the form $\pm hg_{p_1}\prec_{v_{p_1}}(\cdots\prec (hg_{p_{n-1}}\prec_{v_{p_{n-1}}}hg_{p_n})\cdots)$, where $p$ ranges over all permutations of the arguments and each insertion is summed over the admissible vertices of its target.
+- The **vertex insertion** $hg\prec_v hg'$ identifies the vertex $v$ of $hg$ with the **root** of $hg'$, which by convention is the first vertex in [VertexList]()[*hg'*].
+- The sign is the product of the **insertion sign**, obtained by applying the Koszul convention to insertion on graded vertices, and the graded antisymmetrization sign of the permutation of the arguments. Each hypergraph is graded by its **root-suspended vertex degree** $|hg| = \deg(hg) - \deg(\text{root})$, where $\deg(hg)$ is the sum of the vertex degrees. See [HypergraphInsertionBracketDegree]().
+- A vertex is admissible for insertion if its degree matches the degree of the root of the inserted hypergraph. Vertex degrees come from the `"Degree"` entry of `"VertexAnnotationRules"` and default to zero.
+- The default isomorphism is an order-preserving bijection of vertices that induces a bijection of hyperedges. Isomorphic terms are collected by adding their coefficients, and terms with coefficient zero are discarded.
+- For two homogeneous inputs in the graded construction, graded antisymmetry takes the form $[hg_1,hg_2] = -(-1)^{|hg_1||hg_2|}[hg_2,hg_1]$.
 - The following option can be given:
 
 | option | default | effect |
@@ -31,9 +31,14 @@ RelatedGuides: [HypergraphFunctionality]
 
 - Possible settings for `"Kind"` include:
 
-| <code>"Ordered"</code> | hypergraphs up to relabeling of (possibly graded) ordered vertices |
+| setting | hypergraphs |
+|---|---|
+| <code>"Ordered"</code> | hypergraphs with ordered vertices |
 | <code>"Rooted"</code> | hypergraphs with a distinguished root vertex |
-| <code>"Tagged"</code> | hypergraphs with a distinguished (tagged) hyperedge |
+| <code>"Tagged"</code> | hypergraphs with a distinguished hyperedge |
+
+- The **tagged** insertion bracket is analogous to the rooted bracket, with insertion given by identification of hyperedges. The **tagged edge**, which takes the role of the root vertex, is the first edge in the edge list. Inserting a hypergraph into another sums over the target hyperedges of matching arity and the identifications allowed by the symmetry of the inserted hypergraph's tagged edge. The symmetry may be `"Unordered"` (the default), `"Ordered"`, or `"Cyclic"`.
+- The ordered and rooted constructions use vertex grading. The rooted construction has a known limitation for mixed degrees. The tagged construction uses ordinary antisymmetrization.
 
 ## Basic Examples
 
@@ -77,7 +82,7 @@ Dataset[KeyMap[EdgeList, HypergraphInsertionBracket[<|Hypergraph[{{1, 2}, {2, 3}
 
 ## Properties and Relations
 
-Swapping the two arguments negates the bracket, so their sum cancels to zero:
+For these degree-zero hypergraphs, swapping the two arguments negates the bracket, so their sum cancels to zero:
 
 ```wl
 With[{hg1 = Hypergraph[{{1, 2}, {2, 3}}], hg2 = Hypergraph[{{1, 2}}]},
