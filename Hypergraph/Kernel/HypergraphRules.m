@@ -378,7 +378,7 @@ HighlightRule[matches : {___Association}, hg_ ? HypergraphQ, opts : OptionsPatte
                 PlotRangePadding -> Scaled[.25],
                 $HypergraphRulePlotOptions
             ],
-            Graphics[{GrayLevel[0.65], $HypergraphRuleArrow}],
+            Graphics[{GrayLevel[0.65], $HypergraphRuleArrow}, ImageSize -> 16],
             SimpleHypergraphPlot[
                 Hypergraph[
                     #Hypergraph,
