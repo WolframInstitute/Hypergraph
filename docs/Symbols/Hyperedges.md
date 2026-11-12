@@ -109,12 +109,12 @@ HyperedgesQ[{1, 2}]
 
 <!-- => False -->
 
-## Possible Issues
+---
 
-A hyperedge's tag does not survive being wrapped in a [Hypergraph]():
+A hyperedge's tag is kept when the edges are wrapped in a [Hypergraph]():
 
 ```wl
 EdgeListTagged[Hypergraph[Hyperedges[{1, 2} -> "a"]]]
 ```
 
-<!-- => {{1, 2}} -->
+<!-- => {{1, 2} -> "a"} -->

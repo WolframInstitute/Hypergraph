@@ -96,7 +96,7 @@ Options[CanonicalHypergraph] = {Method -> Automatic, "Annotations" -> False}
 
 CanonicalHypergraph[hg_ ? HypergraphQ, OptionsPattern[]] := Enclose @ Block[{
 	vs = VertexList[hg], edges = EdgeList[hg], tags = EdgeTags[hg],
-    taggedEdgePositions, emptyEdgePositions,
+    taggedEdgePositions, emptyEdgePositions, untaggedEmptyEdgePositions, annotatedEdges,
 	orderedEdges, counts, iso, emptyEdges, newVertices, newEdges, ordering,
 	tagVertices, freeVertices,
     opts = AbsoluteOptions[hg],
@@ -114,9 +114,12 @@ CanonicalHypergraph[hg_ ? HypergraphQ, OptionsPattern[]] := Enclose @ Block[{
     orderedEdges = Catenate @ orderedEdges;
     taggedEdgePositions = Position[tags, Except[None], {1}, Heads -> False];
     emptyEdgePositions = Position[edges, {}, {1}, Heads -> False];
-    edges = Delete[edges, taggedEdgePositions];
-    tags = Delete[tags, Complement[emptyEdgePositions, taggedEdgePositions]];
-	emptyEdges = Cases[edges, {}];
+    (* untagged empty edges are set aside; every other edge, a tagged empty one included, is in orderedEdges *)
+    untaggedEmptyEdgePositions = Complement[emptyEdgePositions, taggedEdgePositions];
+    tags = Delete[tags, untaggedEmptyEdgePositions];
+	emptyEdges = Extract[edges, untaggedEmptyEdgePositions];
+    (* edge annotations are keyed by the tagged edges, in the order of orderedEdges *)
+    annotatedEdges = Delete[EdgeListTagged[hg], untaggedEmptyEdgePositions];
     edges = Delete[edges, emptyEdgePositions];
     freeVertices = DeleteElements[vs, Union @@ edges];
 	iso = Confirm @ Replace[OptionValue[Method], {
@@ -127,7 +130,8 @@ CanonicalHypergraph[hg_ ? HypergraphQ, OptionsPattern[]] := Enclose @ Block[{
     iso = KeySelect[iso, ! MemberQ[tagVertices, #] &];
     Sow[iso, "Isomorphism"];
     newEdges = First @* Sort /@ TakeList[Map[Replace[iso], orderedEdges, {2}], counts];
-    ordering = OrderingBy[newEdges, DeleteElements[#, tagVertices] &];
+    (* edges on the same vertices are ordered by their tags, so the input order does not show *)
+    ordering = OrderingBy[Transpose[{newEdges, tags}], {DeleteElements[#[[1]], tagVertices], #[[2]]} &];
 	newEdges = MapThread[If[#2 === None, #1, Most[#1] -> #2] &, {newEdges[[ordering]], tags[[ordering]]}];
     newVertices = Sort[Values[iso]];
     Hypergraph[
@@ -143,7 +147,7 @@ CanonicalHypergraph[hg_ ? HypergraphQ, OptionsPattern[]] := Enclose @ Block[{
             ],
             processVertexAnnotations = Sort @ mapVertexOptions[Replace[#, iso] &, Thread[vs -> Replace[vs, #, 1]]] &,
             processEdgeAnnotations =  Catenate @ Values @ GroupBy[
-                Join[Thread[emptyEdges -> Replace[emptyEdges, #, 1]], Thread[newEdges -> Replace[edges, #, 1][[ordering]]]],
+                Join[Thread[emptyEdges -> Replace[emptyEdges, #, 1]], Thread[newEdges -> Replace[annotatedEdges, #, 1][[ordering]]]],
                 First,
                 Sort
             ] &

@@ -190,6 +190,9 @@ Hypergraph[vs_List, edgeSpec : {$EdgePattern ...}, opts : OptionsPattern[]] := B
 
 Hypergraph[edgeSpec : {$EdgePattern ...}, opts : OptionsPattern[]] := Hypergraph[{}, edgeSpec, opts]
 
+(* a sequence of tagged edges; an option never has a list on its left-hand side *)
+Hypergraph[edges : Repeated[_List -> _, {2, Infinity}], opts : OptionsPattern[]] := Hypergraph[{edges}, opts]
+
 (* no vertices and empty options case *)
 Hypergraph[edges : {__List}, {}] := Hypergraph[{}, edges]
 
@@ -210,7 +213,7 @@ hg : Hypergraph[vs_List, he_Hyperedges ? HyperedgesQ, opts : OptionsPattern[]] /
 	vertices = DeleteDuplicates @ Join[stripAnnotations /@ vs, he["VertexList"]]
 }, With[{
 	annotations = VertexSpecAnnotation /@ Join[vs, he["AnnotatedVertexList"]],
-	edges = Hyperedges @@ (edgeStripAnnotations /@ he["EdgeList"])
+	edges = Hyperedges @@ (edgeStripAnnotations /@ he["EdgeListTagged"])
 },
 	System`Private`SetNoEntry @ System`Private`HoldSetValid[Hypergraph[vertices, edges, ##]] & @@
 		Normal @ GroupBy[

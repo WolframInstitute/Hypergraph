@@ -30,7 +30,8 @@ RelatedGuides: [HypergraphFunctionality]
 | edge specification | interpretation |
 |---|---|
 | <code>{*v*<sub>1</sub>, *v*<sub>2</sub>, …}</code> | hyperedge with the default edge symmetry |
-| <code>*u* -> *w*</code> | binary hyperedge with `"Ordered"` symmetry |
+| <code>{*v*<sub>1</sub>, *v*<sub>2</sub>, …} -> *tag*</code> | hyperedge tagged with *tag* |
+| <code>*u* -> *w*</code> | binary hyperedge with `"Ordered"` symmetry, for a vertex *u* that is not a list |
 | <code>[DirectedEdge]()[*u*, *w*]</code> | hyperedge with `"Ordered"` symmetry joining *u* and *w* (vertices or vertex lists) |
 | <code>[UndirectedEdge]()[*u*, *w*]</code> | hyperedge with `"Unordered"` symmetry |
 | <code>CyclicEdge[{*v*<sub>1</sub>, *v*<sub>2</sub>, …}]</code> | hyperedge with `"Cyclic"` symmetry |
@@ -315,6 +316,16 @@ Hypergraph[{Style[1, Red], Labeled[2, "two"], 3}, {{1, 2}, {2, 3}}]
 ```
 
 <!-- => Hypergraph object with a styled and a labeled vertex -->
+
+---
+
+Tag hyperedges and label each one with its tag:
+
+```wl
+Hypergraph[{{1, 2} -> "a", {1, 2} -> "b", {2, 3} -> "c"}, EdgeLabels -> "EdgeTag", VertexLabels -> "Name"]
+```
+
+<!-- => Hypergraph object with its edges labeled a, b and c -->
 
 ---
 
