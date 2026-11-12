@@ -25,4 +25,5 @@ and not committed:
 ```bash
 wl -f build.wls               # changed pages only; --no-cache evaluates every example afresh
 wl -f release.wls --dry-run   # build and check the paclet resource without deploying it
+wl -f submit.wls --dry-run    # check a Paclet Repository submission without submitting
 ```
