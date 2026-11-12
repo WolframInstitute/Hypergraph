@@ -11,3 +11,5 @@ docs-backup-*/
 
 *.log
 
+# local development notebook
+Notebooks/Hypergraph-Dev.nb
