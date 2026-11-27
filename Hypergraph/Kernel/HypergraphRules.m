@@ -155,12 +155,16 @@ PatternRuleToMultiReplaceRule[rule : _[lhs_List | Verbatim[HoldPattern][lhs_List
 ]
 
 
-Options[HypergraphRuleApply] = Join[
+(* MultiReplace's options, read on first use and kept once they arrive: read at load, they would make loading fetch the
+   resource function, a network call on a cold resource cache *)
+multiReplaceOptions[] := Replace[Options[ResourceFunction["MultiReplace"]], options : {__} :> (multiReplaceOptions[] = options)]
+
+Options[HypergraphRuleApply] := Join[
     {
         "BindingsMethod" -> Automatic, "SymmetryMethod" -> Automatic, "CanonicalizeMethod" -> Automatic, "MatchesMethod" -> Automatic,
         "DistinctVertexLabels" -> True, "DistinctEdgeLabels" -> True
     },
-    Options[ResourceFunction["MultiReplace"]]
+    multiReplaceOptions[]
 ]
 
 HypergraphRuleApply[input_, output_, cond_, hg_, opts : OptionsPattern[]] := Block[{
@@ -195,7 +199,7 @@ HypergraphRuleApply[input_, output_, cond_, hg_, opts : OptionsPattern[]] := Blo
                     patt |-> Function[Null, Condition @@ Replace[patt, {Verbatim[Condition][p_, c_] :> Hold[p, c && ##], p_ :> Hold[p, ##]}], HoldAll] @@ cond
                 ],
             {1},
-            FilterRules[{opts}, Options[ResourceFunction["MultiReplace"]]],
+            FilterRules[{opts}, multiReplaceOptions[]],
             "PatternSubstitutions" -> True,
             "Mode" -> "OrderlessSubsets"
         ],
